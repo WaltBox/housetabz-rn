@@ -48,19 +48,19 @@ To create a circular progress bar for the loading screen, we are using react-nat
    - npm install react-native-svg
    - npm install --save-dev react-native-svg-transformer
 
-## Commands Summary
-Install dependencies for the project
+# Commands Summary
+## Install dependencies for the project
 ### npm install
 
-Start the project using Expo
+## Start the project using Expo
 ### npx expo start
 
-Install React Navigation
+## Install React Navigation
 ### npm install @react-navigation/native
 ### npm install react-native-screens react-native-safe-area-context
 ### npm install @react-navigation/stack
 
-Install react-native-svg for circular progress bar
+## Install react-native-svg for circular progress bar
 ### npm install react-native-svg
 ### npm install --save-dev react-native-svg-transformer
 
