@@ -1,50 +1,54 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
+import PageHeader from '../components/PageHeader';
 
 const ViewCompanyCard = ({ route }) => {
   const { title, description, image, price, logo } = route.params;
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Cover Image */}
-      <View style={styles.coverImageContainer}>
-        <Image style={styles.coverImage} />
-      </View>
+    <>
+      <PageHeader /> {/* Add the header here */}
+      <ScrollView style={styles.container}>
+        {/* Cover Image */}
+        <View style={styles.coverImageContainer}>
+          <Image style={styles.coverImage} />
+        </View>
 
-      {/* Company Details Container */}
-      <View style={styles.companyDetailsContainer}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
-        <Button title="View Plans" onPress={() => { /* Action for viewing plans */ }} />
-      </View>
+        {/* Company Details Container */}
+        <View style={styles.companyDetailsContainer}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
+          <Button title="View Plans" onPress={() => { /* Action for viewing plans */ }} />
+        </View>
 
-      {/* Special Deals Container */}
-      <View style={styles.specialDealsContainer}>
-        <Text style={styles.specialDealsText}>Special Deals</Text>
-      </View>
+        {/* Special Deals Container */}
+        <View style={styles.specialDealsContainer}>
+          <Text style={styles.specialDealsText}>Special Deals</Text>
+        </View>
 
-      {/* About Section */}
-      <View style={styles.textSection}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.paragraph}>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
-        </Text>
-        <Text style={styles.paragraph}>
-          Cras vehicula, dolor at placerat elementum, risus felis viverra urna, vel consequat velit sapien id metus.
-        </Text>
-      </View>
+        {/* About Section */}
+        <View style={styles.textSection}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.paragraph}>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
+          </Text>
+          <Text style={styles.paragraph}>
+            Cras vehicula, dolor at placerat elementum, risus felis viverra urna, vel consequat velit sapien id metus.
+          </Text>
+        </View>
 
-      {/* Important Information Section */}
-      <View style={styles.textSection}>
-        <Text style={styles.sectionTitle}>Important Information</Text>
-        <Text style={styles.paragraph}>
-          Aenean efficitur sit amet massa fringilla egestas. Nullam condimentum luctus turpis.
-        </Text>
-        <Text style={styles.paragraph}>
-          Curabitur sit amet mauris morbi in dui quis est pulvinar ullamcorper. Nulla facilisi.
-        </Text>
-      </View>
-    </ScrollView>
+        {/* Important Information Section */}
+        <View style={styles.textSection}>
+          <Text style={styles.sectionTitle}>Important Information</Text>
+          <Text style={styles.paragraph}>
+            Aenean efficitur sit amet massa fringilla egestas. Nullam condimentum luctus turpis.
+          </Text>
+          <Text style={styles.paragraph}>
+            Curabitur sit amet mauris morbi in dui quis est pulvinar ullamcorper. Nulla facilisi.
+          </Text>
+        </View>
+      </ScrollView>
+    </>
   );
 };
 
