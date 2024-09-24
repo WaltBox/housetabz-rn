@@ -1,25 +1,17 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 
-const CompanyCardComponent = ({ title, description, image, price, logo }) => {
-  // Add logging to check values passed into the component
-  console.log({ title, description, price, image, logo });
-
+const CompanyCardComponent = ({ title, description, image, price, logo, onPress }) => {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8}>
-      {/* Cover Image */}
+    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       <Image source={{ uri: image }} style={styles.coverImage} />
-
-      {/* Company Logo */}
       <View style={styles.logoContainer}>
         <Image source={{ uri: logo }} style={styles.logo} />
       </View>
-
-      {/* Content: Title, Avg / Roommate */}
       <View style={styles.content}>
-        <Text style={styles.title}>{title || 'Title Missing'}</Text>
+        <Text style={styles.title}>{title}</Text>
         <Text style={styles.avgRoommateLabel}>Avg / Roommate</Text>
-        <Text style={styles.price}>{price || '$$'}</Text>
+        <Text style={styles.price}>{price}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -27,8 +19,8 @@ const CompanyCardComponent = ({ title, description, image, price, logo }) => {
 
 const styles = StyleSheet.create({
   card: {
-    width: '33%',  // 33% of the screen width
-    height: 220,  // Fixed height for consistency with proportional design
+    width: '33%',
+    height: 220,
     backgroundColor: '#fff',
     borderRadius: 10,
     marginBottom: 20,
@@ -37,12 +29,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3, // Android shadow
+    elevation: 3,
     marginRight: 15,
   },
   coverImage: {
     width: '100%',
-    height: 100,  // Reasonable height for the cover image
+    height: 100,
   },
   logoContainer: {
     position: 'absolute',
