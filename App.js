@@ -2,10 +2,10 @@
 
 import React from 'react';
 import AppNavigator from './src/navigation/AppNavigator';
-
+import TabNavigator from './src/navigation/BottomBar';
 
 const App = () => {
-  return <AppNavigator />;
+  return <TabNavigator />;
 };
 
 export default App;
