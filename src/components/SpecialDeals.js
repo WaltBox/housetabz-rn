@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 const SpecialDeals = () => {
   return (
     <View style={styles.wrapper}>
-      {/* Special Deals Text in the top-left, outside the container */}
+      {/* Special Deals Text in the top-left, aligned with the container */}
       <Text style={styles.dealLabel}>Special Deals</Text>
       
       {/* Container for the special deals content */}
@@ -15,7 +15,7 @@ const SpecialDeals = () => {
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: '100%',  // Make sure wrapper takes up full width
+    width: '100%',  // Full width of the wrapper
     alignItems: 'center',  // Center the container within the wrapper
     marginBottom: 100,  // Add space between SpecialDeals and CompanyCard components
   },
@@ -24,13 +24,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     alignSelf: 'flex-start',  // Align text to the top left of the container
-    marginLeft: '12.5%',  // Same as 25%/2 to match the left side of the container
-    marginBottom: 5,  // Add space between the text and the container
+    marginLeft: '5%',  // Adjusted to align with the container's width
+    marginBottom: 5,  // Space between the text and the container
   },
   dealContainer: {
-    width: '90%',  // 75% of the screen width
+    width: '90%',  // 90% of the screen width for the container
     height: 110,  // Same height as CompanyCard
-    backgroundColor: 'grey',  // Special deals background color
+    backgroundColor: 'grey',  // Background color for special deals
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
