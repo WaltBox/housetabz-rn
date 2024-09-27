@@ -1,54 +1,55 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
-import PageHeader from '../components/PageHeader';
 
 const ViewCompanyCard = ({ route }) => {
   const { title, description, image, price, logo } = route.params;
 
   return (
-    <>
-      <PageHeader /> {/* Add the header here */}
-      <ScrollView style={styles.container}>
-        {/* Cover Image */}
-        <View style={styles.coverImageContainer}>
-          <Image style={styles.coverImage} />
-        </View>
+    <ScrollView style={styles.container}>
+      {/* Cover Image */}
+      <View style={styles.coverImageContainer}>
+        <Image style={styles.coverImage} />
+      </View>
 
-        {/* Company Details Container */}
-        <View style={styles.companyDetailsContainer}>
-          <Text style={styles.title}>{title}</Text>
+      {/* Company Details Container */}
+      <View style={styles.companyDetailsContainer}>
+        <Text style={styles.title}>{title}</Text>
+        
+        {/* Align Avg Cost and Button in a row */}
+        <View style={styles.row}>
           <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
           <Button title="View Plans" onPress={() => { /* Action for viewing plans */ }} />
         </View>
+        
+      </View>
 
-        {/* Special Deals Container */}
-        <View style={styles.specialDealsContainer}>
-          <Text style={styles.specialDealsText}>Special Deals</Text>
-        </View>
+      {/* Special Deals Container */}
+      <View style={styles.specialDealsContainer}>
+        <Text style={styles.specialDealsText}>Special Deals</Text>
+      </View>
 
-        {/* About Section */}
-        <View style={styles.textSection}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.paragraph}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
-          </Text>
-          <Text style={styles.paragraph}>
-            Cras vehicula, dolor at placerat elementum, risus felis viverra urna, vel consequat velit sapien id metus.
-          </Text>
-        </View>
+      {/* About Section */}
+      <View style={styles.textSection}>
+        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.paragraph}>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
+        </Text>
+        <Text style={styles.paragraph}>
+          Cras vehicula, dolor at placerat elementum, risus felis viverra urna, vel consequat velit sapien id metus.
+        </Text>
+      </View>
 
-        {/* Important Information Section */}
-        <View style={styles.textSection}>
-          <Text style={styles.sectionTitle}>Important Information</Text>
-          <Text style={styles.paragraph}>
-            Aenean efficitur sit amet massa fringilla egestas. Nullam condimentum luctus turpis.
-          </Text>
-          <Text style={styles.paragraph}>
-            Curabitur sit amet mauris morbi in dui quis est pulvinar ullamcorper. Nulla facilisi.
-          </Text>
-        </View>
-      </ScrollView>
-    </>
+      {/* Important Information Section */}
+      <View style={styles.textSection}>
+        <Text style={styles.sectionTitle}>Important Information</Text>
+        <Text style={styles.paragraph}>
+          Aenean efficitur sit amet massa fringilla egestas. Nullam condimentum luctus turpis.
+        </Text>
+        <Text style={styles.paragraph}>
+          Curabitur sit amet mauris morbi in dui quis est pulvinar ullamcorper. Nulla facilisi.
+        </Text>
+      </View>
+    </ScrollView>
   );
 };
 
@@ -58,24 +59,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
   },
   coverImageContainer: {
-    backgroundColor: '#FFA500', // putting orange bg as placeholder for now
-    height: 150, 
+    backgroundColor: '#FFA500',
+    height: 150,
     justifyContent: 'center',
     alignItems: 'center',
   },
   coverImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover', 
+    resizeMode: 'cover',
   },
   companyDetailsContainer: {
     marginTop: -50,
     padding: 20,
-    backgroundColor: '#d3d3d3', 
+    backgroundColor: '#d3d3d3',
     borderRadius: 10,
     marginHorizontal: 20,
     alignItems: 'center',
-    borderColor: '#000', 
+    borderColor: '#000',
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -88,10 +89,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
+  row: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center', 
+    width: '100%', 
+    marginTop: 10,
+  },
   avgCost: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 20,
     color: '#555',
   },
   specialDealsContainer: {
@@ -101,7 +108,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginHorizontal: 20,
     alignItems: 'center',
-    borderColor: '#000', 
+    borderColor: '#000',
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
