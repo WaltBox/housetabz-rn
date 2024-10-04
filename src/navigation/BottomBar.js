@@ -7,10 +7,12 @@ import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../screens/ViewCompanyCard';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ProfileScreen from '../screens/ProfileScreen';
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const Profile = createStackNavigator();
 const DashboardStack = () => {
     return (
         <Dashboard.Navigator
@@ -46,6 +48,17 @@ const MarketplaceStack = () => {
         </Market.Navigator>
     );
 };
+const ProfileStack = () => {
+    return (
+        <Profile.Navigator
+        screenOptions={{
+            headerShown: false
+        }}
+        >
+            <Profile.Screen name="ProfileScreen" component={ProfileScreen}/>
+        </Profile.Navigator>
+    );
+};
 const TabNavigator = () => {
     return (
         <NavigationContainer>
@@ -73,7 +86,7 @@ const TabNavigator = () => {
                 <Tab.Screen name="My House" component={MyHouseStack}/>
                 <Tab.Screen name="Make Payment" component={DashboardStack}/>
                 <Tab.Screen name="Marketplace" component={MarketplaceStack}/>
-                <Tab.Screen name="Profile" component={DashboardStack}/>
+                <Tab.Screen name="Profile" component={ProfileStack}/>
             </Tab.Navigator>
         </NavigationContainer>
     );
