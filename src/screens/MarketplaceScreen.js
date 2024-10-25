@@ -4,37 +4,35 @@ import { useNavigation } from '@react-navigation/native';
 import CompanyCardComponent from '../components/CompanyCardComponent';
 import SpecialDeals from '../components/SpecialDeals';
 import AppNavigator from '../navigation/AppNavigator';
+import axios from 'axios'
 
 const MarketplaceScreen = () => {
   const navigation = useNavigation();
+  const [partnerDetails, setPartnerDetails] = useState({});
+  useEffect(() => {
+
+    const fetchPartnerDetails = async() => {
+      try {
+        const parterResponse = await axios.get("http://localhost:3004/api/partners");
+        const companies = parterResponse.data.map(partner => {
+          return{
+            title:partner.title,
+            description:partner.description
+          };
+        });
+        setPartnerDetails(companies);
+      } catch (error){
+        console.error('Error fetching partner details.')
+      }
+  };
+  fetchPartnerDetails();
+})
+
 
   const handleCardPress = (company) => {
     navigation.navigate('ViewCompanyCard', { ...company });
   };
 
-  const companies = [
-    {
-      title: "Internet Service",
-      description: "High-speed internet for your house.",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-    {
-      title: "Energy Service",
-      description: "Energy plan with green energy options.",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-    {
-      title: "Streaming Service",
-      description: "Shared streaming subscription for the house.",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-  ];
 
   return (
     <View style={styles.container}>
@@ -48,7 +46,7 @@ const MarketplaceScreen = () => {
         showsHorizontalScrollIndicator={false} 
         contentContainerStyle={styles.cardRow}
       >
-        {companies.map((company, index) => (
+        {partnerDetails.map((company, index) => (
           <CompanyCardComponent 
             key={index}
             {...company}
