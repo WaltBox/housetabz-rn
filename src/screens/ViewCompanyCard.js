@@ -29,6 +29,7 @@ const ViewCompanyCard = ({ route }) => {
             console.log("viewingPlans")
             navigation.navigate('ViewPlans',{ name: title })}} />
         </View>
+      </View>
 
       {/* Special Deals Container */}
       <View style={styles.specialDealsContainer}>

@@ -6,15 +6,12 @@ import TopBar from './TopBar';
 import HomeScreen from '../screens/HomeScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../screens/ViewCompanyCard';
+import ViewPlansCard from '../screens/ViewPlansCard';
+import ViewPlansScreen from '../screens/ViewPlansScreen';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
-<<<<<<< HEAD
-import ViewPlansScreen from '../screens/ViewPlansScreen';
-import ViewPlansCard from '../screens/ViewPlansCard';
-=======
 import ProfileScreen from '../screens/ProfileScreen';
 import DashboardScreen from '../screens/DashboardScreen';
->>>>>>> d225849583d37b7833f8360d579296910ed86be5
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
