@@ -41,6 +41,22 @@ const MarketplaceScreen = () => {
       
       <SpecialDeals />
 
+      <Text style={styles.industryText}> Industry </Text>
+      <ScrollView 
+        horizontal={true} 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.cardRow}
+      >
+        {companies.map((company, index) => (
+          <CompanyCardComponent 
+            key={index}
+            {...company}
+            onPress={() => handleCardPress(company)}
+          />
+        ))}
+      </ScrollView>
+      
+      <Text style={styles.industryText}> Industry </Text>
       <ScrollView 
         horizontal={true} 
         showsHorizontalScrollIndicator={false} 
@@ -68,12 +84,18 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: 'green',
     marginTop: 40,
     marginBottom: 20,
   },
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
+  },
+  industryText: {
+    fontSize: 18, // Increase text size
+    fontWeight: 'bold', // Make text bold
+    marginBottom: 10, // Add margin at the bottom
   },
 });
 
