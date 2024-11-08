@@ -1,9 +1,16 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
+import PageHeader from '../components/PageHeader';
+import { useNavigation } from '@react-navigation/native';
 
 const ViewCompanyCard = ({ route }) => {
   const { title, description, image, price, logo } = route.params;
 
+  const navigation = useNavigation();
+
+  const handleCardPress = (company) => {
+    navigation.navigate('ViewCompanyCard', { ...company });
+  };
   return (
     <ScrollView style={styles.container}>
       {/* Cover Image */}
@@ -18,9 +25,10 @@ const ViewCompanyCard = ({ route }) => {
         {/* Align Avg Cost and Button in a row */}
         <View style={styles.row}>
           <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
-          <Button title="View Plans" onPress={() => { /* Action for viewing plans */ }} />
+          <Button title="View Plans" onPress={() => {
+            console.log("viewingPlans")
+            navigation.navigate('ViewPlans',{ name: title })}} />
         </View>
-        
       </View>
 
       {/* Special Deals Container */}

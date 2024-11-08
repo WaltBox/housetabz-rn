@@ -2,16 +2,18 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 
 
-const CompanyCardComponent = ({ title, description, image, price, logo, onPress }) => {
+const PlansCardComponent = ({ title, description, image, price, logo, onPress }) => {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       <Image source={{ uri: image }} style={styles.coverImage} />
-      <View style={styles.logoContainer}>
+      {/*<View style={styles.logoContainer}>
         <Image source={{ uri: logo }} style={styles.logo} />
-      </View>
+      </View>*/}
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.avgRoommateLabel}>{description}</Text>
+        <Text style={styles.title}>{description}</Text>
+        <Text style={styles.avgRoommateLabel}>Avg /s Roommate</Text>
+        <Button title="Request For House" onPress={() => { /* Action for requesting for house */ }} />
         <Text style={styles.price}>{price}</Text>
       </View>
     </TouchableOpacity>
@@ -20,7 +22,7 @@ const CompanyCardComponent = ({ title, description, image, price, logo, onPress 
 
 const styles = StyleSheet.create({
   card: {
-    width: '20%',
+    width: '33%',
     height: 220,
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -80,4 +82,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CompanyCardComponent;
+export default PlansCardComponent;
