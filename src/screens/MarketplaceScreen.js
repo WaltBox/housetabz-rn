@@ -3,7 +3,6 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import CompanyCardComponent from '../components/CompanyCardComponent';
 import SpecialDeals from '../components/SpecialDeals';
-import AppNavigator from '../navigation/AppNavigator';
 
 const MarketplaceScreen = () => {
   const navigation = useNavigation();

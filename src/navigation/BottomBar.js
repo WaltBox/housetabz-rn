@@ -1,13 +1,15 @@
 import * as React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import TopBar from './TopBar';
 import HomeScreen from '../screens/HomeScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../screens/ViewCompanyCard';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ProfileScreen from '../screens/ProfileScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
@@ -20,8 +22,7 @@ const DashboardStack = () => {
             headerShown: false
         }}
         >
-            <Dashboard.Screen name="Home" component={HomeScreen}/>
-            <Dashboard.Screen name="Marketplace" component={MarketplaceScreen}/>
+            <Dashboard.Screen name="DashboardScreen" component={DashboardScreen}/>
         </Dashboard.Navigator>
     );
 };
@@ -43,7 +44,7 @@ const MarketplaceStack = () => {
             headerShown: false
         }}
         >
-            <Market.Screen name="Marketplace" component={MarketplaceScreen}/>
+            <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen}/>
             <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
         </Market.Navigator>
     );
@@ -62,6 +63,7 @@ const ProfileStack = () => {
 const TabNavigator = () => {
     return (
         <NavigationContainer>
+            <TopBar/>
             <Tab.Navigator screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
