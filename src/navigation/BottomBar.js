@@ -7,12 +7,14 @@ import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../screens/ViewCompanyCard';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ViewPlansScreen from '../screens/ViewPlansScreen';
+import ViewPlansCard from '../screens/ViewPlansCard';
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const DashboardStack = () => {
-    return (
+    return ( 
         <Dashboard.Navigator
         screenOptions={{
             headerShown: false
@@ -43,6 +45,8 @@ const MarketplaceStack = () => {
         >
             <Market.Screen name="Marketplace" component={MarketplaceScreen}/>
             <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
+            <Market.Screen name="ViewPlans" component={ViewPlansScreen}/>
+            <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
         </Market.Navigator>
     );
 };

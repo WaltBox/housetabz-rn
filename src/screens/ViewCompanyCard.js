@@ -1,10 +1,16 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
 import PageHeader from '../components/PageHeader';
+import { useNavigation } from '@react-navigation/native';
 
 const ViewCompanyCard = ({ route }) => {
   const { title, description, image, price, logo } = route.params;
 
+  const navigation = useNavigation();
+
+  const handleCardPress = (company) => {
+    navigation.navigate('ViewCompanyCard', { ...company });
+  };
   return (
     <>
       <PageHeader /> {/* Add the header here */}
@@ -18,7 +24,9 @@ const ViewCompanyCard = ({ route }) => {
         <View style={styles.companyDetailsContainer}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
-          <Button title="View Plans" onPress={() => { /* Action for viewing plans */ }} />
+          <Button title="View Plans" onPress={() => {
+            console.log("viewingPlans")
+            navigation.navigate('ViewPlans',{ name: title })}} />
         </View>
 
         {/* Special Deals Container */}
