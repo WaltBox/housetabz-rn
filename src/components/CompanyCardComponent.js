@@ -1,18 +1,27 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 
-
-const CompanyCardComponent = ({ title, description, image, price, logo, onPress }) => {
+const CompanyCardComponent = ({ name, description, logoUrl, coverUrl, onPress }) => {
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <Image source={{ uri: image }} style={styles.coverImage} />
-      <View style={styles.logoContainer}>
-        <Image source={{ uri: logo }} style={styles.logo} />
-      </View>
+    <TouchableOpacity onPress={onPress} style={styles.card}>
+      {/* Cover Photo */}
+      <Image 
+        source={coverUrl ? { uri: coverUrl } : require('../../assets/rhythmenergycover.jpeg')} 
+        style={styles.coverPhoto} 
+        resizeMode="cover"
+      />
       <View style={styles.content}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.avgRoommateLabel}>{description}</Text>
-        <Text style={styles.price}>{price}</Text>
+        {/* Logo */}
+        <Image 
+          source={logoUrl ? { uri: logoUrl } : require('../../assets/rhythmlogo.png')}
+          style={styles.logo} 
+          resizeMode="contain"
+        />
+        {/* Name and Description */}
+        <Text style={styles.title}>{name}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {description}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -20,63 +29,36 @@ const CompanyCardComponent = ({ title, description, image, price, logo, onPress 
 
 const styles = StyleSheet.create({
   card: {
-    width: '20%',
-    height: 220,
     backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 20,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    marginRight: 15,
+    width: 160,
+    height: 220,
   },
-  coverImage: {
+  coverPhoto: {
     width: '100%',
-    height: 100,
+    height: '50%', // Cover photo takes up the top half of the card
   },
-  logoContainer: {
-    position: 'absolute',
-    top: 70,
-    left: 15,
-    width: 50,
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    justifyContent: 'center',
+  content: {
+    padding: 10,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   logo: {
     width: 40,
     height: 40,
-  },
-  content: {
-    padding: 10,
-    justifyContent: 'center',
+    borderRadius: 5,
+    marginBottom: 8,
   },
   title: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    textAlign: 'center',
     marginBottom: 5,
-    marginTop: 10,
   },
-  avgRoommateLabel: {
+  description: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#888',
-    marginBottom: 5,
-  },
-  price: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

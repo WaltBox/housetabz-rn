@@ -35,14 +35,14 @@ const ProfileScreen = () => {
       <View style={styles.profileContainer}>
         <Image style={styles.profileImage} />
         <Text style={styles.nameText}>{user.username}</Text>
-        <Text style={styles.pointsText}>Points: XX</Text>
+        <Text style={styles.pointsText}>Points: {user.points}</Text>
         <View style={styles.progressBar} />
         <Text style={styles.nextLevelText}>Next Level in X points</Text>
         <Text style={styles.houseNameText}>
           House Name: {user.house ? user.house.name : 'Unknown'}
         </Text>
         <Text style={styles.userStatusText}>User Status: Active</Text>
-        <Text style={styles.creditText}>Current Credit: {user.balance}$</Text>
+        <Text style={styles.creditText}>Current Credit: ${user.balance}</Text>
       </View>
       <View style={styles.divider} />
       <Text style={styles.termsText}>
