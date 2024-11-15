@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const ProfileScreen = () => {
   const [user, setUser] = useState({
@@ -11,14 +12,15 @@ const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('http://localhost:3004/api/users/1')
-      .then(response => {
+    axios
+      .get('http://localhost:3004/api/users/1')
+      .then((response) => {
         setUser(response.data);
         setLoading(false);
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('Error fetching user data:', error);
-        setLoading(false); 
+        setLoading(false);
       });
   }, []);
 
@@ -32,58 +34,48 @@ const ProfileScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.profileContainer}>
+      {/* Profile Section */}
+      <View style={styles.profileRow}>
         <Image style={styles.profileImage} />
-        <Text style={styles.nameText}>{user.username}</Text>
+        <View style={styles.profileInfo}>
+          <Text style={styles.nameText}>{user.username}</Text>
+          <Text style={styles.houseNameText}>
+            House: {user.house ? user.house.name : 'Unknown'}
+          </Text>
+          <Text style={styles.creditText}>Credit: ${user.balance}</Text>
+        </View>
+      </View>
+
+      {/* Points and Progress Section */}
+      <View style={styles.pointsContainer}>
         <Text style={styles.pointsText}>Points: {user.points}</Text>
-        <View style={styles.progressBar} />
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarFill} />
+        </View>
         <Text style={styles.nextLevelText}>Next Level in X points</Text>
-        <Text style={styles.houseNameText}>
-          House Name: {user.house ? user.house.name : 'Unknown'}
+      </View>
+
+      {/* Clickable Titles Section */}
+      <View style={styles.clickableSection}>
+        <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+          <Text style={styles.clickableTitle}>MyTab</Text>
+          <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+          <Text style={styles.clickableTitle}>Transactions</Text>
+          <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom Message */}
+      <View style={styles.footer}>
+        <Text style={styles.termsText}>
+          By using this app, I agree to HouseTabz{'\n'}
+          <Text style={styles.termsLink}>Terms of Service</Text>{'\n'}
+          Copyright © 2024 HouseTabz, Inc{'\n'}
+          🏠✨
         </Text>
-        <Text style={styles.userStatusText}>User Status: Active</Text>
-        <Text style={styles.creditText}>Current Credit: ${user.balance}</Text>
-      </View>
-      <View style={styles.divider} />
-      <Text style={styles.termsText}>
-        By Using HouseTabz, you agree to our{' '}
-        <Text style={styles.termsLink}>Terms and Conditions</Text>
-      </Text>
-      <View style={styles.tabSection}>
-        <Text style={styles.sectionTitle}>Current Tab</Text>
-        <View style={styles.row}>
-          <Text style={styles.totalText}>Total:</Text>
-          <Text style={styles.moneyValue}>$$$</Text>
-        </View>
-        <View style={styles.chargesContainer}>
-          <View style={styles.row}>
-            <Text style={styles.chargeText}>Charge 1:</Text>
-            <Text style={styles.moneyValue}>$$</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.chargeText}>Charge 2:</Text>
-            <Text style={styles.moneyValue}>$</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.lateChargeText}>Late Charge 1:</Text>
-            <Text style={styles.moneyValue}>$</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.lateChargeText}>Late Charge 2:</Text>
-            <Text style={styles.moneyValue}>$</Text>
-          </View>
-        </View>
-      </View>
-      <View style={styles.paymentsSection}>
-        <Text style={styles.sectionTitle}>Previous Payments</Text>
-        <View style={styles.row}>
-          <Text style={styles.paymentText}>Payment 1:</Text>
-          <Text style={styles.moneyValue}>$$</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.paymentText}>Payment 2:</Text>
-          <Text style={styles.moneyValue}>$$</Text>
-        </View>
       </View>
     </View>
   );
@@ -95,9 +87,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#E6F4F1',
     paddingHorizontal: 20,
   },
-  profileContainer: {
+  profileRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
+    justifyContent: 'center',
+    marginVertical: 20,
   },
   profileImage: {
     width: 85,
@@ -105,32 +99,15 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     backgroundColor: '#ccc',
   },
+  profileInfo: {
+    marginLeft: 20,
+    justifyContent: 'center',
+  },
   nameText: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 10,
-  },
-  pointsText: {
-    fontSize: 16,
-    marginTop: 5,
-  },
-  progressBar: {
-    height: 10,
-    width: '80%',
-    backgroundColor: '#ccc',
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  nextLevelText: {
-    fontSize: 14,
-    marginTop: 5,
-    color: '#666',
   },
   houseNameText: {
-    fontSize: 16,
-    marginTop: 10,
-  },
-  userStatusText: {
     fontSize: 16,
     marginTop: 5,
   },
@@ -138,60 +115,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#000',
-    marginVertical: 20,
+  pointsContainer: {
+    alignItems: 'center',
+    marginVertical: 30, // Added more space
+  },
+  pointsText: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  progressBarContainer: {
+    height: 15,
+    width: '70%',
+    backgroundColor: '#ccc',
+    borderRadius: 7.5,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    width: '50%', // Adjust dynamically based on progress
+    backgroundColor: '#4CAF50',
+  },
+  nextLevelText: {
+    fontSize: 14,
+    marginTop: 10,
+    color: '#666',
+  },
+  clickableSection: {
+    marginVertical: 30, // Added more space
+  },
+  clickableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  clickableTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  footer: {
+    marginTop: 'auto', // Pushes the footer to the bottom
+    marginBottom: 20,
   },
   termsText: {
     fontSize: 12,
     textAlign: 'center',
-    marginBottom: 20,
+    color: '#333',
   },
   termsLink: {
     color: '#007BFF',
     textDecorationLine: 'underline',
-  },
-  tabSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  chargesContainer: {
-    marginTop: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-  },
-  totalText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  chargeText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  lateChargeText: {
-    fontSize: 16,
-    color: '#FF0000',
-  },
-  paymentsSection: {
-    marginBottom: 20,
-  },
-  paymentText: {
-    fontSize: 16,
-    marginTop: 10,
-    textDecorationLine: 'underline',
-  },
-  moneyValue: {
-    textDecorationLine: 'none',
-    fontWeight: 'bold',
   },
 });
 

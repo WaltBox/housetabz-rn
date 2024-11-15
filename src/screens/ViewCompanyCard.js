@@ -1,61 +1,53 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 const ViewCompanyCard = ({ route }) => {
-  const { title, description, price, logo, coverUrl } = route.params; // coverUrl included
-
+  const { partner } = route.params;
   const navigation = useNavigation();
+
+  const handleNavigation = () => {
+    if (partner.type === 'plannable') {
+      navigation.navigate('ViewPlans', { partnerId: partner.id });
+    } else if (partner.type === 'formable') {
+      navigation.navigate('ViewForm', { partnerId: partner.id });
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
       {/* Cover Image */}
       <View style={styles.coverImageContainer}>
         <Image 
-          source={coverUrl ? { uri: coverUrl } : require('../../assets/rhythmcover2.png')} // Fallback image if coverUrl is unavailable
+          source={partner.company_cover 
+            ? { uri: `http://localhost:3004/${partner.company_cover}` } 
+            : require('../../assets/fallback_cover.png')} // Fallback image if company_cover is unavailable
           style={styles.coverImage} 
         />
       </View>
 
       {/* Company Details Container */}
       <View style={styles.companyDetailsContainer}>
-        <Text style={styles.title}>{title}</Text>
-        
-        {/* Align Avg Cost and Button in a row */}
-        <View style={styles.row}>
-          <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
-          <Button 
-            title="View Plans" 
-            onPress={() => navigation.navigate('ViewPlans', { name: title })}
-          />
-        </View>
-      </View>
-
-      {/* Special Deals Container */}
-      <View style={styles.specialDealsContainer}>
-        <Text style={styles.specialDealsText}>Special Deals</Text>
+        <Text style={styles.title}>{partner.name}</Text>
+        <Text style={styles.description}>{partner.description}</Text>
+        {/* Conditional Button */}
+        <Button 
+          title={partner.type === 'plannable' ? 'View Plans' : 'View Form'}
+          onPress={handleNavigation}
+          color="#4CAF50"
+        />
       </View>
 
       {/* About Section */}
       <View style={styles.textSection}>
         <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.paragraph}>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum vestibulum.
-        </Text>
-        <Text style={styles.paragraph}>
-          Cras vehicula, dolor at placerat elementum, risus felis viverra urna, vel consequat velit sapien id metus.
-        </Text>
+        <Text style={styles.paragraph}>{partner.about || 'No additional information available.'}</Text>
       </View>
 
       {/* Important Information Section */}
       <View style={styles.textSection}>
         <Text style={styles.sectionTitle}>Important Information</Text>
-        <Text style={styles.paragraph}>
-          Aenean efficitur sit amet massa fringilla egestas. Nullam condimentum luctus turpis.
-        </Text>
-        <Text style={styles.paragraph}>
-          Curabitur sit amet mauris morbi in dui quis est pulvinar ullamcorper. Nulla facilisi.
-        </Text>
+        <Text style={styles.paragraph}>{partner.important_information || 'No important information available.'}</Text>
       </View>
     </ScrollView>
   );
@@ -67,67 +59,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
   },
   coverImageContainer: {
-    backgroundColor: '#FFA500', // Yellow background color
-    height: 150,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 200, // Adjusted for proper display
+    backgroundColor: '#d3d3d3', // Subtle background color for fallback
   },
   coverImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'cover', // Ensures image covers the area
   },
   companyDetailsContainer: {
-    marginTop: -50,
+    marginTop: -30, // Keeps the company details close to the cover image
     padding: 20,
-    backgroundColor: '#d3d3d3',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     marginHorizontal: 20,
     alignItems: 'center',
-    borderColor: '#000',
+    borderColor: '#ddd',
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 5,
+    elevation: 5,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
+    textAlign: 'center',
   },
-  row: {
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
-    alignItems: 'center', 
-    width: '100%', 
-    marginTop: 10,
-  },
-  avgCost: {
+  description: {
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#555',
-  },
-  specialDealsContainer: {
-    marginTop: 20,
-    padding: 20,
-    backgroundColor: '#d3d3d3',
-    borderRadius: 10,
-    marginHorizontal: 20,
-    alignItems: 'center',
-    borderColor: '#000',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  specialDealsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#555',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   textSection: {
     marginHorizontal: 20,

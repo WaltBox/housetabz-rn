@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import Svg, { Path, Text as SvgText } from "react-native-svg";
 import axios from "axios";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const HouseTabzScreen = () => {
   const [house, setHouse] = useState(null);
@@ -98,11 +99,16 @@ const HouseTabzScreen = () => {
         </ScrollView>
       </View>
 
-      <Text style={[styles.sectionHeader, styles.leftAlign]}>CurrentTab</Text>
-      <View style={styles.currentTab}></View>
+      {/* Clickable Sections */}
+      <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+        <Text style={styles.clickableTitle}>CurrentTab</Text>
+        <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
+      </TouchableOpacity>
 
-      <Text style={[styles.sectionHeader, styles.leftAlign]}>PaidTabz</Text>
-      <View style={styles.paidTab}></View>
+      <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+        <Text style={styles.clickableTitle}>PaidTabz</Text>
+        <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -162,21 +168,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#4a90e2",
   },
-  currentTab: {
-    backgroundColor: "#ddd",
-    width: "100%",
-    height: 80,
-    borderRadius: 10,
-    padding: 10,
+  clickableRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
     marginBottom: 20,
   },
-  paidTab: {
-    backgroundColor: "#ddd",
-    width: "100%",
-    height: 80,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 20,
+  clickableTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
   sectionHeader: {
     fontSize: 18,

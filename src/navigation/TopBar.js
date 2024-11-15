@@ -9,7 +9,7 @@ const TopBar = () => {
     return (
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-            <Text style={styles.headerTitle}>Housetabz</Text>
+            <Text style={styles.headerTitle}>HouseTabz</Text>
           </TouchableOpacity>
     
           <View style={styles.iconContainer}>

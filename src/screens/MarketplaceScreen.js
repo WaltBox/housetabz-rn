@@ -24,24 +24,21 @@ const MarketplaceScreen = () => {
     fetchPartnerDetails();
   }, []);
 
-  const handleCardPress = (company) => {
-    navigation.navigate('ViewCompanyCard', { ...company });
+  const handleCardPress = (partner) => {
+    navigation.navigate('ViewCompanyCard', { partner });
   };
 
   return (
     <View style={styles.container}>
-      {/* Green Container for Text and Icon */}
       <View style={styles.headerContainer}>
         <LinearGradient 
           colors={['#22c55e', '#22c55e']} 
           style={styles.gradientBackground}
         >
           <View style={styles.textContainer}>
-            {/* Header Text (Stacked and Left-Aligned) */}
             <Text style={styles.headerText}>HouseTabz</Text>
             <Text style={styles.headerText}>Marketplace</Text>
           </View>
-          {/* Icon Positioned to the Right of the Text */}
           <Image 
             source={require('../../assets/housetabz-marketplace3.png')} 
             style={styles.headerImage} 
@@ -50,30 +47,36 @@ const MarketplaceScreen = () => {
         </LinearGradient>
       </View>
 
-      <SpecialDeals />
+      {/* Special Deals Section */}
+      <View style={styles.specialDealsContainer}>
+        <SpecialDeals />
+      </View>
 
-      <Text style={styles.industryText}>Industry</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cardRow}
-      >
-        {partnerDetails.length > 0 ? (
-          partnerDetails.map((company) => (
-            <View key={company.id} style={styles.cardContainer}>
-              <CompanyCardComponent
-                name={company.name}
-                description={company.description}
-                logoUrl={company.logoUrl} 
-                coverUrl={company.coverUrl} 
-                onPress={() => handleCardPress(company)}
-              />
-            </View>
-          ))
-        ) : (
-          <Text>No companies available</Text>
-        )}
-      </ScrollView>
+      {/* Industry Text and Cards */}
+      <View style={styles.cardsContainer}>
+        <Text style={styles.industryText}>Industry</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardRow}
+        >
+          {partnerDetails.length > 0 ? (
+            partnerDetails.map((partner) => (
+              <View key={partner.id} style={styles.cardContainer}>
+                <CompanyCardComponent
+                  name={partner.name}
+                  description={partner.description}
+                  logoUrl={`http://localhost:3004/${partner.logo}`} 
+                  coverUrl={`http://localhost:3004/${partner.marketplace_cover}`} 
+                  onPress={() => handleCardPress(partner)}
+                />
+              </View>
+            ))
+          ) : (
+            <Text>No companies available</Text>
+          )}
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -82,10 +85,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
-    padding: 20,
+    paddingHorizontal: 20,
   },
   headerContainer: {
-    width: screenWidth * 0.9, // Makes it cut off midway
+    width: screenWidth * 0.9,
     alignItems: 'center',
     marginBottom: 20,
   },
@@ -97,10 +100,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 60,
     borderBottomRightRadius: 60,
     paddingLeft: 20,
-    paddingRight: 20, // Space around the text and icon
+    paddingRight: 20,
   },
   textContainer: {
-    flex: 1, // Takes available space on the left
+    flex: 1,
   },
   headerText: {
     fontSize: 24,
@@ -109,19 +112,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   headerImage: {
-    width: 150, // Larger width for the icon
+    width: 150,
     height: 100,
-    marginLeft: 10, // Space between text and icon
+    marginLeft: 10,
+  },
+  specialDealsContainer: {
+    marginBottom: 5, // Reduced margin between Special Deals and cards
+  },
+  cardsContainer: {
+    marginTop: -50, // Pulls the cards closer to the Special Deals section
   },
   industryText: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginVertical: 10,
+    marginBottom: 5, // Tightens spacing between Industry Text and cards
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 5, // Reduces padding within the ScrollView
   },
   cardContainer: {
     width: 160,
