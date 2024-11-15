@@ -1,21 +1,20 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Button, ScrollView } from 'react-native';
-import PageHeader from '../components/PageHeader';
 import { useNavigation } from '@react-navigation/native';
 
 const ViewCompanyCard = ({ route }) => {
-  const { title, description, image, price, logo } = route.params;
+  const { title, description, price, logo, coverUrl } = route.params; // coverUrl included
 
   const navigation = useNavigation();
 
-  const handleCardPress = (company) => {
-    navigation.navigate('ViewCompanyCard', { ...company });
-  };
   return (
     <ScrollView style={styles.container}>
       {/* Cover Image */}
       <View style={styles.coverImageContainer}>
-        <Image style={styles.coverImage} />
+        <Image 
+          source={coverUrl ? { uri: coverUrl } : require('../../assets/rhythmcover2.png')} // Fallback image if coverUrl is unavailable
+          style={styles.coverImage} 
+        />
       </View>
 
       {/* Company Details Container */}
@@ -25,9 +24,10 @@ const ViewCompanyCard = ({ route }) => {
         {/* Align Avg Cost and Button in a row */}
         <View style={styles.row}>
           <Text style={styles.avgCost}>Avg Cost / Roommate: {price}</Text>
-          <Button title="View Plans" onPress={() => {
-            console.log("viewingPlans")
-            navigation.navigate('ViewPlans',{ name: title })}} />
+          <Button 
+            title="View Plans" 
+            onPress={() => navigation.navigate('ViewPlans', { name: title })}
+          />
         </View>
       </View>
 
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
   },
   coverImageContainer: {
-    backgroundColor: '#FFA500',
+    backgroundColor: '#FFA500', // Yellow background color
     height: 150,
     justifyContent: 'center',
     alignItems: 'center',
