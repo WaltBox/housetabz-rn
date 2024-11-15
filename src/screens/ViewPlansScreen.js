@@ -1,65 +1,50 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import PlansCardComponent from '../components/CompanyCardComponent';// page after clicking a plan
-import SpecialDeals from '../components/SpecialDeals';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import axios from 'axios';
+import ViewPlansCard from '../components/ViewPlansCard';
 
-import PlansCompanyBox from '../components/PlansCompanyBox';
-import ViewPlansCard from './ViewPlansCard';
+const ViewPlansScreen = () => {
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const roommates = 4; // Example: Number of roommates
 
-const ViewPlansScreen = ({ route }) => {
-  const {name} = route.params; 
-  console.log(name);
-  const navigation = useNavigation();
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const response = await axios.get('http://localhost:3004/api/v2/rhythm-offers');
+        setOffers(response.data);
+      } catch (error) {
+        console.error('Error fetching Rhythm offers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleCardPress = (plan) => {
-    navigation.navigate('ViewPlansCard', { ...plan });
-  };
-
-  const plans = [
-    {
-      title: "Ultimate",
-      description: "Quite Overpriced",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-    {
-      title: "Premium",
-      description: "Marginally better than regular",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-    {
-      title: "Regular",
-      description: "Broke people only",
-      image: "https://via.placeholder.com/300x180",
-      price: "$$",
-      logo: "https://via.placeholder.com/50",
-    },
-  ];
+    fetchOffers();
+  }, []);
 
   return (
     <View style={styles.container}>
-      {/*<Text style={styles.header}>Best planz from {name}</Text>*/}
-      
-      <PlansCompanyBox /> 
-
-      <ScrollView 
-        horizontal={true}   
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.cardRow}
-      >
-        {plans.map((plan, index) => (
-          <ViewPlansCard 
-            //style = {styles.containerCard}
-            key={index}
-            {...plan}
-            onPress={() => handleCardPress(plan)}
-          />
-        ))}
-      </ScrollView>
+      <Text style={styles.header}>Available Plans</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#22c55e" />
+      ) : (
+        <ScrollView contentContainerStyle={styles.cardsContainer}>
+          {offers.length > 0 ? (
+            offers.map((offer) => (
+              <ViewPlansCard
+                key={offer.uuid}
+                title={offer.title}
+                description={offer.description_en}
+                price={(offer.price_1000_kwh / roommates).toFixed(2)} // Calculate price per roommate
+                onPress={() => console.log('Selected offer:', offer)}
+              />
+            ))
+          ) : (
+            <Text style={styles.noOffersText}>No plans available at the moment.</Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -67,27 +52,26 @@ const ViewPlansScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffb121',
     padding: 20,
-    //height: '30%',               // Set height to 30% of the screen
-    //width: '100%',               // Make sure it takes the full width
-  },
-  containerCard: {
-    flex: 1,
-    backgroundColor: '#F5F5DC',
-    padding: 20,
+    backgroundColor: '#f8f8f8',
   },
   header: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 40,
     marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
   },
-  cardRow: {
+  cardsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    //backgroundColor: '#F5F5DC',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  noOffersText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

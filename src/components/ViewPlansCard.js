@@ -1,55 +1,47 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const ViewPlansCard = ({ title, description, price, onPress }) => {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
-      <View style={styles.content}>
-        {/* Plan Title */}
+      <LinearGradient colors={['#ffffff', '#f9fafb']} style={styles.gradient}>
         <Text style={styles.title}>{title}</Text>
-        
-        {/* Plan Description */}
         <Text style={styles.description}>{description}</Text>
-        
-        {/* Price Per Roommate */}
         <Text style={styles.priceLabel}>Avg Cost / Roommate:</Text>
         <Text style={styles.price}>${price}</Text>
-        
-        {/* Call-to-Action */}
         <Text style={styles.moreDetails}>Tap for More Details</Text>
-      </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    width: '45%', // Adjust width to fit two cards per row
-    backgroundColor: '#fff',
+    width: '48%', // Half of the row with spacing
+    marginBottom: 15,
     borderRadius: 10,
-    marginBottom: 20,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    padding: 10,
-    alignItems: 'center',
   },
-  content: {
-    paddingHorizontal: 10,
-    alignItems: 'center',
+  gradient: {
+    padding: 15,
+    borderRadius: 10,
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 5,
+    color: '#333',
     textAlign: 'center',
   },
   description: {
-    fontSize: 12,
-    color: '#555',
+    fontSize: 14,
+    color: '#666',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -57,17 +49,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     marginBottom: 5,
+    textAlign: 'center',
   },
   price: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#22c55e', // Accent green
+    textAlign: 'center',
     marginBottom: 10,
   },
   moreDetails: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#22c55e',
+    fontSize: 12,
+    color: '#555',
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
