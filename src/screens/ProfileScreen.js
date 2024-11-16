@@ -58,7 +58,7 @@ const ProfileScreen = () => {
       {/* Clickable Titles Section */}
       <View style={styles.clickableSection}>
         <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
-          <Text style={styles.clickableTitle}>MyTab</Text>
+          <Text style={styles.clickableTitle}>Current Tab</Text>
           <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
         </TouchableOpacity>
 
@@ -84,7 +84,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E6F4F1',
+    backgroundColor: "#e6f2f8",
     paddingHorizontal: 20,
   },
   profileRow: {
