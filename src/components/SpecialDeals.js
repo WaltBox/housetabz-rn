@@ -13,17 +13,18 @@ const SpecialDeals = () => {
     const fetchDeals = async () => {
       try {
         const response = await axios.get('http://localhost:3004/api/deals'); // Replace with your API endpoint
-        setDeals(response.data);
+        console.log('Fetched deals:', response.data); // Debugging
+        setDeals(response.data.deals); // Access the `deals` key
       } catch (error) {
         console.error('Error fetching deals:', error);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchDeals();
   }, []);
-
+  
   const handleScroll = (event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / (screenWidth * 0.8)); // Match the smaller card size

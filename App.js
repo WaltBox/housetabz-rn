@@ -6,6 +6,7 @@ import TabNavigator from './src/navigation/BottomBar';
 
 const App = () => {
   return <TabNavigator />;
+  
 };
 
 export default App;

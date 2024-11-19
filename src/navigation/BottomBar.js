@@ -8,10 +8,13 @@ import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../screens/ViewCompanyCard';
 import ViewPlansCard from '../screens/ViewPlansCard';
 import ViewPlansScreen from '../screens/ViewPlansScreen';
+import ViewForm from '../screens/ViewForm'; // Adjust the path as necessary
+
 import MyHouseScreen from '../screens/MyHouseScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
 import ProfileScreen from '../screens/ProfileScreen';
 import DashboardScreen from '../screens/DashboardScreen';
+
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
@@ -42,17 +45,20 @@ const MyHouseStack = ()  => {
 const MarketplaceStack = () => {
     return (
         <Market.Navigator
-        screenOptions={{
-            headerShown: false
-        }}
+            screenOptions={{
+                headerShown: false,
+            }}
         >
-            <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen}/>
+            <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
             <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
-            <Market.Screen name="ViewPlans" component={ViewPlansScreen}/>
+            <Market.Screen name="ViewPlans" component={ViewPlansScreen} />
             <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
+            <Market.Screen name="ViewForm" component={ViewForm} />
         </Market.Navigator>
     );
 };
+
+
 const ProfileStack = () => {
     return (
         <Profile.Navigator

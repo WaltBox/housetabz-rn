@@ -37,7 +37,7 @@ const MarketplaceScreen = () => {
         >
           <View style={styles.textContainer}>
             <Text style={styles.headerText}>HouseTabz</Text>
-            <Text style={styles.headerText}>Marketplace</Text>
+            <Text style={styles.headerText}>MarketPlace</Text>
           </View>
           <Image 
             source={require('../../assets/housetabz-marketplace3.png')} 

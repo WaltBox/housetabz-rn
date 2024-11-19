@@ -11,8 +11,11 @@ const ViewCompanyCard = ({ route }) => {
       navigation.navigate('ViewPlans', { partnerId: partner.id });
     } else if (partner.type === 'formable') {
       navigation.navigate('ViewForm', { partnerId: partner.id });
+
     }
   };
+  
+  
 
   return (
     <ScrollView style={styles.container}>
