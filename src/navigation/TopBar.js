@@ -1,27 +1,53 @@
-// CustomHeader.js
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import ModalComponent from '../components/ModalComponent';
+import SettingsModal from '../modals/SettingsModal';
+import NotificationsModal from '../modals/NotificationsModal';
 
 const TopBar = () => {
-    const navigation = useNavigation();
-    return (
-        <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-            <Text style={styles.headerTitle}>HouseTabz</Text>
-          </TouchableOpacity>
-    
-          <View style={styles.iconContainer}>
-            <TouchableOpacity>
-              <Icon name="notifications-outline" size={24} color="green" style={styles.icon} />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Icon name="settings-outline" size={24} color="green" style={styles.icon} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
+
+  return (
+    <View style={styles.headerContainer}>
+      {/* App Title */}
+      <TouchableOpacity>
+        <Text style={styles.headerTitle}>HouseTabz</Text>
+      </TouchableOpacity>
+
+      {/* Icons */}
+      <View style={styles.iconContainer}>
+        <TouchableOpacity onPress={() => setIsNotificationsVisible(true)}>
+          <Icon
+            name="notifications-outline"
+            size={24}
+            color="green"
+            style={styles.icon}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsSettingsVisible(true)}>
+          <Icon name="settings-outline" size={24} color="green" style={styles.icon} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Notifications Modal */}
+      <ModalComponent
+        visible={isNotificationsVisible}
+        onClose={() => setIsNotificationsVisible(false)}
+      >
+        <NotificationsModal />
+      </ModalComponent>
+
+      {/* Settings Modal */}
+      <ModalComponent
+        visible={isSettingsVisible}
+        onClose={() => setIsSettingsVisible(false)}
+      >
+        <SettingsModal />
+      </ModalComponent>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -38,12 +64,12 @@ const styles = StyleSheet.create({
     color: 'green',
     fontSize: 20,
     marginLeft: 5,
-    marginTop: 32
+    marginTop: 32,
   },
   iconContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 33
+    marginTop: 33,
   },
   icon: {
     marginLeft: 16, // Space between icons

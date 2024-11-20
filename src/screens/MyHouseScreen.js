@@ -1,12 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import Svg, { Path, Text as SvgText } from "react-native-svg";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import Svg, { Path, Circle, Text as SvgText } from "react-native-svg";
 import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
+import ModalComponent from "../components/ModalComponent";
+import CurrentHouseTab from "../modals/CurrentHouseTab";
+import PaidHouseTabz from "../modals/PaidHouseTabz";
 
 const HouseTabzScreen = () => {
   const [house, setHouse] = useState(null);
   const [error, setError] = useState(null);
+  const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
+  const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
 
   useEffect(() => {
     const fetchHouseData = async () => {
@@ -22,14 +33,12 @@ const HouseTabzScreen = () => {
     fetchHouseData();
   }, []);
 
-  const progress = 0.5; // Progress is 50%
-
   const generateArc = (progress) => {
-    const startAngle = -180;
-    const endAngle = -180 + 180 * progress;
+    const startAngle = -90; // Start from the top
+    const endAngle = -90 + 360 * progress; // Calculate the end angle
     const start = polarToCartesian(50, 50, 40, startAngle);
     const end = polarToCartesian(50, 50, 40, endAngle);
-    const largeArcFlag = progress > 0.5 ? 1 : 0;
+    const largeArcFlag = progress > 0.5 ? 1 : 0; // Determines if the arc is larger than half a circle
     return `M ${start.x} ${start.y} A 40 40 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
   };
 
@@ -40,6 +49,8 @@ const HouseTabzScreen = () => {
       y: centerY + radius * Math.sin(angleInRadians),
     };
   };
+
+  const hsiProgress = house ? house.hsi / 100 : 0; // Convert HSI to progress (0-1)
 
   return (
     <View style={styles.container}>
@@ -54,29 +65,33 @@ const HouseTabzScreen = () => {
 
         <View style={{ transform: [{ scale: 1.4 }] }}>
           <Svg height="120" width="120" viewBox="0 0 100 100">
-            <Path
-              d="M 10 50 A 40 40 0 1 1 90 50"
+            {/* Background Circle */}
+            <Circle
+              cx="50"
+              cy="50"
+              r="40"
               stroke="#ddd"
               strokeWidth="10"
               fill="none"
-              strokeLinecap="round"
             />
+            {/* Arc for HSI Progress */}
             <Path
-              d={generateArc(progress)}
-              stroke="green"
+              d={generateArc(hsiProgress)}
+              stroke="#4CAF50" // Green for progress
               strokeWidth="10"
               fill="none"
               strokeLinecap="round"
             />
+            {/* HSI Value */}
             <SvgText
               x="50"
-              y="70"
-              fill="green"
-              fontSize="18"
+              y="55"
+              fill="#4CAF50"
+              fontSize="20"
               fontWeight="bold"
               textAnchor="middle"
             >
-              {"HSI"}
+              {house ? house.hsi : "0"}
             </SvgText>
           </Svg>
         </View>
@@ -88,27 +103,52 @@ const HouseTabzScreen = () => {
       <Text style={[styles.sectionHeader, styles.leftAlign]}>Score Board</Text>
       <View style={styles.scoreboard}>
         <ScrollView>
-          {house && house.users
-            .sort((a, b) => b.points - a.points) // Sort users by points, highest first
-            .map((user) => (
-              <View key={user.id} style={styles.userRow}>
-                <Text style={styles.username}>{user.username}</Text>
-                <Text style={styles.points}>Points: {user.points}</Text>
-              </View>
-            ))}
+          {house &&
+            house.users
+              .sort((a, b) => b.points - a.points)
+              .map((user) => (
+                <View key={user.id} style={styles.userRow}>
+                  <Text style={styles.username}>{user.username}</Text>
+                  <Text style={styles.points}>Points: {user.points}</Text>
+                </View>
+              ))}
         </ScrollView>
       </View>
 
       {/* Clickable Sections */}
-      <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.clickableRow}
+        activeOpacity={0.7}
+        onPress={() => setIsCurrentTabVisible(true)}
+      >
         <Text style={styles.clickableTitle}>CurrentTab</Text>
         <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.clickableRow}
+        activeOpacity={0.7}
+        onPress={() => setIsPaidTabVisible(true)}
+      >
         <Text style={styles.clickableTitle}>PaidTabz</Text>
         <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
       </TouchableOpacity>
+
+      {/* CurrentHouseTab Modal */}
+      <ModalComponent
+        visible={isCurrentTabVisible}
+        onClose={() => setIsCurrentTabVisible(false)}
+      >
+        <CurrentHouseTab house={house} />
+      </ModalComponent>
+
+      {/* PaidHouseTabz Modal */}
+      <ModalComponent
+        visible={isPaidTabVisible}
+        onClose={() => setIsPaidTabVisible(false)}
+      >
+        <PaidHouseTabz house={house} />
+      </ModalComponent>
     </View>
   );
 };
@@ -151,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderColor: "#ddd",
     borderWidth: 1,
-    maxHeight: 200, // Set a max height for scrollable content
+    maxHeight: 200,
   },
   userRow: {
     flexDirection: "row",

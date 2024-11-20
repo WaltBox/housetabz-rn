@@ -101,7 +101,7 @@ const DashboardScreen = () => {
     <ScrollView contentContainerStyle={styles.container}>
       {/* Your Tab Section */}
       <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>Your Tab</Text>
+        <Text style={styles.sectionTitle}>YourTab</Text>
         <View style={styles.centeredContainer}>
           <Text style={styles.balanceText}>${yourBalance || 0}</Text>
           <VictoryPie
@@ -127,7 +127,7 @@ const DashboardScreen = () => {
 
       {/* House Tab Section */}
       <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>House Tab</Text>
+        <Text style={styles.sectionTitle}>HouseTab</Text>
         <View style={styles.centeredContainer}>
           <Text style={styles.balanceText}>${houseBalance || 0}</Text>
           <VictoryPie

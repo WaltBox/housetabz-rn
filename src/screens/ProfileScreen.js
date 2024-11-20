@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
+import ModalComponent from '../components/ModalComponent';
+import UserTabModal from '../modals/UserTabModal';
+import UserTransactionsModal from '../modals/UserTransactionsModal';
 
 const ProfileScreen = () => {
   const [user, setUser] = useState({
@@ -10,6 +19,10 @@ const ProfileScreen = () => {
     balance: 'Unknown',
   });
   const [loading, setLoading] = useState(true);
+
+  // State for modals
+  const [isUserTabVisible, setIsUserTabVisible] = useState(false);
+  const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
 
   useEffect(() => {
     axios
@@ -57,16 +70,40 @@ const ProfileScreen = () => {
 
       {/* Clickable Titles Section */}
       <View style={styles.clickableSection}>
-        <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
-          <Text style={styles.clickableTitle}>Current Tab</Text>
+        <TouchableOpacity
+          style={styles.clickableRow}
+          activeOpacity={0.7}
+          onPress={() => setIsUserTabVisible(true)}
+        >
+          <Text style={styles.clickableTitle}>User Tab</Text>
           <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.clickableRow} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.clickableRow}
+          activeOpacity={0.7}
+          onPress={() => setIsTransactionsModalVisible(true)}
+        >
           <Text style={styles.clickableTitle}>Transactions</Text>
           <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
         </TouchableOpacity>
       </View>
+
+      {/* UserTab Modal */}
+      <ModalComponent
+        visible={isUserTabVisible}
+        onClose={() => setIsUserTabVisible(false)}
+      >
+        <UserTabModal user={user} />
+      </ModalComponent>
+
+      {/* Transactions Modal */}
+      <ModalComponent
+        visible={isTransactionsModalVisible}
+        onClose={() => setIsTransactionsModalVisible(false)}
+      >
+        <UserTransactionsModal user={user} />
+      </ModalComponent>
 
       {/* Bottom Message */}
       <View style={styles.footer}>
@@ -117,7 +154,7 @@ const styles = StyleSheet.create({
   },
   pointsContainer: {
     alignItems: 'center',
-    marginVertical: 30, // Added more space
+    marginVertical: 30,
   },
   pointsText: {
     fontSize: 16,
@@ -132,7 +169,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    width: '50%', // Adjust dynamically based on progress
+    width: '50%',
     backgroundColor: '#4CAF50',
   },
   nextLevelText: {
@@ -141,7 +178,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   clickableSection: {
-    marginVertical: 30, // Added more space
+    marginVertical: 30,
   },
   clickableRow: {
     flexDirection: 'row',
@@ -156,7 +193,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   footer: {
-    marginTop: 'auto', // Pushes the footer to the bottom
+    marginTop: 'auto',
     marginBottom: 20,
   },
   termsText: {
