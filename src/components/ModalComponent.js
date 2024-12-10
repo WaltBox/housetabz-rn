@@ -37,19 +37,22 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0)", // Semi-transparent background
   },
   modalContent: {
-    height: screenHeight * 0.8,
-    backgroundColor: "#fff",
+    height: screenHeight * 0.85,
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
+    borderWidth: 1, // Add border width
+    borderColor: "grey", // Set border color
   },
   closeButton: {
     alignSelf: "flex-end",
     marginBottom: 10,
   },
 });
+
 
 export default ModalComponent;

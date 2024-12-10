@@ -23,7 +23,7 @@ const ViewCompanyCard = ({ route }) => {
       <View style={styles.coverImageContainer}>
         <Image 
           source={partner.company_cover 
-            ? { uri: `http://localhost:3004/${partner.company_cover}` } 
+            ? { uri: `https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.company_cover}` } 
             : require('../../assets/fallback_cover.png')} // Fallback image if company_cover is unavailable
           style={styles.coverImage} 
         />

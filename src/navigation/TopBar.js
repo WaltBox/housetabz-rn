@@ -4,10 +4,12 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ModalComponent from '../components/ModalComponent';
 import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
+import UserFeedbackModal from '../modals/UserFeedbackModal';
 
 const TopBar = () => {
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
+  const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
 
   return (
     <View style={styles.headerContainer}>
@@ -25,6 +27,9 @@ const TopBar = () => {
             color="green"
             style={styles.icon}
           />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsFeedbackVisible(true)}>
+          <Icon name="create-outline" size={24} color="green" style={styles.icon} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsSettingsVisible(true)}>
           <Icon name="settings-outline" size={24} color="green" style={styles.icon} />
@@ -45,6 +50,14 @@ const TopBar = () => {
         onClose={() => setIsSettingsVisible(false)}
       >
         <SettingsModal />
+      </ModalComponent>
+
+      {/* User Feedback Modal */}
+      <ModalComponent
+        visible={isFeedbackVisible}
+        onClose={() => setIsFeedbackVisible(false)}
+      >
+        <UserFeedbackModal />
       </ModalComponent>
     </View>
   );

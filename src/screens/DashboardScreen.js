@@ -21,7 +21,7 @@ const DashboardScreen = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userResponse = await axios.get('http://localhost:3004/api/users/1');
+        const userResponse = await axios.get('https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/users/1');
         const { balance, charges, houseId, tasks } = userResponse.data;
 
         // Set user's balance and charges
@@ -29,7 +29,7 @@ const DashboardScreen = () => {
         setYourChargesData(
           charges.length > 0
             ? charges.map((charge) => ({
-                x: charge.description || 'Charge',
+                x: charge.name || 'Charge',
                 y: charge.amount,
               }))
             : [{ x: 'No Charges', y: 1 }]
@@ -41,7 +41,7 @@ const DashboardScreen = () => {
         setTaskCount(incompleteTasks.length);
 
         if (houseId) {
-          const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
+          const houseResponse = await axios.get(`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/houses/${houseId}`);
           const { bills, users } = houseResponse.data;
 
           const totalHouseBalance = bills.reduce((sum, bill) => sum + bill.amount, 0);
@@ -78,7 +78,7 @@ const DashboardScreen = () => {
 
   const handleTaskAction = async (taskId, action) => {
     try {
-      await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
+      await axios.patch(`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/tasks/${taskId}`, {
         response: action,
       });
 
@@ -109,9 +109,9 @@ const DashboardScreen = () => {
             colorScale={['#45B7D1', '#FDCB6E', '#6C5CE7']}
             width={screenWidth - 40}
             height={220}
-            innerRadius={100}
+            innerRadius={110}
             animate={{ duration: 1000, easing: 'bounce' }}
-            style={{ labels: { fill: 'white', fontSize: 12 } }}
+            style={{ labels: { fill: 'black', fontSize: 18 } }}
             labels={({ datum, index }) => renderLabel('YourTab', datum, index)}
             events={[
               {
@@ -135,11 +135,11 @@ const DashboardScreen = () => {
             colorScale={roommateChartData.map((user) => user.color)}
             width={screenWidth - 40}
             height={220}
-            innerRadius={100}
+            innerRadius={110}
             animate={{ duration: 1000, easing: 'bounce' }}
             style={{
               data: { stroke: 'white', strokeWidth: 1 },
-              labels: { fill: 'white', fontSize: 12 },
+              labels: { fill: 'black', fontSize: 18 },
             }}
             labels={({ datum, index }) => renderLabel('HouseTab', datum, index)}
             events={[
@@ -156,17 +156,22 @@ const DashboardScreen = () => {
 
       {/* Tasks Section */}
       <View style={styles.taskSection}>
-        <Text style={styles.sectionTitle}>Tasks ({taskCount})</Text>
-        {tasks.length > 0 ? (
-          <FlatList
-            data={tasks}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderTask}
-          />
-        ) : (
-          <Text style={styles.noTasksText}>No tasks right now</Text>
-        )}
+  <Text style={styles.sectionTitle}>Tasks ({taskCount})</Text>
+  <View style={styles.taskContainer}>
+    {tasks.length > 0 ? (
+      <FlatList
+        data={tasks}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderTask}
+      />
+    ) : (
+      <View style={styles.emptyTaskOutline}>
+        <Text style={styles.noTasksText}>No tasks right now</Text>
       </View>
+    )}
+  </View>
+</View>
+
     </ScrollView>
   );
 };
@@ -185,12 +190,28 @@ const styles = StyleSheet.create({
   taskSection: {
     marginTop: 20,
   },
-  noTasksText: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 10,
+  taskContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    backgroundColor: '#fff',
   },
+  emptyTaskOutline: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  noTasksText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+  },
+  
   sectionTitle: {
     fontSize: 22,
     fontWeight: '600',

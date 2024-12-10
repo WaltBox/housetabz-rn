@@ -10,6 +10,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ViewPlansScreen from '../screens/ViewPlansScreen';
 import ViewForm from '../screens/ViewForm';
 import ViewPlansCard from '../screens/ViewPlansCard';
+import DashboardScreen from '../screens/DashboardScreen'; // Import your Dashboard screen
 
 const Stack = createStackNavigator();
 
@@ -19,6 +20,7 @@ const AppNavigator = () => {
       <Stack.Navigator initialRouteName="Loading" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Loading" component={LoadingScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} /> {/* Add Dashboard here */}
         <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
         <Stack.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} />

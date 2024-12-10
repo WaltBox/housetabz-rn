@@ -12,7 +12,7 @@ const SpecialDeals = () => {
   useEffect(() => {
     const fetchDeals = async () => {
       try {
-        const response = await axios.get('http://localhost:3004/api/deals'); // Replace with your API endpoint
+        const response = await axios.get('https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/deals'); // Replace with your API endpoint
         console.log('Fetched deals:', response.data); // Debugging
         setDeals(response.data.deals); // Access the `deals` key
       } catch (error) {

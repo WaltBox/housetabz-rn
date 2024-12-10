@@ -22,7 +22,7 @@ const HouseTabzScreen = () => {
   useEffect(() => {
     const fetchHouseData = async () => {
       try {
-        const response = await axios.get("http://localhost:3004/api/houses/1");
+        const response = await axios.get("https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/houses/1");
         setHouse(response.data);
       } catch (err) {
         setError("Failed to load house data");
