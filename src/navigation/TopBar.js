@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginLeft: 5,
     marginTop: 32,
+    fontFamily: 'Montserrat_700Bold', // Use the bold font
   },
   iconContainer: {
     flexDirection: 'row',
@@ -88,5 +89,7 @@ const styles = StyleSheet.create({
     marginLeft: 16, // Space between icons
   },
 });
+
+
 
 export default TopBar;

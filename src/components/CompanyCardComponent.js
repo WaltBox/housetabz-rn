@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 
-const CompanyCardComponent = ({ name, description, logoUrl, coverUrl, onPress }) => {
+const CompanyCardComponent = ({ name, description, logoUrl, coverUrl, onPress, cardWidth }) => {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.card}>
+    <TouchableOpacity onPress={onPress} style={[styles.card, { width: cardWidth }]}>
       {/* Cover Photo */}
       <Image 
         source={coverUrl ? { uri: coverUrl } : require('../../assets/rhythmenergycover.jpeg')} 
@@ -32,12 +32,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
-    width: 160,
-    height: 220,
+    height: 220, // Fixed height for uniformity
   },
   coverPhoto: {
-    width: '100%',
-    height: '50%', // Cover photo takes up the top half of the card
+    width: '100%', // Ensures it spans the full card width
+    height: '50%', // Takes up the top half of the card
   },
   content: {
     padding: 10,

@@ -30,6 +30,7 @@ const MarketplaceScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Fixed Header */}
       <View style={styles.headerContainer}>
         <LinearGradient 
           colors={['#22c55e', '#22c55e']} 
@@ -37,7 +38,7 @@ const MarketplaceScreen = () => {
         >
           <View style={styles.textContainer}>
             <Text style={styles.headerText}>HouseTabz</Text>
-            <Text style={styles.headerText}>MarketPlace</Text>
+            <Text style={styles.headerText}>Marketplace</Text>
           </View>
           <Image 
             source={require('../../assets/housetabz-marketplace3.png')} 
@@ -47,36 +48,37 @@ const MarketplaceScreen = () => {
         </LinearGradient>
       </View>
 
-      {/* Special Deals Section */}
-      <View style={styles.specialDealsContainer}>
-        <SpecialDeals />
-      </View>
+      {/* Scrollable Content */}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Special Deals Section */}
+        <View style={styles.specialDealsContainer}>
+          <SpecialDeals />
+        </View>
 
-      {/* Industry Text and Cards */}
-      <View style={styles.cardsContainer}>
-        <Text style={styles.industryText}>Industry</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.cardRow}
-        >
-          {partnerDetails.length > 0 ? (
-            partnerDetails.map((partner) => (
-              <View key={partner.id} style={styles.cardContainer}>
-                <CompanyCardComponent
-                  name={partner.name}
-                  description={partner.description}
-                  logoUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.logo}`} 
-                  coverUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.marketplace_cover}`} 
-                  onPress={() => handleCardPress(partner)}
-                />
-              </View>
-            ))
-          ) : (
-            <Text>No companies available</Text>
-          )}
-        </ScrollView>
-      </View>
+        {/* Industry Text and Cards */}
+        <View style={styles.cardsContainer}>
+          <Text style={styles.industryText}>Industry</Text>
+          <View style={styles.cardGrid}>
+            {partnerDetails.length > 0 ? (
+              partnerDetails.map((partner) => (
+                <View key={partner.id} style={styles.cardContainer}>
+  <CompanyCardComponent
+    name={partner.name}
+    description={partner.description}
+    logoUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.logo}`} 
+    coverUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.marketplace_cover}`} 
+    onPress={() => handleCardPress(partner)}
+    cardWidth={(screenWidth - 60) / 2} // Pass dynamic width to card
+  />
+</View>
+
+              ))
+            ) : (
+              <Text>No companies available</Text>
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -85,19 +87,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
-    paddingHorizontal: 20,
   },
   headerContainer: {
-    width: screenWidth * 0.9,
-    alignItems: 'center',
-    marginBottom: 20,
+    width: '100%',
+    position: 'absolute', // Fixed header
+    top: 0,
+    zIndex: 10, // Ensures header stays above scrollable content
   },
   gradientBackground: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     height: 120,
-    borderTopRightRadius: 60,
     borderBottomRightRadius: 60,
     paddingLeft: 20,
     paddingRight: 20,
@@ -116,16 +117,27 @@ const styles = StyleSheet.create({
     height: 100,
     marginLeft: 10,
   },
+  scrollContainer: {
+    paddingTop: 140, // To offset the fixed header
+    paddingHorizontal: 20,
+  },
   specialDealsContainer: {
-    marginBottom: 5, // Reduced margin between Special Deals and cards
+    marginBottom: 10, // Reduced spacing between Special Deals and cards
   },
   cardsContainer: {
-    marginTop: -50, // Pulls the cards closer to the Special Deals section
+    marginTop: -30, // Pulls the cards closer to the Special Deals section
   },
   industryText: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 5, // Tightens spacing between Industry Text and cards
+    marginBottom: 10,
+    marginLeft: 5,
+  },
+  cardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap', // Ensures proper grid layout
+    justifyContent: 'space-between',
+    paddingVertical: 5,
   },
   cardRow: {
     flexDirection: 'row',
@@ -133,18 +145,19 @@ const styles = StyleSheet.create({
     paddingVertical: 5, // Reduces padding within the ScrollView
   },
   cardContainer: {
-    width: 160,
+    width: (screenWidth - 60) / 2, // Dynamic width for two cards per row
     height: 220,
-    marginHorizontal: 10,
-    borderRadius: 12,
+    marginBottom: 20, // Spacing between rows
+    borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    elevation: 5,
-    backgroundColor: '#ffffff',
   },
+  
 });
 
 export default MarketplaceScreen;
