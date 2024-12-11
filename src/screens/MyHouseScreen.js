@@ -1,5 +1,3 @@
-//https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app
-
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -8,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import Svg, { Path, Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg";
+import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
 import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
 import ModalComponent from "../components/ModalComponent";
@@ -20,11 +18,14 @@ const HouseTabzScreen = () => {
   const [error, setError] = useState(null);
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     const fetchHouseData = async () => {
       try {
-        const response = await axios.get("https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/houses/1");
+        const response = await axios.get(
+          "https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/houses/1"
+        );
         setHouse(response.data);
       } catch (err) {
         setError("Failed to load house data");
@@ -36,8 +37,8 @@ const HouseTabzScreen = () => {
   }, []);
 
   const generateSemiCircle = (progress) => {
-    const startAngle = 180; // Start from the bottom left
-    const endAngle = 180 + 180 * progress; // Semi-circle based on progress
+    const startAngle = 180;
+    const endAngle = 180 + 180 * progress;
     const start = polarToCartesian(50, 50, 40, startAngle);
     const end = polarToCartesian(50, 50, 40, endAngle);
     const largeArcFlag = progress > 0.5 ? 1 : 0;
@@ -56,7 +57,6 @@ const HouseTabzScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* House Name */}
       <Text style={styles.houseName}>
         {error ? "Error" : house ? house.name : "Loading..."}
       </Text>
@@ -73,24 +73,45 @@ const HouseTabzScreen = () => {
           </Defs>
           {/* Background Path */}
           <Path
-            d={generateSemiCircle(1)} // Full semi-circle as background
+            d={generateSemiCircle(1)}
             stroke="#ddd"
             strokeWidth="10"
             fill="none"
           />
           {/* Foreground Path */}
           <Path
-            d={generateSemiCircle(hsiProgress)} // Semi-circle progress
+            d={generateSemiCircle(hsiProgress)}
             stroke="url(#semiGradient)"
             strokeWidth="10"
             fill="none"
             strokeLinecap="round"
           />
         </Svg>
-        <Text style={styles.progressText}>
-          {house ? `${house.hsi}%` : "0%"}
-        </Text>
+
+        {/* HSI Value */}
+        <View style={styles.hsiContainer}>
+          <Text style={styles.hsiText}>{house ? house.hsi : "0"}</Text>
+          <TouchableOpacity onPress={() => setShowTooltip(true)}>
+            <MaterialIcons name="info-outline" size={18} color="#4CAF50" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Tooltip */}
+      {showTooltip && (
+        <View style={styles.tooltip}>
+          <View style={styles.tooltipHeader}>
+            <Text style={styles.tooltipText}>
+              The HSI (House Status Index) represents the health and activity of
+              your house. Higher numbers indicate a more active and responsible
+              house.
+            </Text>
+            <TouchableOpacity onPress={() => setShowTooltip(false)}>
+              <MaterialIcons name="close" size={20} color="#555" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* House Status */}
       <Text style={styles.houseStatus}>
@@ -173,11 +194,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 30,
   },
-  progressText: {
-    fontSize: 20,
-    fontWeight: "600",
+  hsiContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: -60,
+  },
+  hsiText: {
+    fontSize: 24,
+    fontWeight: "bold",
     color: "#4CAF50",
-    marginTop: -10,
+    marginRight: 5,
+  },
+  tooltip: {
+    position: "absolute",
+    top: 120,
+    left: "10%",
+    right: "10%",
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
+    borderColor: "#ddd",
+    borderWidth: 1,
+  },
+  tooltipHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  tooltipText: {
+    fontSize: 14,
+    color: "#555",
+    flex: 1,
+    marginRight: 10,
   },
   houseStatus: {
     fontSize: 18,
