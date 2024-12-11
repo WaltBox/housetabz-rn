@@ -86,7 +86,7 @@ const MarketplaceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f9f5f0',
   },
   headerContainer: {
     width: '100%',

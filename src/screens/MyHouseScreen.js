@@ -173,7 +173,7 @@ const HouseTabzScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f9f5f0",
     padding: 20,
   },
   houseName: {

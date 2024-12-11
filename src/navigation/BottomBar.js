@@ -16,7 +16,10 @@ import MyHouseScreen from '../screens/MyHouseScreen';
 import MakePaymentScreen from '../screens/MakePaymentScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-
+import ViewCompanyCard from '../screens/ViewCompanyCard';
+import ViewPlansScreen from '../screens/ViewPlansScreen';
+import ViewPlansCard from '../screens/ViewPlansCard';
+import ViewForm from '../screens/ViewForm';
 const Tab = createBottomTabNavigator();
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
@@ -37,10 +40,14 @@ const MyHouseStack = () => (
 );
 
 const MarketplaceStack = () => (
-  <Market.Navigator screenOptions={{ headerShown: false }}>
-    <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
-  </Market.Navigator>
-);
+    <Market.Navigator screenOptions={{ headerShown: false }}>
+      <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+      <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
+      <Market.Screen name="ViewPlans" component={ViewPlansScreen} />
+      <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
+      <Market.Screen name="ViewForm" component={ViewForm} />
+    </Market.Navigator>
+  );
 
 const ProfileStack = () => (
   <Profile.Navigator screenOptions={{ headerShown: false }}>

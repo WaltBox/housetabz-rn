@@ -179,7 +179,7 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#f9f5f0',
     padding: 20,
   },
   chartSection: {
