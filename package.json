@@ -35,7 +35,8 @@
     "react-native-screens": "~4.0.0",
     "react-native-svg": "^15.10.1",
     "react-native-web": "~0.19.13",
-    "victory-native": "^37.0.3-next.0"
+    "victory-native": "^37.0.3-next.0",
+    "react-native-webview": "13.12.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

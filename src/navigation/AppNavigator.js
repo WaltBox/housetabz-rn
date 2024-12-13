@@ -11,7 +11,7 @@ import ViewPlansScreen from '../screens/ViewPlansScreen';
 import ViewForm from '../screens/ViewForm';
 import ViewPlansCard from '../screens/ViewPlansCard';
 import DashboardScreen from '../screens/DashboardScreen'; // Import your Dashboard screen
-
+import InAppBrowser from '../screens/InAppBrowser';
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -23,6 +23,7 @@ const AppNavigator = () => {
         <Stack.Screen name="Dashboard" component={DashboardScreen} /> {/* Add Dashboard here */}
         <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
         <Stack.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
+        <Stack.Screen name="InAppBrowser" component={InAppBrowser} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
        
         <Stack.Screen name="ViewPlans" component={ViewPlansScreen} />

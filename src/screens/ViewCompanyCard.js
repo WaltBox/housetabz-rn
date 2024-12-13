@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Linking, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 
 const ViewCompanyCard = ({ route }) => {
   const { partner } = route.params;
   const [showHeader, setShowHeader] = useState(false);
-
+  const navigation = useNavigation();
   const handleScroll = (event) => {
     const yOffset = event.nativeEvent.contentOffset.y;
     if (yOffset > 200 && !showHeader) {
@@ -16,7 +17,7 @@ const ViewCompanyCard = ({ route }) => {
   };
 
   const handleShopNow = () => {
-    Linking.openURL('https://www.gotrhythm.com/');
+    navigation.navigate('InAppBrowser', { url: 'https://www.gotrhythm.com/' });
   };
 
   const screenHeight = Dimensions.get('window').height;
