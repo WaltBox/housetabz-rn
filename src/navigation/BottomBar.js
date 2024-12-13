@@ -63,7 +63,9 @@ const PaymentStack = () => (
   </Payment.Navigator>
 );
 
-const FloatingButton = ({ navigation }) => {
+const FloatingButton = () => {
+    const navigation = useNavigation();
+  
     const currentRouteName = useNavigationState((state) =>
       state?.routes?.[state.index]?.name || null
     );
@@ -72,7 +74,7 @@ const FloatingButton = ({ navigation }) => {
   
     const logo = isMakePaymentScreen
       ? require('../../assets/housetabzwinklogo.png') // Winking logo
-      : require('../../assets/housetabzlogo.png');
+      : require('../../assets/housetabzlogo.png'); // Regular logo
   
     return (
       <TouchableOpacity
