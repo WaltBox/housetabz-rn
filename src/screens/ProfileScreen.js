@@ -168,19 +168,23 @@ const styles = StyleSheet.create({
   profileInfo: {
     marginLeft: 20,
     justifyContent: 'center',
+    fontFamily: 'montserrat-regular',
   },
   nameText: {
     fontSize: 20,
     fontWeight: 'bold',
+    fontFamily: 'montserrat-bold',
   },
   houseNameText: {
     fontSize: 16,
     marginTop: 5,
+    fontFamily: 'montserrat-regular',
   },
   creditText: {
     fontSize: 16,
     marginTop: 5,
-  },
+    fontFamily: 'montserrat-regular',
+    },
   editProfileButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -236,6 +240,7 @@ const styles = StyleSheet.create({
   clickableTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'montserrat-bold',
   },
   footer: {
     marginTop: 'auto',

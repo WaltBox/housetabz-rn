@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
+    fontFamily: 'montserrat-bold',
     color: '#FFFFFF',
   },
   headerImage: {
@@ -120,9 +120,11 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingTop: 140, // To offset the fixed header
     paddingHorizontal: 20,
+    
   },
   specialDealsContainer: {
     marginBottom: 10, // Reduced spacing between Special Deals and cards
+   
   },
   cardsContainer: {
     marginTop: -30, // Pulls the cards closer to the Special Deals section
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     marginLeft: 5,
+    fontFamily: 'montserrat-bold',
   },
   cardGrid: {
     flexDirection: 'row',
