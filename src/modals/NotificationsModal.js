@@ -21,7 +21,7 @@ const NotificationsModal = () => {
     const fetchNotifications = async () => {
       try {
         const response = await axios.get(
-          `https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/users/${userId}/notifications`
+          `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/${userId}/notifications`
         );
         console.log('Notifications fetched:', response.data); // Debugging
         setNotifications(
@@ -60,7 +60,7 @@ const NotificationsModal = () => {
   const markAsRead = async (notificationId) => {
     try {
       await axios.patch(
-        `https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/users/${userId}/notifications/${notificationId}`
+        `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/${userId}/notifications/${notificationId}`
       );
       setNotifications((prev) =>
         prev.map((n) =>

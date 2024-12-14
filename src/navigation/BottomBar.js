@@ -16,7 +16,7 @@ import MyHouseScreen from '../screens/MyHouseScreen';
 import MakePaymentScreen from '../screens/MakePaymentScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import ViewCompanyCard from '../screens/ViewCompanyCard';
+import ViewCompanyCard from '../modals/ViewCompanyCard';
 import ViewPlansScreen from '../screens/ViewPlansScreen';
 import ViewPlansCard from '../screens/ViewPlansCard';
 import ViewForm from '../screens/ViewForm';

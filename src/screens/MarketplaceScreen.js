@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Image, Modal, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import CompanyCardComponent from '../components/CompanyCardComponent';
+import ViewCompanyCard from '../modals/ViewCompanyCard';
 import SpecialDeals from '../components/SpecialDeals';
 import axios from 'axios';
 
 const screenWidth = Dimensions.get('window').width;
 
 const MarketplaceScreen = () => {
-  const navigation = useNavigation();
   const [partnerDetails, setPartnerDetails] = useState([]);
+  const [selectedPartner, setSelectedPartner] = useState(null);
 
   useEffect(() => {
     const fetchPartnerDetails = async () => {
       try {
-        const partnerResponse = await axios.get("https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/partners");
+        const partnerResponse = await axios.get("https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/partners");
         setPartnerDetails(partnerResponse.data);
       } catch (error) {
         console.error('Error fetching partner details:', error);
@@ -25,7 +25,11 @@ const MarketplaceScreen = () => {
   }, []);
 
   const handleCardPress = (partner) => {
-    navigation.navigate('ViewCompanyCard', { partner });
+    setSelectedPartner(partner);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedPartner(null);
   };
 
   return (
@@ -62,16 +66,15 @@ const MarketplaceScreen = () => {
             {partnerDetails.length > 0 ? (
               partnerDetails.map((partner) => (
                 <View key={partner.id} style={styles.cardContainer}>
-  <CompanyCardComponent
-    name={partner.name}
-    description={partner.description}
-    logoUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.logo}`} 
-    coverUrl={`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/${partner.marketplace_cover}`} 
-    onPress={() => handleCardPress(partner)}
-    cardWidth={(screenWidth - 60) / 2} // Pass dynamic width to card
-  />
-</View>
-
+                  <CompanyCardComponent
+                    name={partner.name}
+                    description={partner.description}
+                    logoUrl={`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.logo}`} 
+                    coverUrl={`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.marketplace_cover}`} 
+                    onPress={() => handleCardPress(partner)}
+                    cardWidth={(screenWidth - 60) / 2} // Pass dynamic width to card
+                  />
+                </View>
               ))
             ) : (
               <Text>No companies available</Text>
@@ -79,6 +82,24 @@ const MarketplaceScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal for ViewCompanyCard */}
+      {selectedPartner && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={!!selectedPartner}
+          onRequestClose={handleCloseModal}
+        >
+          <View style={styles.modalOverlay}>
+            <ViewCompanyCard 
+              partner={selectedPartner} 
+              visible={!!selectedPartner} 
+              onClose={handleCloseModal} 
+            />
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -120,11 +141,9 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingTop: 140, // To offset the fixed header
     paddingHorizontal: 20,
-    
   },
   specialDealsContainer: {
     marginBottom: 10, // Reduced spacing between Special Deals and cards
-   
   },
   cardsContainer: {
     marginTop: -30, // Pulls the cards closer to the Special Deals section
@@ -160,7 +179,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
   },
-  
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent', // Fully transparent background
+  },
 });
 
 export default MarketplaceScreen;

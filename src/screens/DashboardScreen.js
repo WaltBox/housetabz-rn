@@ -21,7 +21,7 @@ const DashboardScreen = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userResponse = await axios.get('https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/users/1');
+        const userResponse = await axios.get('https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/1');
         const { balance, charges, houseId, tasks } = userResponse.data;
 
         // Set user's balance and charges
@@ -41,7 +41,7 @@ const DashboardScreen = () => {
         setTaskCount(incompleteTasks.length);
 
         if (houseId) {
-          const houseResponse = await axios.get(`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/houses/${houseId}`);
+          const houseResponse = await axios.get(`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/houses/${houseId}`);
           const { bills, users } = houseResponse.data;
 
           const totalHouseBalance = bills.reduce((sum, bill) => sum + bill.amount, 0);
@@ -78,7 +78,7 @@ const DashboardScreen = () => {
 
   const handleTaskAction = async (taskId, action) => {
     try {
-      await axios.patch(`https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/tasks/${taskId}`, {
+      await axios.patch(`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/tasks/${taskId}`, {
         response: action,
       });
 

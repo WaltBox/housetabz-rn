@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoadingScreen from '../screens/LoadingScreen';
 import HomeScreen from '../screens/HomeScreen'; // Your main app screen
 import MarketplaceScreen from '../screens/MarketplaceScreen';
-import ViewCompanyCard from '../screens/ViewCompanyCard';
+import ViewCompanyCard from '../modals/ViewCompanyCard';
 import ProfileScreen from '../screens/ProfileScreen';
 import ViewPlansScreen from '../screens/ViewPlansScreen';
 import ViewForm from '../screens/ViewForm';

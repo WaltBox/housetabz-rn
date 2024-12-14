@@ -17,7 +17,7 @@ const MakePaymentScreen = () => {
   useEffect(() => {
     // Simulating API call to fetch user data
     axios
-      .get('https://566d-2605-a601-a0c6-4f00-f5b9-89d9-ed7b-1de.ngrok-free.app/api/users/1')
+      .get('https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/1')
       .then((response) => {
         setUser(response.data);
         setLoading(false);
