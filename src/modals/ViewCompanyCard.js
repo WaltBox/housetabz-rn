@@ -15,13 +15,12 @@ const screenHeight = Dimensions.get("window").height;
 const screenWidth = Dimensions.get("window").width;
 
 const ViewCompanyCard = ({ visible, onClose, partner }) => {
-  const [showBrowser, setShowBrowser] = useState(false); // Manage WebView visibility
+  const [showBrowser, setShowBrowser] = useState(false);
 
   if (!visible || !partner) return null;
 
   return (
     <View style={styles.overlay}>
-      {/* Show Modal Content */}
       {!showBrowser ? (
         <View style={styles.modalContainer}>
           {/* Close Button */}
@@ -82,7 +81,6 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
           </View>
         </View>
       ) : (
-        // InAppBrowser Overlay
         <View style={styles.browserOverlay}>
           {/* Header with Back Button and URL */}
           <View style={styles.browserHeader}>
@@ -93,16 +91,16 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
               <Ionicons name="arrow-back" size={24} color="#6A0DAD" />
             </TouchableOpacity>
             <Text style={styles.urlText} numberOfLines={1}>
-              https://www.gotrhythm.com/
+              {partner.link || "No URL Provided"}
             </Text>
           </View>
 
           {/* WebView */}
           <WebView
-            source={{ uri: "https://www.gotrhythm.com/" }}
+            source={{ uri: partner.link }}
             style={styles.webView}
-            onLoadStart={() => console.log("WebView Started Loading")} // Optional debug
-            onLoadEnd={() => console.log("WebView Finished Loading")} // Optional debug
+            onLoadStart={() => console.log("WebView Started Loading")}
+            onLoadEnd={() => console.log("WebView Finished Loading")}
             onError={(error) => console.error("WebView Error:", error.nativeEvent)}
           />
         </View>
@@ -223,17 +221,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   browserOverlay: {
+    marginTop:50,
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: "#fff",
-    marginTop: 50,
   },
   browserHeader: {
-    height: 60, // Adjust height
-    marginTop: 20, // Push header down slightly
+    height: 60,
+    marginTop: 20,
     backgroundColor: "#f8f8f8",
     flexDirection: "row",
     alignItems: "center",
