@@ -3,16 +3,18 @@ import {
   View,
   Text,
   Image,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Platform,
+  StyleSheet,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
+import { LinearGradient } from "expo-linear-gradient";
 
 const screenHeight = Dimensions.get("window").height;
-const screenWidth = Dimensions.get("window").width;
+const MODAL_HEIGHT = screenHeight * 0.94;
 
 const ViewCompanyCard = ({ visible, onClose, partner }) => {
   const [showBrowser, setShowBrowser] = useState(false);
@@ -20,33 +22,47 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
   if (!visible || !partner) return null;
 
   return (
-    <View style={styles.overlay}>
-      {!showBrowser ? (
-        <View style={styles.modalContainer}>
-          {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <MaterialIcons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
+    <View style={styles.modalContainer}>
+      {Platform.OS === "ios" && <View style={styles.iosStatusBarBackground} />}
 
-          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-            {/* Cover Image */}
+      {/* Fixed Close Button */}
+      <TouchableOpacity style={styles.fixedCloseButton} onPress={onClose}>
+        <MaterialIcons name="close" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {!showBrowser ? (
+        <>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Cover Image with Dissolving Effect */}
             <View style={styles.coverImageContainer}>
               <Image
                 source={{
-                  uri: `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.company_cover}`,
+                  uri: partner.company_cover
+                    ? `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.company_cover}`
+                    : null,
                 }}
                 style={styles.coverImage}
                 onError={(error) =>
                   console.error("Image Load Error:", error.nativeEvent.error)
                 }
               />
+              {/* Linear Gradient for Dissolve Effect */}
+              <LinearGradient
+                colors={["transparent", "#f8f8f8"]}
+                style={styles.dissolveGradient}
+              />
             </View>
 
             {/* Company Details */}
             <View style={styles.companyDetailsContainer}>
-              <Text style={styles.title}>{partner.name}</Text>
-              <Text style={styles.description}>{partner.description}</Text>
-              <Text style={styles.avgRoommate}>AVG / Roommate: $50 (example)</Text>
+              <View style={styles.card}>
+                <Text style={styles.title}>{partner.name}</Text>
+                <Text style={styles.description}>{partner.description}</Text>
+                <Text style={styles.avgRoommate}>AVG / Roommate: $50 (example)</Text>
+              </View>
             </View>
 
             {/* Additional Information Sections */}
@@ -75,18 +91,21 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
 
           {/* Shop Now Button */}
           <View style={styles.shopButtonContainer}>
-            <TouchableOpacity style={styles.shopButton} onPress={() => setShowBrowser(true)}>
+            <TouchableOpacity
+              style={styles.shopButton}
+              onPress={() => setShowBrowser(true)}
+            >
               <Text style={styles.shopButtonText}>Shop {partner.name}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </>
       ) : (
         <View style={styles.browserOverlay}>
-          {/* Header with Back Button and URL */}
           <View style={styles.browserHeader}>
+            {/* Back Button */}
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => setShowBrowser(false)} // Close WebView and go back to the modal
+              onPress={() => setShowBrowser(false)}
             >
               <Ionicons name="arrow-back" size={24} color="#6A0DAD" />
             </TouchableOpacity>
@@ -94,14 +113,14 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
               {partner.link || "No URL Provided"}
             </Text>
           </View>
-
-          {/* WebView */}
           <WebView
             source={{ uri: partner.link }}
             style={styles.webView}
             onLoadStart={() => console.log("WebView Started Loading")}
             onLoadEnd={() => console.log("WebView Finished Loading")}
-            onError={(error) => console.error("WebView Error:", error.nativeEvent)}
+            onError={(error) =>
+              console.error("WebView Error:", error.nativeEvent)
+            }
           />
         </View>
       )}
@@ -110,101 +129,119 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "flex-end",
-  },
   modalContainer: {
-    width: "100%",
-    height: screenHeight * 0.85,
-    backgroundColor: "#f8f8f8",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: "hidden",
-  },
-  closeButton: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    width: "100%",
+    height: MODAL_HEIGHT,
+    backgroundColor: "#f8f8f8",
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    overflow: "hidden",
+    bottom: 0,
+  },
+
+  fixedCloseButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 20,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 15,
     padding: 5,
-    zIndex: 10,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 80,
-  },
+
   coverImageContainer: {
-    height: 250,
-    backgroundColor: "#ddd",
+    height: 200,
+    position: "relative",
+    backgroundColor: "#000",
   },
+
   coverImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
+
+  dissolveGradient: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%",
+    height: 50, // Height of the fade effect
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingBottom: 80,
+  },
+
   companyDetailsContainer: {
-    marginTop: -20,
-    padding: 20,
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    marginHorizontal: 20,
+    marginTop: -50,
+    paddingHorizontal: 20,
     alignItems: "center",
-    borderColor: "#ddd",
-    borderWidth: 1,
+  },
+
+  card: {
+    backgroundColor: "#fff",
+    width: "90%",
+    borderRadius: 5,
+    padding: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 5,
+    elevation: 4,
+    alignItems: "center",
   },
+
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 10,
+    color: "#333",
     textAlign: "center",
+    marginBottom: 10,
   },
+
   description: {
     fontSize: 16,
-    color: "#555",
+    color: "#666",
     textAlign: "center",
     marginBottom: 10,
   },
+
   avgRoommate: {
     fontSize: 16,
     fontWeight: "600",
     color: "#4CAF50",
-    marginBottom: 10,
   },
+
   textSection: {
     marginHorizontal: 20,
     marginTop: 20,
   },
+
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
   },
+
   paragraph: {
     fontSize: 16,
     color: "#555",
     marginBottom: 10,
   },
+
   shopButtonContainer: {
     height: 70,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f8f8f8",
-    marginBottom: 30,
+    marginBottom: 20,
   },
+
   shopButton: {
     backgroundColor: "#ffffff",
     borderColor: "#6A0DAD",
@@ -212,26 +249,22 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: "center",
     borderRadius: 10,
-    width: screenWidth - 40,
+    width: "90%",
   },
+
   shopButtonText: {
     color: "#6A0DAD",
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: "center",
   },
+
   browserOverlay: {
-    marginTop:50,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: "#fff",
   },
+
   browserHeader: {
     height: 60,
-    marginTop: 20,
     backgroundColor: "#f8f8f8",
     flexDirection: "row",
     alignItems: "center",
@@ -239,16 +272,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
   },
+
   backButton: {
     padding: 5,
-    marginRight: 10,
   },
+
   urlText: {
     fontSize: 14,
     color: "#555",
+    marginLeft: 10,
     flex: 1,
-    textAlign: "left",
   },
+
   webView: {
     flex: 1,
   },
