@@ -26,9 +26,13 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
       {Platform.OS === "ios" && <View style={styles.iosStatusBarBackground} />}
 
       {/* Fixed Close Button */}
-      <TouchableOpacity style={styles.fixedCloseButton} onPress={onClose}>
-        <MaterialIcons name="close" size={24} color="#fff" />
-      </TouchableOpacity>
+      <TouchableOpacity
+  style={[styles.fixedCloseButton, { display: showBrowser ? "none" : "flex" }]}
+  onPress={onClose}
+>
+  <MaterialIcons name="close" size={24} color="#fff" />
+</TouchableOpacity>
+
 
       {!showBrowser ? (
         <>
