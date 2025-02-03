@@ -27,12 +27,11 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
 
       {/* Fixed Close Button */}
       <TouchableOpacity
-  style={[styles.fixedCloseButton, { display: showBrowser ? "none" : "flex" }]}
-  onPress={onClose}
->
-  <MaterialIcons name="close" size={24} color="#fff" />
-</TouchableOpacity>
-
+        style={[styles.fixedCloseButton, { display: showBrowser ? "none" : "flex" }]}
+        onPress={onClose}
+      >
+        <MaterialIcons name="close" size={24} color="#fff" />
+      </TouchableOpacity>
 
       {!showBrowser ? (
         <>
@@ -44,9 +43,7 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
             <View style={styles.coverImageContainer}>
               <Image
                 source={{
-                  uri: partner.company_cover
-                    ? `http://localhost:3004/${partner.company_cover}`
-                    : null,
+                  uri: partner.company_cover || null,
                 }}
                 style={styles.coverImage}
                 onError={(error) =>
@@ -143,7 +140,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     bottom: 0,
   },
-
   fixedCloseButton: {
     position: "absolute",
     top: 20,
@@ -153,40 +149,33 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 5,
   },
-
   coverImageContainer: {
     height: 200,
     position: "relative",
     backgroundColor: "#000",
   },
-
   coverImage: {
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
-
   dissolveGradient: {
     position: "absolute",
     bottom: 0,
     width: "100%",
-    height: 50, // Height of the fade effect
+    height: 50,
   },
-
   scrollView: {
     flex: 1,
   },
-
   scrollContent: {
     paddingBottom: 80,
   },
-
   companyDetailsContainer: {
     marginTop: -50,
     paddingHorizontal: 20,
     alignItems: "center",
   },
-
   card: {
     backgroundColor: "#fff",
     width: "90%",
@@ -199,7 +188,6 @@ const styles = StyleSheet.create({
     elevation: 4,
     alignItems: "center",
   },
-
   title: {
     fontSize: 22,
     fontWeight: "bold",
@@ -207,37 +195,31 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
   },
-
   description: {
     fontSize: 16,
     color: "#666",
     textAlign: "center",
     marginBottom: 10,
   },
-
   avgRoommate: {
     fontSize: 16,
     fontWeight: "600",
     color: "#4CAF50",
   },
-
   textSection: {
     marginHorizontal: 20,
     marginTop: 20,
   },
-
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
   },
-
   paragraph: {
     fontSize: 16,
     color: "#555",
     marginBottom: 10,
   },
-
   shopButtonContainer: {
     height: 70,
     alignItems: "center",
@@ -245,7 +227,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f8f8",
     marginBottom: 20,
   },
-
   shopButton: {
     backgroundColor: "#ffffff",
     borderColor: "#6A0DAD",
@@ -255,18 +236,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "90%",
   },
-
   shopButtonText: {
     color: "#6A0DAD",
     fontSize: 16,
     fontWeight: "bold",
   },
-
   browserOverlay: {
     flex: 1,
     backgroundColor: "#fff",
   },
-
   browserHeader: {
     height: 60,
     backgroundColor: "#f8f8f8",
@@ -276,18 +254,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
   },
-
   backButton: {
     padding: 5,
   },
-
   urlText: {
     fontSize: 14,
     color: "#555",
     marginLeft: 10,
     flex: 1,
   },
-
   webView: {
     flex: 1,
   },

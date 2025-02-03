@@ -8,6 +8,7 @@ import {
   Image,
   Modal,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import CompanyCardComponent from "../components/CompanyCardComponent";
@@ -20,26 +21,53 @@ const screenWidth = Dimensions.get("window").width;
 const MarketplaceScreen = () => {
   const [partnerDetails, setPartnerDetails] = useState([]);
   const [selectedPartner, setSelectedPartner] = useState(null);
-  const [scaleValue] = useState(new Animated.Value(1)); // Scaling for marketplace
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [scaleValue] = useState(new Animated.Value(1));
 
   useEffect(() => {
-    const fetchPartnerDetails = async () => {
-      try {
-        const partnerResponse = await axios.get(
-          "http://localhost:3004/api/partners"
-        );
-        setPartnerDetails(partnerResponse.data);
-      } catch (error) {
-        console.error("Error fetching partner details:", error);
-      }
-    };
     fetchPartnerDetails();
   }, []);
+
+  const fetchPartnerDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching partners...');
+      
+      const partnerResponse = await axios.get(
+        "http://localhost:3004/api/partners"
+      );
+      
+      console.log('Partner Response:', partnerResponse.data);
+      
+      // Handle both possible response formats
+      const partners = partnerResponse.data.partners || partnerResponse.data;
+      
+      if (Array.isArray(partners)) {
+        setPartnerDetails(partners);
+        console.log('Partners loaded:', partners.length);
+      } else {
+        console.log('No partners array found in response');
+        setPartnerDetails([]);
+      }
+    } catch (error) {
+      console.error("Error fetching partner details:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      setError('Failed to load partners');
+      setPartnerDetails([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCardPress = (partner) => {
     setSelectedPartner(partner);
     Animated.timing(scaleValue, {
-      toValue: 0.9, // Shrink marketplace
+      toValue: 0.9,
       duration: 300,
       useNativeDriver: true,
     }).start();
@@ -47,15 +75,54 @@ const MarketplaceScreen = () => {
 
   const handleCloseModal = () => {
     Animated.timing(scaleValue, {
-      toValue: 1, // Restore original size
+      toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start(() => setSelectedPartner(null));
   };
 
+  const renderPartnerCards = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#22c55e" />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      );
+    }
+
+    if (!partnerDetails.length) {
+      return (
+        <View style={styles.centerContent}>
+          <Text style={styles.noDataText}>No companies available</Text>
+        </View>
+      );
+    }
+
+    return partnerDetails.map((partner) => (
+      <View key={partner.id} style={styles.cardContainer}>
+       <CompanyCardComponent
+      name={partner.name}
+      description={partner.about}  // Use about instead of description
+      logoUrl={partner.logo || null}
+      coverUrl={partner.marketplace_cover || null}
+      onPress={() => handleCardPress(partner)}
+      cardWidth={(screenWidth - 60) / 2}
+    />
+      </View>
+    ));
+  };
+
   return (
     <Animated.View
-      style={[styles.container, { transform: [{ scale: scaleValue }] }]} // Apply scaling
+      style={[styles.container, { transform: [{ scale: scaleValue }] }]}
     >
       {/* Fixed Header */}
       <View style={styles.headerContainer}>
@@ -75,54 +142,34 @@ const MarketplaceScreen = () => {
         </LinearGradient>
       </View>
 
-      {/* Scrollable Content */}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Special Deals Section */}
         <View style={styles.specialDealsContainer}>
           <SpecialDeals />
         </View>
 
-        {/* Industry Text and Cards */}
         <View style={styles.cardsContainer}>
           <Text style={styles.industryText}>Industry</Text>
           <View style={styles.cardGrid}>
-            {partnerDetails.length > 0 ? (
-              partnerDetails.map((partner) => (
-                <View key={partner.id} style={styles.cardContainer}>
-                  <CompanyCardComponent
-                    name={partner.name}
-                    description={partner.description}
-                    logoUrl={`http://localhost:3004/${partner.logo}`}
-                    coverUrl={`http://localhost:3004/${partner.marketplace_cover}`}
-                    onPress={() => handleCardPress(partner)}
-                    cardWidth={(screenWidth - 60) / 2}
-                  />
-                </View>
-              ))
-            ) : (
-              <Text>No companies available</Text>
-            )}
+            {renderPartnerCards()}
           </View>
         </View>
       </ScrollView>
 
-      {/* Modal for ViewCompanyCard */}
       {selectedPartner && (
-       <Modal
-       animationType="slide"
-       transparent={true}
-       visible={!!selectedPartner}
-       onRequestClose={handleCloseModal}
-     >
-       <View style={styles.modalBackground}>
-         <ViewCompanyCard
-           partner={selectedPartner}
-           visible={!!selectedPartner}
-           onClose={handleCloseModal}
-         />
-       </View>
-     </Modal>
-     
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={!!selectedPartner}
+          onRequestClose={handleCloseModal}
+        >
+          <View style={styles.modalBackground}>
+            <ViewCompanyCard
+              partner={selectedPartner}
+              visible={!!selectedPartner}
+              onClose={handleCloseModal}
+            />
+          </View>
+        </Modal>
       )}
     </Animated.View>
   );
@@ -132,6 +179,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f9f5f0",
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  noDataText: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
   },
   headerContainer: {
     width: "100%",
@@ -201,7 +264,7 @@ const styles = StyleSheet.create({
   modalBackground: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0)", // Darkened overlay for stacking effect
+    backgroundColor: "rgba(0, 0, 0, 0)",
   },
 });
 
