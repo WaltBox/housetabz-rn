@@ -12,7 +12,7 @@ const ViewForm = ({ route }) => {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const response = await axios.get(`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/partners/${partnerId}/forms`);
+        const response = await axios.get(`http://localhost:3004/api/partners/${partnerId}/forms`);
         const fetchedForm = response.data[0]; // Assuming the partner has only one form
         setForm(fetchedForm);
 

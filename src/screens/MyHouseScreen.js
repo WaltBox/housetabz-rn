@@ -24,7 +24,7 @@ const HouseTabzScreen = () => {
     const fetchHouseData = async () => {
       try {
         const response = await axios.get(
-          "https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/houses/1"
+          "http://localhost:3004/api/houses/1"
         );
         setHouse(response.data);
       } catch (err) {

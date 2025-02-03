@@ -45,7 +45,7 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
               <Image
                 source={{
                   uri: partner.company_cover
-                    ? `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.company_cover}`
+                    ? `http://localhost:3004/${partner.company_cover}`
                     : null,
                 }}
                 style={styles.coverImage}

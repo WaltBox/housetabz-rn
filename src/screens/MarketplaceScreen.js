@@ -26,7 +26,7 @@ const MarketplaceScreen = () => {
     const fetchPartnerDetails = async () => {
       try {
         const partnerResponse = await axios.get(
-          "https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/partners"
+          "http://localhost:3004/api/partners"
         );
         setPartnerDetails(partnerResponse.data);
       } catch (error) {
@@ -92,8 +92,8 @@ const MarketplaceScreen = () => {
                   <CompanyCardComponent
                     name={partner.name}
                     description={partner.description}
-                    logoUrl={`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.logo}`}
-                    coverUrl={`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.marketplace_cover}`}
+                    logoUrl={`http://localhost:3004/${partner.logo}`}
+                    coverUrl={`http://localhost:3004/${partner.marketplace_cover}`}
                     onPress={() => handleCardPress(partner)}
                     cardWidth={(screenWidth - 60) / 2}
                   />

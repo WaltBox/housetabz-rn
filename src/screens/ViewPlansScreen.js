@@ -11,7 +11,7 @@ const ViewPlansScreen = () => {
   useEffect(() => {
     const fetchOffers = async () => {
       try {
-        const response = await axios.get('https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/v2/rhythm-offers');
+        const response = await axios.get('http://localhost:3004/api/v2/rhythm-offers');
         setOffers(response.data);
       } catch (error) {
         console.error('Error fetching Rhythm offers:', error);
