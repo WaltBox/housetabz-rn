@@ -6,6 +6,8 @@ const WaveBackground = () => {
     <Svg
       height="160" // Adjusted height to align with the profile picture
       width="100%"
+      colors={['#22c55e', '#16a34a']} 
+wavePattern="normal"
       viewBox="0 0 1440 320"
       style={{ position: 'absolute', top: 100 }}
     >
