@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 
+
 const NotificationsModal = () => {
   const userId = 1; // Hardcoded user ID for now
   const [notifications, setNotifications] = useState([]);
@@ -21,7 +22,7 @@ const NotificationsModal = () => {
     const fetchNotifications = async () => {
       try {
         const response = await axios.get(
-          `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/${userId}/notifications`
+          `http://localhost:3004/api/users/${userId}/notifications`
         );
         console.log('Notifications fetched:', response.data); // Debugging
         setNotifications(
@@ -60,7 +61,7 @@ const NotificationsModal = () => {
   const markAsRead = async (notificationId) => {
     try {
       await axios.patch(
-        `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/${userId}/notifications/${notificationId}`
+        `http://localhost:3004/api/users/${userId}/notifications/${notificationId}`
       );
       setNotifications((prev) =>
         prev.map((n) =>
@@ -105,36 +106,24 @@ const NotificationsModal = () => {
       {/* Header */}
       <Text style={styles.title}>Notifications</Text>
 
-      {/* Filter Buttons */}
-      <View style={styles.filterContainer}>
+      {/* Filter Tabs */}
+      <View style={styles.filterTabs}>
         <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filter === 'unread' && styles.activeFilterButton,
-          ]}
+          style={[styles.tab, filter === 'unread' && styles.activeTab]}
           onPress={() => setFilter('unread')}
         >
           <Text
-            style={[
-              styles.filterText,
-              filter === 'unread' && styles.activeFilterText,
-            ]}
+            style={[styles.tabText, filter === 'unread' && styles.activeTabText]}
           >
             Unread
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filter === 'read' && styles.activeFilterButton,
-          ]}
+          style={[styles.tab, filter === 'read' && styles.activeTab]}
           onPress={() => setFilter('read')}
         >
           <Text
-            style={[
-              styles.filterText,
-              filter === 'read' && styles.activeFilterText,
-            ]}
+            style={[styles.tabText, filter === 'read' && styles.activeTabText]}
           >
             Read
           </Text>
@@ -173,32 +162,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '400',
     color: '#333',
-    marginBottom: 20,
+    marginBottom: 10, // Adjust spacing to move title down
+    marginTop: 30,
+    fontFamily: 'Roboto', // Use Roboto font
   },
-  filterContainer: {
+  filterTabs: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
-  filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    backgroundColor: '#e0e0e0',
+  tab: {
+    paddingVertical: 10,
   },
-  activeFilterButton: {
-    backgroundColor: '#45B7D1',
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#45B7D1',
   },
-  filterText: {
-    fontSize: 14,
-    fontWeight: '600',
+  tabText: {
+    fontSize: 16,
     color: '#333',
   },
-  activeFilterText: {
-    color: '#fff',
+  activeTabText: {
+    color: '#45B7D1',
+    fontWeight: 'bold',
   },
   notificationItem: {
     flexDirection: 'row',

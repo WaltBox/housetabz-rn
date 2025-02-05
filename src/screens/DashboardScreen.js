@@ -10,6 +10,7 @@ const DashboardScreen = () => {
   const [yourBalance, setYourBalance] = useState(0);
   const [yourChargesData, setYourChargesData] = useState([]);
   const [houseBalance, setHouseBalance] = useState(0);
+ 
   const [roommateChartData, setRoommateChartData] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [taskCount, setTaskCount] = useState(0);
@@ -21,7 +22,7 @@ const DashboardScreen = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userResponse = await axios.get('https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/1');
+        const userResponse = await axios.get('http://localhost:3004/api/users/1');
         const { balance, charges, houseId, tasks } = userResponse.data;
 
         // Set user's balance and charges
@@ -41,10 +42,12 @@ const DashboardScreen = () => {
         setTaskCount(incompleteTasks.length);
 
         if (houseId) {
-          const houseResponse = await axios.get(`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/houses/${houseId}`);
+          const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
           const { bills, users } = houseResponse.data;
 
           const totalHouseBalance = bills.reduce((sum, bill) => sum + bill.amount, 0);
+
+
           setHouseBalance(totalHouseBalance);
 
           setRoommateChartData(
@@ -78,7 +81,7 @@ const DashboardScreen = () => {
 
   const handleTaskAction = async (taskId, action) => {
     try {
-      await axios.patch(`https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/tasks/${taskId}`, {
+      await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
         response: action,
       });
 
@@ -214,9 +217,10 @@ const styles = StyleSheet.create({
   
   sectionTitle: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: 10,
     color: '#333',
+    fontFamily: 'Roboto', // Use Roboto font
   },
   centeredContainer: {
     alignItems: 'center',

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,14 +7,24 @@ import { Ionicons } from '@expo/vector-icons';
 const InAppBrowser = ({ route }) => {
   const { url } = route.params;
   const navigation = useNavigation();
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleClose = () => {
-    navigation.goBack(); // Navigates back to the previous screen
+    navigation.goBack();
   };
+
+  // Handle WebView errors
+  const handleError = (syntheticEvent) => {
+    const { nativeEvent } = syntheticEvent;
+    console.warn('WebView error: ', nativeEvent);
+  };
+
+  // Handle loading state
+  const handleLoadStart = () => setIsLoading(true);
+  const handleLoadEnd = () => setIsLoading(false);
 
   return (
     <View style={styles.container}>
-      {/* Header with Back Button and URL */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleClose}>
           <Ionicons name="arrow-back" size={24} color="#6A0DAD" />
@@ -24,8 +34,29 @@ const InAppBrowser = ({ route }) => {
         </Text>
       </View>
 
-      {/* WebView */}
-      <WebView source={{ uri: url }} />
+      <WebView 
+        source={{ 
+          uri: url,
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        }}
+        onError={handleError}
+        onLoadStart={handleLoadStart}
+        onLoadEnd={handleLoadEnd}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        allowsInlineMediaPlayback={true}
+        mediaPlaybackRequiresUserAction={false}
+        scalesPageToFit={true}
+      />
+
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6A0DAD" />
+        </View>
+      )}
     </View>
   );
 };
@@ -52,6 +83,16 @@ const styles = StyleSheet.create({
     color: '#555',
     flex: 1,
     textAlign: 'left',
+  },
+  loadingContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

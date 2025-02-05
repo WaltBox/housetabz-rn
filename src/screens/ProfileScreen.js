@@ -27,7 +27,7 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     axios
-      .get('https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/api/users/1')
+      .get('http://localhost:3004/api/users/1')
       .then((response) => {
         setUser(response.data);
         setLoading(false);
@@ -168,22 +168,22 @@ const styles = StyleSheet.create({
   profileInfo: {
     marginLeft: 20,
     justifyContent: 'center',
-    fontFamily: 'montserrat-regular',
+    // fontFamily: 'montserrat-regular',
   },
   nameText: {
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'montserrat-bold',
+    // fontFamily: 'montserrat-bold',
   },
   houseNameText: {
     fontSize: 16,
     marginTop: 5,
-    fontFamily: 'montserrat-regular',
+    // fontFamily: 'montserrat-regular',
   },
   creditText: {
     fontSize: 16,
     marginTop: 5,
-    fontFamily: 'montserrat-regular',
+    // fontFamily: 'montserrat-regular',
     },
   editProfileButton: {
     flexDirection: 'row',
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   clickableTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'montserrat-bold',
+    // fontFamily: 'montserrat-bold',
   },
   footer: {
     marginTop: 'auto',

@@ -41,24 +41,24 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Cover Image with Dissolving Effect */}
-            <View style={styles.coverImageContainer}>
-              <Image
-                source={{
-                  uri: partner.company_cover
-                    ? `https://d96e-2605-a601-a0c6-4f00-c98b-de38-daaa-fde7.ngrok-free.app/${partner.company_cover}`
-                    : null,
-                }}
-                style={styles.coverImage}
-                onError={(error) =>
-                  console.error("Image Load Error:", error.nativeEvent.error)
-                }
-              />
-              {/* Linear Gradient for Dissolve Effect */}
-              <LinearGradient
-                colors={["transparent", "#f8f8f8"]}
-                style={styles.dissolveGradient}
-              />
-            </View>
+            {/* Cover Image with Dissolving Effect */}
+<View style={styles.coverImageContainer}>
+  <Image
+    source={{
+      uri: partner.image_url  // Assuming the image URL is stored in partner.image_url
+    }}
+    style={styles.coverImage}
+    onError={(error) => {
+      console.error("Image Load Error:", error.nativeEvent.error);
+    }}
+    // Add a default fallback image if the main image fails to load
+    defaultSource={require('../../assets/placeholder.png')}  // Adjust the path to your placeholder image
+  />
+  <LinearGradient
+    colors={["transparent", "#f8f8f8"]}
+    style={styles.dissolveGradient}
+  />
+</View>
 
             {/* Company Details */}
             <View style={styles.companyDetailsContainer}>
@@ -118,14 +118,28 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
             </Text>
           </View>
           <WebView
-            source={{ uri: partner.link }}
-            style={styles.webView}
-            onLoadStart={() => console.log("WebView Started Loading")}
-            onLoadEnd={() => console.log("WebView Finished Loading")}
-            onError={(error) =>
-              console.error("WebView Error:", error.nativeEvent)
-            }
-          />
+  source={{ 
+    uri: 'https://e4ee-2605-a601-a0c6-4f00-5d24-14ce-b2b5-24fc.ngrok-free.app/cleaning-test.html?ref=housetabz&partner_id=12',
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Access-Control-Allow-Origin': '*'
+    }
+  }}
+  style={styles.webView}
+  onLoadStart={() => console.log("WebView Started Loading")}
+  onLoadEnd={() => console.log("WebView Finished Loading")}
+  onError={(syntheticEvent) => {
+    const { nativeEvent } = syntheticEvent;
+    console.warn('WebView error: ', nativeEvent);
+  }}
+  originWhitelist={['*']}
+  javaScriptEnabled={true}
+  domStorageEnabled={true}
+  startInLoadingState={true}
+  scalesPageToFit={true}
+  allowsInlineMediaPlayback={true}
+  mixedContentMode="always"
+/>
         </View>
       )}
     </View>
@@ -206,6 +220,7 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
     marginBottom: 10,
+    // fontFamily: 'montserrat-bold'
   },
 
   description: {
