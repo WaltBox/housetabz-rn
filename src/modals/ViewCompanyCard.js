@@ -6,220 +6,233 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Platform,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import { LinearGradient } from "expo-linear-gradient";
 
-const screenHeight = Dimensions.get("window").height;
-const MODAL_HEIGHT = screenHeight * 0.94;
+const { height } = Dimensions.get("window");
+const MODAL_HEIGHT = height * 0.94;
 
 const ViewCompanyCard = ({ visible, onClose, partner }) => {
   const [showBrowser, setShowBrowser] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
   if (!visible || !partner) return null;
 
-  // Construct the shop URL with ref and partner_id
   const constructShopUrl = () => {
     try {
-      // The base URL with the html file
       const baseUrl = 'https://e4ee-2605-a601-a0c6-4f00-5d24-14ce-b2b5-24fc.ngrok-free.app/cleaning-test.html';
-      
-      console.log('Base URL:', baseUrl);
-      
-      // Construct final URL by adding query parameters
-      const finalUrl = `${baseUrl}?ref=housetabz&partner_id=${partner.id || '12'}`;
-      
-      console.log('Final URL:', finalUrl);
-      return finalUrl;
-
+      return `${baseUrl}?ref=housetabz&partner_id=${partner.id || '12'}`;
     } catch (error) {
       console.error('Error constructing URL:', error);
       return '';
     }
   };
 
-  return (
-    <View style={styles.modalContainer}>
-      {/* Fixed Close Button */}
-      <TouchableOpacity
-        style={[styles.fixedCloseButton, { display: showBrowser ? "none" : "flex" }]}
-        onPress={onClose}
+  const renderMainContent = () => (
+    <>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
       >
-        <MaterialIcons name="close" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      {!showBrowser ? (
-        <>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-          >
-            {/* Cover Image with Dissolving Effect */}
-            <View style={styles.coverImageContainer}>
-              <Image
-                source={{
-                  uri: partner.marketplace_cover || 'https://via.placeholder.com/400',
-                  headers: {
-                    Pragma: 'no-cache'
-                  }
-                }}
-                style={styles.coverImage}
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => {
-                  setImageLoading(false);
-                  setImageError(false);
-                }}
-                onError={(error) => {
-                  console.error("Image Load Error:", error.nativeEvent.error);
-                  setImageError(true);
-                  setImageLoading(false);
-                }}
-              />
-              {imageLoading && (
-                <View style={styles.imageLoadingContainer}>
-                  <ActivityIndicator size="large" color="#6A0DAD" />
-                </View>
-              )}
-              <LinearGradient
-                colors={['transparent', '#f8f8f8']}
-                style={styles.dissolveGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              />
-            </View>
-
-            {/* Company Details */}
-            <View style={styles.companyDetailsContainer}>
-              <View style={styles.card}>
-                <Text style={styles.title}>{partner.name}</Text>
-                <Text style={styles.description}>{partner.about || "No description available."}</Text>
-                {partner.avg_price && (
-                  <Text style={styles.avgRoommate}>
-                    AVG / Roommate: ${parseFloat(partner.avg_price).toFixed(2)}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            {/* Additional Information Sections */}
-            <View style={styles.textSection}>
-              <Text style={styles.sectionTitle}>How to Use HouseTabz</Text>
-              <Text style={styles.paragraph}>
-                {partner.how_to || "No instructions available at the moment."}
-              </Text>
-            </View>
-
-            <View style={styles.textSection}>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.paragraph}>
-                {partner.about || "No additional information available."}
-              </Text>
-            </View>
-
-            <View style={styles.textSection}>
-              <Text style={styles.sectionTitle}>Important Information</Text>
-              <Text style={styles.paragraph}>
-                {partner.important_information ||
-                  "No additional information available."}
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Shop Now Button */}
-          <View style={styles.shopButtonContainer}>
-            <TouchableOpacity
-              style={styles.shopButton}
-              onPress={() => partner.link ? setShowBrowser(true) : null}
-              disabled={!partner.link}
-            >
-              <Text style={styles.shopButtonText}>
-                Shop {partner.name}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      ) : (
-        <View style={styles.browserOverlay}>
-          <View style={styles.browserHeader}>
-            {/* Back Button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => setShowBrowser(false)}
-            >
-              <Ionicons name="arrow-back" size={24} color="#6A0DAD" />
-            </TouchableOpacity>
-            <Text style={styles.urlText} numberOfLines={1}>
-              {partner.link || "No URL Provided"}
-            </Text>
-          </View>
-          <WebView
-            source={{ 
-              uri: (() => {
-                const url = constructShopUrl();
-                console.log('URL being used in WebView:', url);
-                return url;
-              })(),
-              headers: {
-                'Cache-Control': 'no-cache',
-                'Access-Control-Allow-Origin': '*'
-              }
+        {/* Hero Image Section */}
+        <View style={styles.heroSection}>
+          <Image
+            source={{
+              uri: partner.marketplace_cover || 'https://via.placeholder.com/400',
+              headers: { Pragma: 'no-cache' }
             }}
-            style={styles.webView}
-            onLoadStart={() => console.log("WebView Started Loading")}
-            onLoadEnd={() => console.log("WebView Finished Loading")}
-            onError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.warn('WebView error: ', nativeEvent);
-            }}
-            originWhitelist={['*']}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            allowsInlineMediaPlayback={true}
-            mixedContentMode="always"
+            style={styles.coverImage}
+            onLoadStart={() => setImageLoading(true)}
+            onLoadEnd={() => setImageLoading(false)}
+          />
+          {imageLoading && (
+            <View style={styles.imageLoadingContainer}>
+              <ActivityIndicator size="large" color="#22c55e" />
+            </View>
+          )}
+          <LinearGradient
+            colors={['transparent', '#f8fafc']}
+            style={styles.imageGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
           />
         </View>
-      )}
+
+        {/* Company Info Card */}
+        <View style={styles.infoCard}>
+          <Text style={styles.companyName}>{partner.name}</Text>
+          <View style={styles.ratingRow}>
+            <MaterialIcons name="star" size={16} color="#f59e0b" />
+            <Text style={styles.ratingText}>4.8</Text>
+            <Text style={styles.reviewCount}>(243 reviews)</Text>
+          </View>
+          {partner.avg_price && (
+            <View style={styles.priceBadge}>
+              <Text style={styles.priceText}>
+                AVG / Roommate: ${parseFloat(partner.avg_price).toFixed(2)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Content Sections */}
+        <View style={styles.contentSection}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.sectionText}>
+            {partner.about || "No description available."}
+          </Text>
+        </View>
+
+        <View style={styles.contentSection}>
+          <Text style={styles.sectionTitle}>How to Use</Text>
+          <Text style={styles.sectionText}>
+            {partner.how_to || "No instructions available at the moment."}
+          </Text>
+        </View>
+
+        <View style={styles.contentSection}>
+          <Text style={styles.sectionTitle}>Important Information</Text>
+          <Text style={styles.sectionText}>
+            {partner.important_information || "No additional information available."}
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* Action Button */}
+      <View style={styles.actionContainer}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowBrowser(true)}
+        >
+          <MaterialIcons name="shopping-cart" size={20} color="white" />
+          <Text style={styles.actionButtonText}>
+            Shop {partner.name}
+          </Text>
+        </TouchableOpacity>
+      
+      </View>
+    </>
+  );
+
+  const renderBrowser = () => (
+    <View style={styles.browserContainer}>
+      <View style={styles.browserHeader}>
+        <TouchableOpacity
+          style={styles.browserBackButton}
+          onPress={() => setShowBrowser(false)}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#22c55e" />
+        </TouchableOpacity>
+        <Text style={styles.browserTitle} numberOfLines={1}>
+          {partner.name}
+        </Text>
+      </View>
+      <WebView
+        source={{ 
+          uri: constructShopUrl(),
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }}
+        style={styles.webView}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.webviewLoading}>
+            <ActivityIndicator size="large" color="#22c55e" />
+          </View>
+        )}
+      />
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="close" size={24} color="#64748b" />
+        </TouchableOpacity>
+        <View style={styles.partnerBadge}>
+          <MaterialIcons name="verified" size={16} color="#22c55e" />
+          <Text style={styles.partnerBadgeText}>Verified Partner</Text>
+        </View>
+      </View>
+
+      {showBrowser ? renderBrowser() : renderMainContent()}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  container: {
     position: "absolute",
     width: "100%",
     height: MODAL_HEIGHT,
-    backgroundColor: "#f8f8f8",
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    backgroundColor: "#f8fafc",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: "hidden",
     bottom: 0,
   },
-  fixedCloseButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 15,
-    padding: 5,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  coverImageContainer: {
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partnerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  partnerBadgeText: {
+    fontSize: 14,
+    color: '#22c55e',
+    fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  heroSection: {
     height: 200,
-    position: "relative",
-    backgroundColor: "#000",
+    backgroundColor: '#f1f5f9',
+    position: 'relative',
   },
   coverImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   imageLoadingContainer: {
     position: 'absolute',
@@ -229,114 +242,135 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(248, 248, 248, 0.7)',
+    backgroundColor: 'rgba(241, 245, 249, 0.7)',
   },
-  dissolveGradient: {
-    position: "absolute",
+  imageGradient: {
+    position: 'absolute',
     bottom: 0,
-    width: "100%",
-    height: 50,
+    width: '100%',
+    height: 80,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 80,
-  },
-  companyDetailsContainer: {
-    marginTop: -50,
-    paddingHorizontal: 20,
-    alignItems: "center",
-  },
-  card: {
-    backgroundColor: "#fff",
-    width: "90%",
-    borderRadius: 5,
-    padding: 20,
-    shadowColor: "#000",
+  infoCard: {
+    margin: 24,
+    padding: 24,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
-    alignItems: "center",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
-    marginBottom: 10,
+  companyName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  description: {
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 16,
+  },
+  ratingText: {
     fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 10,
+    fontWeight: '600',
+    color: '#1e293b',
   },
-  avgRoommate: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#4CAF50",
+  reviewCount: {
+    fontSize: 14,
+    color: '#64748b',
   },
-  textSection: {
-    marginHorizontal: 20,
-    marginTop: 20,
+  priceBadge: {
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#22c55e',
+  },
+  contentSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
   },
-  paragraph: {
+  sectionText: {
     fontSize: 16,
-    color: "#555",
-    marginBottom: 10,
+    lineHeight: 24,
+    color: '#64748b',
   },
-  shopButtonContainer: {
-    height: 70,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f8f8f8",
-    marginBottom: 20,
+  actionContainer: {
+    padding: 24,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
   },
-  shopButton: {
-    backgroundColor: "#ffffff",
-    borderColor: "#6A0DAD",
-    borderWidth: 2,
-    paddingVertical: 15,
-    alignItems: "center",
-    borderRadius: 10,
-    width: "90%",
+  actionButton: {
+    backgroundColor: '#22c55e',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  shopButtonText: {
-    color: "#6A0DAD",
+  actionButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: '600',
   },
-  browserOverlay: {
+  actionNote: {
+    textAlign: 'center',
+    color: '#64748b',
+    fontSize: 13,
+    marginTop: 8,
+  },
+  browserContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: 'white',
   },
   browserHeader: {
-    height: 60,
-    backgroundColor: "#f8f8f8",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderBottomColor: '#e2e8f0',
   },
-  backButton: {
-    padding: 5,
+  browserBackButton: {
+    padding: 8,
+    marginRight: 12,
   },
-  urlText: {
-    fontSize: 14,
-    color: "#555",
-    marginLeft: 10,
+  browserTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
     flex: 1,
   },
   webView: {
     flex: 1,
+  },
+  webviewLoading: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
   },
 });
 

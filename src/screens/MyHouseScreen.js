@@ -5,6 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
 import axios from "axios";
@@ -13,28 +16,41 @@ import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
 
+const { width } = Dimensions.get('window');
+
 const HouseTabzScreen = () => {
   const [house, setHouse] = useState(null);
   const [error, setError] = useState(null);
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHouseData = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:3004/api/houses/1"
+      );
+      setHouse(response.data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load house data");
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchHouseData = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:3004/api/houses/1"
-        );
-        setHouse(response.data);
-      } catch (err) {
-        setError("Failed to load house data");
-        console.error(err);
-      }
-    };
-
     fetchHouseData();
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHouseData();
+  };
 
   const generateSemiCircle = (progress) => {
     const startAngle = 180;
@@ -53,105 +69,173 @@ const HouseTabzScreen = () => {
     };
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchHouseData}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const hsiProgress = house ? house.hsi / 100 : 0;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.houseName}>
-        {error ? "Error" : house ? house.name : "Loading..."}
-      </Text>
-      <View style={styles.underline} />
-
-      {/* Semi-circle Progress */}
-      <View style={styles.progressContainer}>
-        <Svg height="140" width="140" viewBox="0 0 100 100">
-          <Defs>
-            <LinearGradient id="semiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <Stop offset="0%" stopColor="#4CAF50" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#81C784" stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          {/* Background Path */}
-          <Path
-            d={generateSemiCircle(1)}
-            stroke="#ddd"
-            strokeWidth="10"
-            fill="none"
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#22c55e"
           />
-          {/* Foreground Path */}
-          <Path
-            d={generateSemiCircle(hsiProgress)}
-            stroke="url(#semiGradient)"
-            strokeWidth="10"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </Svg>
-
-        {/* HSI Value */}
-        <View style={styles.hsiContainer}>
-          <Text style={styles.hsiText}>{house ? house.hsi : "0"}</Text>
-          <TouchableOpacity onPress={() => setShowTooltip(true)}>
-            <MaterialIcons name="info-outline" size={18} color="#4CAF50" />
-          </TouchableOpacity>
+        }
+      >
+        {/* Header Section */}
+        <View style={styles.header}>
+          <Text style={styles.houseName}>{house?.name || "Loading..."}</Text>
+          <View style={styles.underline} />
         </View>
-      </View>
 
-      {/* Tooltip */}
-      {showTooltip && (
-        <View style={styles.tooltip}>
-          <View style={styles.tooltipHeader}>
-            <Text style={styles.tooltipText}>
-              The HSI (House Status Index) represents the health and activity of
-              your house. Higher numbers indicate a more active and responsible
-              house.
-            </Text>
-            <TouchableOpacity onPress={() => setShowTooltip(false)}>
-              <MaterialIcons name="close" size={20} color="#555" />
-            </TouchableOpacity>
+        {/* HSI Progress Section */}
+        <View style={styles.hsiCard}>
+          <View style={styles.progressContainer}>
+            <Svg height="140" width="140" viewBox="0 0 100 100">
+              <Defs>
+                <LinearGradient id="semiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <Stop offset="0%" stopColor="#22c55e" stopOpacity="1" />
+                  <Stop offset="100%" stopColor="#4ade80" stopOpacity="1" />
+                </LinearGradient>
+              </Defs>
+              <Path
+                d={generateSemiCircle(1)}
+                stroke="#e2e8f0"
+                strokeWidth="10"
+                fill="none"
+              />
+              <Path
+                d={generateSemiCircle(hsiProgress)}
+                stroke="url(#semiGradient)"
+                strokeWidth="10"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </Svg>
+
+            <View style={styles.hsiContainer}>
+              <Text style={styles.hsiText}>{house ? house.hsi : "0"}</Text>
+              <TouchableOpacity 
+                onPress={() => setShowTooltip(true)}
+                style={styles.infoButton}
+              >
+                <MaterialIcons name="info-outline" size={20} color="#22c55e" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.hsiLabel}>House Status Index</Text>
           </View>
         </View>
-      )}
 
-      {/* House Status */}
-      <Text style={styles.houseStatus}>
-        House Status: {house && house.hsi >= 75 ? "Great" : "Needs Improvement"}
-      </Text>
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {house && house.hsi >= 75 ? "Great" : "Needs Work"}
+            </Text>
+            <Text style={styles.statLabel}>House Status</Text>
+            <MaterialIcons 
+              name={house && house.hsi >= 75 ? "check-circle" : "warning"} 
+              size={24} 
+              color={house && house.hsi >= 75 ? "#22c55e" : "#f59e0b"} 
+              style={styles.statIcon} 
+            />
+          </View>
+          
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>
+              {house?.users?.length || 0}
+            </Text>
+            <Text style={styles.statLabel}>Members</Text>
+            <MaterialIcons 
+              name="group" 
+              size={24} 
+              color="#22c55e" 
+              style={styles.statIcon} 
+            />
+          </View>
+        </View>
 
-      {/* Scoreboard */}
-      <Text style={styles.sectionHeader}>Score Board</Text>
-      <View style={styles.scoreboard}>
-        <ScrollView>
-          {house &&
-            house.users
-              .sort((a, b) => b.points - a.points)
-              .map((user) => (
-                <View key={user.id} style={styles.userRow}>
+        {/* Scoreboard Section */}
+        <View style={styles.scoreboardCard}>
+          <Text style={styles.cardTitle}>Score Board</Text>
+          {house?.users
+            ?.sort((a, b) => b.points - a.points)
+            .map((user) => (
+              <View key={user.id} style={styles.userRow}>
+                <View style={styles.userInfo}>
+                  <MaterialIcons name="person" size={20} color="#64748b" />
                   <Text style={styles.username}>{user.username}</Text>
-                  <Text style={styles.points}>Points: {user.points}</Text>
                 </View>
-              ))}
-        </ScrollView>
-      </View>
+                <Text style={styles.points}>{user.points} pts</Text>
+              </View>
+            ))}
+        </View>
 
-      {/* Tabs */}
-      <TouchableOpacity
-        style={styles.clickableRow}
-        activeOpacity={0.7}
-        onPress={() => setIsCurrentTabVisible(true)}
-      >
-        <Text style={styles.clickableTitle}>CurrentTab</Text>
-        <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
-      </TouchableOpacity>
+        {/* Action Cards */}
+        <View style={styles.actionCards}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => setIsCurrentTabVisible(true)}
+          >
+            <MaterialIcons name="receipt" size={28} color="#22c55e" />
+            <Text style={styles.actionCardText}>Current Tab</Text>
+            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.clickableRow}
-        activeOpacity={0.7}
-        onPress={() => setIsPaidTabVisible(true)}
-      >
-        <Text style={styles.clickableTitle}>PaidTabz</Text>
-        <MaterialIcons name="arrow-forward-ios" size={18} color="#888" />
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => setIsPaidTabVisible(true)}
+          >
+            <MaterialIcons name="history" size={28} color="#22c55e" />
+            <Text style={styles.actionCardText}>Paid Tabz</Text>
+            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Info Tooltip */}
+      {showTooltip && (
+        <TouchableOpacity 
+          style={styles.tooltipOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowTooltip(false)}
+        >
+          <View style={styles.tooltip}>
+            <Text style={styles.tooltipTitle}>House Status Index (HSI)</Text>
+            <Text style={styles.tooltipText}>
+              The HSI represents the health and activity of your house. Higher numbers 
+              indicate a more active and responsible house.
+            </Text>
+            <TouchableOpacity
+              style={styles.tooltipButton}
+              onPress={() => setShowTooltip(false)}
+            >
+              <Text style={styles.tooltipButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Modals */}
       <ModalComponent
@@ -160,6 +244,7 @@ const HouseTabzScreen = () => {
       >
         <CurrentHouseTab house={house} />
       </ModalComponent>
+
       <ModalComponent
         visible={isPaidTabVisible}
         onClose={() => setIsPaidTabVisible(false)}
@@ -173,120 +258,224 @@ const HouseTabzScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9f5f0",
-    padding: 20,
+    backgroundColor: "#f8fafc",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  scrollContent: {
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
   },
   houseName: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#333",
-    marginBottom: 10,
-    // fontFamily: 'montserrat-bold'
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1e293b",
+    marginBottom: 8,
   },
   underline: {
     height: 3,
-    width: "60%",
-    backgroundColor: "#4CAF50",
-    alignSelf: "center",
-    marginBottom: 20,
+    width: width * 0.3,
+    backgroundColor: "#22c55e",
+    borderRadius: 1.5,
+  },
+  hsiCard: {
+    backgroundColor: "white",
+    marginHorizontal: 24,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   progressContainer: {
     alignItems: "center",
-    marginBottom: 30,
   },
   hsiContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: -60,
+    marginTop: -50,
   },
   hsiText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginRight: 5,
-    // fontFamily: 'montserrat-bold'
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#22c55e",
+    marginRight: 8,
   },
-  tooltip: {
-    position: "absolute",
-    top: 120,
-    left: "10%",
-    right: "10%",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 10,
-    borderColor: "#ddd",
-    borderWidth: 1,
+  hsiLabel: {
+    fontSize: 16,
+    color: "#64748b",
+    marginTop: 8,
   },
-  tooltipHeader: {
+  infoButton: {
+    padding: 4,
+  },
+  statsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
-  tooltipText: {
+  statCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    width: width * 0.42,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    position: "relative",
+  },
+  statValue: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 4,
+  },
+  statLabel: {
     fontSize: 14,
-    color: "#555",
-    flex: 1,
-    marginRight: 10,
+    color: "#64748b",
   },
-  houseStatus: {
+  statIcon: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+  },
+  scoreboardCard: {
+    backgroundColor: "white",
+    marginHorizontal: 24,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  cardTitle: {
     fontSize: 18,
-    color: "#555",
-    textAlign: "center",
-    marginBottom: 20,
-    // fontFamily: 'montserrat-regular'
-  },
-  scoreboard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    fontWeight: "600",
+    color: "#1e293b",
+    marginBottom: 16,
   },
   userRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomColor: "#eee",
+    alignItems: "center",
+    paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   username: {
     fontSize: 16,
-    fontWeight: "600",
+    color: "#1e293b",
+    marginLeft: 12,
+    fontWeight: "500",
   },
   points: {
     fontSize: 16,
-    color: "#4CAF50",
+    color: "#22c55e",
+    fontWeight: "600",
   },
-  clickableRow: {
+  actionCards: {
+    paddingHorizontal: 24,
+  },
+  actionCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    marginBottom: 20,
-    // fontFamily: 'montserrat-regular'
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
-  clickableTitle: {
+  actionCardText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1e293b",
+    marginLeft: 16,
+  },
+  tooltipOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  tooltip: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: width - 48,
+  },
+  tooltipTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    // fontFamily: 'montserrat-bold'
+    fontWeight: "600",
+    color: "#1e293b",
+    marginBottom: 12,
   },
-  sectionHeader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#333",
-    // fontFamily: 'montserrat-bold'
+  tooltipText: {
+    fontSize: 14,
+    color: "#64748b",
+    lineHeight: 20,
+    marginBottom: 16,
   },
+  tooltipButton: {
+    backgroundColor: "#22c55e",
+    borderRadius: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  tooltipButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#dc2626",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  }
 });
 
 export default HouseTabzScreen;
