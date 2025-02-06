@@ -174,7 +174,7 @@ const ProfileScreen = () => {
             onPress={() => setIsUserTabVisible(true)}
           >
             <MaterialIcons name="person" size={28} color="#22c55e" />
-            <Text style={styles.actionCardText}>User Profile</Text>
+            <Text style={styles.actionCardText}>Your Tab</Text>
             <MaterialIcons name="chevron-right" size={24} color="#ccc" />
           </TouchableOpacity>
 
