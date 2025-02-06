@@ -7,18 +7,16 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
-  TextInput,
-  Animated,
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import axios from 'axios';
 
 const MakePaymentScreen = () => {
-  const [user, setUser] = useState({ balance: 0, bank: null });
+  const [user, setUser] = useState({ balance: 0, dueNow: 0, bank: null });
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('bank');
-  const [amount, setAmount] = useState('');
-  const [buttonScale] = useState(new Animated.Value(1));
+  const [autopayEnabled, setAutopayEnabled] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -27,7 +25,15 @@ const MakePaymentScreen = () => {
   const fetchUserData = async () => {
     try {
       const response = await axios.get('http://localhost:3004/api/users/1');
-      setUser(response.data);
+      // Calculate dueNow from charges that are past due
+      const dueNow = response.data.charges
+        .filter(charge => !charge.paid && new Date(charge.dueDate) <= new Date())
+        .reduce((sum, charge) => sum + charge.amount, 0);
+      
+      setUser({
+        ...response.data,
+        dueNow
+      });
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -37,193 +43,194 @@ const MakePaymentScreen = () => {
 
   const handlePaymentMethodPress = (method) => {
     setPaymentMethod(method);
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
   };
 
-  const handlePayment = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount.');
+  const setupAutopay = () => {
+    if (!user.bank) {
+      Alert.alert(
+        'Bank Account Required',
+        'Please connect your bank account to enable autopay.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Connect Bank',
+            onPress: () => {/* Navigate to bank connection */}
+          }
+        ]
+      );
       return;
     }
-
-    Alert.alert(
-      'Confirm Payment',
-      `Pay $${amount} with your ${paymentMethod === 'bank' ? 'Bank Account' : 'Credit Card'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: 'default',
-          onPress: processPayment,
-        },
-      ]
-    );
+    setAutopayEnabled(true);
   };
 
-  const processPayment = () => {
-    // Simulated payment processing
-    Alert.alert(
-      'Payment Successful',
-      'Your payment has been processed successfully.',
-      [{ text: 'OK' }]
-    );
+  const handlePayment = async () => {
+    setIsProcessing(true);
+    try {
+      // Simulated payment processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      Alert.alert(
+        'Payment Successful',
+        'Your payment has been processed successfully.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert('Payment Failed', 'Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#22c55e" />
-        <Text style={styles.loadingText}>Loading payment details...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Balance Card */}
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Current Balance</Text>
-        <Text style={styles.balanceAmount}>${user.balance.toFixed(2)}</Text>
-        <View style={styles.dueDateContainer}>
-          <MaterialIcons name="event" size={16} color="#64748b" />
-          <Text style={styles.dueDateText}>Due in 5 days</Text>
-        </View>
-      </View>
-
-      {/* Amount Input */}
-      <View style={styles.amountSection}>
-        <Text style={styles.sectionTitle}>Payment Amount</Text>
-        <View style={styles.amountInputContainer}>
-          <Text style={styles.currencySymbol}>$</Text>
-          <TextInput
-            style={styles.amountInput}
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-      </View>
-
-      {/* Payment Methods */}
-      <View style={styles.methodsSection}>
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        
-        <TouchableOpacity
-          style={[styles.methodCard, paymentMethod === 'bank' && styles.selectedMethod]}
-          onPress={() => handlePaymentMethodPress('bank')}
-          activeOpacity={0.9}
-        >
-          <View style={styles.methodLeft}>
-            <View style={styles.methodIcon}>
-              <MaterialIcons name="account-balance" size={24} color="#22c55e" />
-            </View>
-            <View style={styles.methodDetails}>
-              <Text style={styles.methodTitle}>Bank Account</Text>
-              <Text style={styles.methodSubtitle}>
-                {user.bank ? `****${user.bank.last4}` : 'Add bank account'}
-              </Text>
-            </View>
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Balance Summary */}
+        <View style={styles.balanceCard}>
+          <View style={styles.totalBalance}>
+            <Text style={styles.balanceLabel}>Total Balance</Text>
+            <Text style={styles.balanceAmount}>${user.balance.toFixed(2)}</Text>
           </View>
-          <View style={styles.methodRight}>
-            <Text style={styles.methodTag}>No Fee</Text>
+
+          <View style={styles.balanceDivider} />
+
+          <TouchableOpacity 
+            style={styles.dueNowSection}
+            onPress={() => {/* Show charges breakdown */}}
+          >
+            <View>
+              <Text style={styles.dueNowLabel}>Amount Due Now</Text>
+              <Text style={styles.dueNowAmount}>${user.dueNow.toFixed(2)}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Payment Methods */}
+        <View style={styles.methodsSection}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          
+          <TouchableOpacity
+            style={[styles.methodCard, paymentMethod === 'bank' && styles.selectedMethod]}
+            onPress={() => handlePaymentMethodPress('bank')}
+          >
+            <View style={styles.methodLeft}>
+              <View style={styles.methodIcon}>
+                <MaterialIcons name="account-balance" size={24} color="#22c55e" />
+              </View>
+              <View>
+                <Text style={styles.methodTitle}>Bank Account (ACH)</Text>
+                <Text style={styles.methodSubtitle}>
+                  {user.bank ? `****${user.bank.last4}` : 'Connect Bank'}
+                </Text>
+              </View>
+            </View>
             {paymentMethod === 'bank' && (
-              <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
             )}
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.methodCard, paymentMethod === 'card' && styles.selectedMethod]}
-          onPress={() => handlePaymentMethodPress('card')}
-          activeOpacity={0.9}
-        >
-          <View style={styles.methodLeft}>
-            <View style={styles.methodIcon}>
-              <MaterialIcons name="credit-card" size={24} color="#22c55e" />
+          <TouchableOpacity
+            style={[styles.methodCard, paymentMethod === 'card' && styles.selectedMethod]}
+            onPress={() => handlePaymentMethodPress('card')}
+          >
+            <View style={styles.methodLeft}>
+              <View style={styles.methodIcon}>
+                <MaterialIcons name="credit-card" size={24} color="#22c55e" />
+              </View>
+              <View>
+                <Text style={styles.methodTitle}>Credit Card</Text>
+                <Text style={styles.methodSubtitle}>3% processing fee</Text>
+              </View>
             </View>
-            <View style={styles.methodDetails}>
-              <Text style={styles.methodTitle}>Credit Card</Text>
-              <Text style={styles.methodSubtitle}>Visa ending in 4242</Text>
-            </View>
-          </View>
-          <View style={styles.methodRight}>
-            <Text style={styles.methodTag}>3% Fee</Text>
             {paymentMethod === 'card' && (
-              <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
             )}
-          </View>
-        </TouchableOpacity>
-      </View>
+          </TouchableOpacity>
+        </View>
 
-      {/* Payment Summary */}
-      {amount && (
+        {/* AutoPay Option - Only show for bank payments */}
+        {paymentMethod === 'bank' && (
+          <View style={styles.autopayCard}>
+            <View style={styles.autopayHeader}>
+              <View style={styles.autopayLeft}>
+                <MaterialIcons name="schedule" size={24} color="#22c55e" />
+                <View>
+                  <Text style={styles.autopayTitle}>Set Up AutoPay</Text>
+                  <Text style={styles.autopaySubtitle}>
+                    Pay automatically on due dates
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.setupButton}
+                onPress={setupAutopay}
+              >
+                <Text style={styles.setupButtonText}>Setup</Text>
+                <MaterialIcons name="arrow-forward" size={16} color="#22c55e" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Payment Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Payment Amount</Text>
-            <Text style={styles.summaryValue}>${amount}</Text>
+            <Text style={styles.summaryLabel}>Amount Due</Text>
+            <Text style={styles.summaryValue}>${user.dueNow.toFixed(2)}</Text>
           </View>
           {paymentMethod === 'card' && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Processing Fee (3%)</Text>
               <Text style={styles.summaryValue}>
-                ${(parseFloat(amount || 0) * 0.03).toFixed(2)}
+                ${(user.dueNow * 0.03).toFixed(2)}
               </Text>
             </View>
           )}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>Total to Pay</Text>
             <Text style={styles.totalValue}>
-              ${(parseFloat(amount || 0) * (paymentMethod === 'card' ? 1.03 : 1)).toFixed(2)}
+              ${(user.dueNow * (paymentMethod === 'card' ? 1.03 : 1)).toFixed(2)}
             </Text>
           </View>
         </View>
-      )}
+      </ScrollView>
 
-{/* AutoPay Section */}
-
-    
-
-
-
-      {/* Pay Button */}
-      <TouchableOpacity
-        style={[
-          styles.payButton,
-          (!amount || parseFloat(amount) <= 0) && styles.payButtonDisabled
-        ]}
-        onPress={handlePayment}
-        disabled={!amount || parseFloat(amount) <= 0}
-      >
-        <MaterialIcons name="lock" size={20} color="white" />
-        <Text style={styles.payButtonText}>Pay Now</Text>
-      </TouchableOpacity>
-
-      {/* Security Note */}
-      <View style={styles.securityNote}>
-        <MaterialIcons name="security" size={16} color="#64748b" />
-        <Text style={styles.securityText}>
-          Payments are secure and processed by Stripe
+      {/* Fixed Bottom Section */}
+      <View style={styles.bottomSection}>
+        <TouchableOpacity
+          style={styles.payButton}
+          onPress={handlePayment}
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <>
+              <MaterialIcons name="lock" size={20} color="white" />
+              <Text style={styles.payButtonText}>
+                Pay ${(user.dueNow * (paymentMethod === 'card' ? 1.03 : 1)).toFixed(2)}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.secureText}>
+          <MaterialIcons name="verified-user" size={14} color="#64748b" />
+          {' '}Secure payment by Stripe
         </Text>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -232,8 +239,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     padding: 24,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
@@ -241,22 +252,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8fafc',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#64748b',
-  },
   balanceCard: {
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
-    alignItems: 'center',
-    elevation: 3,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  totalBalance: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   balanceLabel: {
     fontSize: 16,
@@ -267,55 +276,35 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 12,
   },
-  dueDateContainer: {
+  balanceDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+  },
+  dueNowSection: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
   },
-  dueDateText: {
+  dueNowLabel: {
     fontSize: 14,
     color: '#64748b',
+    marginBottom: 4,
   },
-  amountSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
+  dueNowAmount: {
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 12,
-  },
-  amountInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  },
-  currencySymbol: {
-    fontSize: 24,
-    color: '#64748b',
-    marginRight: 8,
-  },
-  amountInput: {
-    flex: 1,
-    fontSize: 24,
-    color: '#1e293b',
-    fontWeight: '600',
+    color: '#ef4444',
   },
   methodsSection: {
     marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 16,
   },
   methodCard: {
     flexDirection: 'row',
@@ -349,9 +338,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  methodDetails: {
-    gap: 4,
-  },
   methodTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -361,14 +347,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
   },
-  methodRight: {
-    alignItems: 'flex-end',
-    gap: 4,
+  autopayCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
-  methodTag: {
-    fontSize: 12,
-    color: '#22c55e',
+  autopayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  autopayLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  autopayTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  autopaySubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  setupButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+  },
+  setupButtonText: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#22c55e',
   },
   summaryCard: {
     backgroundColor: 'white',
@@ -393,8 +414,8 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     height: 1,
-    backgroundColor: '#f1f5f9',
-    marginVertical: 8,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 12,
   },
   totalLabel: {
     fontSize: 16,
@@ -402,9 +423,19 @@ const styles = StyleSheet.create({
     color: '#1e293b',
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#22c55e',
+  },
+  bottomSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    padding: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
   },
   payButton: {
     backgroundColor: '#22c55e',
@@ -415,55 +446,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  payButtonDisabled: {
-    backgroundColor: '#94a3b8',
-  },
   payButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
-  securityNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 16,
-  },
-  securityText: {
+  secureText: {
     fontSize: 13,
     color: '#64748b',
-  },
-
-  autopayToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  autopayLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  autopayText: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  autopayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    backgroundColor: '#f1f5f9',
-  },
-  autopayButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#22c55e',
+    textAlign: 'center',
+    marginTop: 12,
   },
 });
 

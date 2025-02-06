@@ -14,10 +14,60 @@ import { VictoryPie } from 'victory-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import axios from 'axios';
 import ServiceRequestTask from '../components/ServiceRequestTask';
+import AcceptServicePayment from '../modals/AcceptServicePayment';
 
 const { width } = Dimensions.get('window');
 
+// Helper Components
+const SummaryCard = ({ icon, label, amount }) => (
+  <View style={styles.summaryCard}>
+    <View style={styles.summaryHeader}>
+      <MaterialIcons name={icon} size={24} color="#22c55e" />
+      <Text style={styles.summaryLabel}>{label}</Text>
+    </View>
+    <Text style={styles.summaryAmount}>${amount.toFixed(2)}</Text>
+  </View>
+);
+
+const ChargesPieChart = ({ title, amount, data, onSegmentPress, activeChart, selectedSegment }) => (
+  <View style={styles.chartCard}>
+    <View style={styles.chartHeader}>
+      <Text style={styles.chartTitle}>{title}</Text>
+      <TouchableOpacity style={styles.chartButton}>
+        <MaterialIcons name="more-horiz" size={24} color="#64748b" />
+      </TouchableOpacity>
+    </View>
+    <View style={styles.chartContainer}>
+      <Text style={styles.centerAmount}>${amount.toFixed(2)}</Text>
+      <VictoryPie
+        data={data}
+        colorScale={data.map(item => item.color)}
+        width={width - 80}
+        height={220}
+        innerRadius={70}
+        padAngle={2}
+        animate={{ duration: 500, easing: 'cubic' }}
+        style={{
+          labels: { fill: '#1e293b', fontSize: 14, fontWeight: '500' },
+          data: { stroke: '#fff', strokeWidth: 2 }
+        }}
+        labels={({ datum, index }) => 
+          activeChart && selectedSegment === index ? `${datum.x}\n$${datum.y}` : ''
+        }
+        events={[{
+          target: 'data',
+          eventHandlers: {
+            onPressIn: (_, props) => onSegmentPress(props),
+          },
+        }]}
+      />
+    </View>
+  </View>
+);
+
 const DashboardScreen = () => {
+  // State Management
+  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [yourBalance, setYourBalance] = useState(0);
   const [yourChargesData, setYourChargesData] = useState([]);
   const [houseBalance, setHouseBalance] = useState(0);
@@ -29,47 +79,66 @@ const DashboardScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeChart, setActiveChart] = useState(null);
   const [selectedSegment, setSelectedSegment] = useState(null);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
 
+  const handleScroll = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / (width * 0.75 + 12));
+    setActiveTaskIndex(index);
+  };
+
+  // Data Fetching
   const fetchData = async () => {
     try {
       setError(null);
+      setLoading(true);
+
+      // Fetch user data
       const userResponse = await axios.get('http://localhost:3004/api/users/1');
-      const { balance, charges, houseId, tasks } = userResponse.data;
+      const { balance = 0, charges = [], houseId } = userResponse.data;
+      setYourBalance(balance);
 
-      setYourBalance(balance || 0);
-      setYourChargesData(
-        charges.length > 0
-          ? charges.map((charge) => ({
-              x: charge.name || 'Charge',
-              y: charge.amount,
-              color: charge.paid ? '#22c55e' : '#ef4444',
-            }))
-          : [{ x: 'No Charges', y: 1, color: '#22c55e' }]
-      );
+      // Process charges for pie chart
+      const processedCharges = charges.length > 0 
+        ? charges.map(charge => ({
+            x: charge.name || 'Charge',
+            y: parseFloat(charge.amount) || 0,
+            color: charge.paid ? '#22c55e' : '#ef4444',
+          }))
+        : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
+      setYourChargesData(processedCharges);
 
-      const incompleteTasks = tasks.filter((task) => !task.status);
-      setTasks(incompleteTasks);
-      setTaskCount(incompleteTasks.length);
+      // Fetch tasks
+      const tasksResponse = await axios.get('http://localhost:3004/api/tasks/user/1');
+      const pendingTasks = tasksResponse.data.tasks.filter(task => task.status === false);
+      setTasks(pendingTasks);
+      setTaskCount(pendingTasks.length);
 
+      // Fetch house data
       if (houseId) {
         const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
-        const { bills, users } = houseResponse.data;
+        const { bills = [], users = [] } = houseResponse.data;
 
-        const totalHouseBalance = bills.reduce((sum, bill) => sum + bill.amount, 0);
+        const totalHouseBalance = bills.reduce((sum, bill) => 
+          sum + (parseFloat(bill.amount) || 0), 0);
         setHouseBalance(totalHouseBalance);
 
         const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
-        setRoommateChartData(
-          users.map((user, index) => ({
-            x: user.username,
-            y: user.charges?.reduce((sum, charge) => sum + charge.amount, 0) || 1,
-            color: colors[index % colors.length],
-          }))
-        );
+        const roommateData = users.map((user, index) => ({
+          x: user.username || `User ${index + 1}`,
+          y: user.charges?.reduce((sum, charge) => 
+            sum + (parseFloat(charge.amount) || 0), 0) || 1,
+          color: colors[index % colors.length],
+        }));
+        setRoommateChartData(roommateData);
+      } else {
+        setHouseBalance(0);
+        setRoommateChartData([{ x: 'No Data', y: 1, color: '#22c55e' }]);
       }
     } catch (err) {
-      setError('Unable to load dashboard data');
-      console.error('Error fetching data:', err);
+      console.error('Dashboard data fetch error:', err);
+      setError(err.response?.data?.message || 'Unable to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,6 +149,7 @@ const DashboardScreen = () => {
     fetchData();
   }, []);
 
+  // Event Handlers
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
@@ -95,21 +165,41 @@ const DashboardScreen = () => {
     }
   };
 
-  const renderLabel = (chartName, data, index) =>
-    activeChart === chartName && selectedSegment === index ? `${data.x}\n$${data.y}` : '';
-
-  const handleTaskAction = async (taskId, action) => {
+  const handleTaskAction = async (data, action) => {
     try {
-      await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
-        response: action,
-      });
-      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
-      setTaskCount((prevCount) => prevCount - 1);
+      const taskId = typeof data === 'object' ? data.taskId : data;
+
+      if (typeof data === 'object' && action === 'accepted') {
+        setSelectedPaymentTask(data);
+        setIsPaymentModalVisible(true);
+      } else {
+        await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
+          response: action
+        });
+        fetchData();
+      }
     } catch (error) {
       console.error(`Error ${action}ing task:`, error);
     }
   };
 
+  const handlePaymentSuccess = async () => {
+    if (selectedPaymentTask) {
+      try {
+        await axios.patch(`http://localhost:3004/api/tasks/${selectedPaymentTask.taskId}`, {
+          response: 'accepted',
+          paymentStatus: 'completed'
+        });
+        fetchData();
+      } catch (error) {
+        console.error('Error updating task after payment:', error);
+      }
+    }
+    setIsPaymentModalVisible(false);
+    setSelectedPaymentTask(null);
+  };
+
+  // Loading and Error States
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -131,160 +221,119 @@ const DashboardScreen = () => {
     );
   }
 
+  // Main Render
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
-      }
-    >
-    {/* Tasks Section */}
-{/* Tasks Section */}
-<View style={styles.chartCard}>
-  <View style={styles.taskHeader}>
-    <View style={styles.taskTitleGroup}>
-      <MaterialIcons name="assignment" size={20} color="#22c55e" />
-      <Text style={styles.chartTitle}>Tasks</Text>
-    </View>
-    {taskCount > 0 && (
-      <View style={styles.taskBadge}>
-        <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
-      </View>
-    )}
-  </View>
-
-  {tasks.length > 0 ? (
-    <View>
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={tasks}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item, index }) => (
-          <View style={[
-            styles.taskItemContainer,
-            index === 0 && { marginLeft: 0 }
-          ]}>
-            <ServiceRequestTask
-              task={item}
-              onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
-              onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
-            />
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
+        }
+      >
+        {/* Tasks Section */}
+        <View style={styles.chartCard}>
+          <View style={styles.taskHeader}>
+            <View style={styles.taskTitleGroup}>
+              <MaterialIcons name="assignment" size={20} color="#22c55e" />
+              <Text style={styles.chartTitle}>Tasks</Text>
+            </View>
+            {taskCount > 0 && (
+              <View style={styles.taskBadge}>
+                <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
+              </View>
+            )}
           </View>
-        )}
-        decelerationRate={0.9}
-        snapToInterval={width * 0.75}
-        snapToAlignment="center"
-        contentContainerStyle={styles.taskList}
+
+          {tasks.length > 0 ? (
+            <View>
+              <FlatList
+                data={tasks}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.taskItemContainer}>
+                    <ServiceRequestTask
+                      task={item}
+                      onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
+                      onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
+                    />
+                  </View>
+                )}
+                contentContainerStyle={styles.taskListContent}
+                decelerationRate="fast"
+                snapToInterval={width * 0.75 + 12}
+                snapToAlignment="start"
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+              />
+              <View style={styles.paginationDots}>
+                {tasks.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      { 
+                        backgroundColor: index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
+                        width: index === activeTaskIndex ? 12 : 6,
+                      }
+                    ]}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="check-circle" size={48} color="#22c55e" />
+              <Text style={styles.emptyTitle}>All Caught Up!</Text>
+              <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Balance Summary */}
+        <View style={styles.summaryContainer}>
+          <SummaryCard
+            icon="account-balance-wallet"
+            label="Your Balance"
+            amount={yourBalance}
+          />
+          <SummaryCard
+            icon="group"
+            label="House Balance"
+            amount={houseBalance}
+          />
+        </View>
+
+        {/* Charts */}
+        <ChargesPieChart
+          title="Your Charges"
+          amount={yourBalance}
+          data={yourChargesData}
+          onSegmentPress={(props) => handlePress('YourTab', yourChargesData, props.index)}
+          activeChart={activeChart === 'YourTab'}
+          selectedSegment={selectedSegment}
+        />
+
+        <ChargesPieChart
+          title="House Distribution"
+          amount={houseBalance}
+          data={roommateChartData}
+          onSegmentPress={(props) => handlePress('HouseTab', roommateChartData, props.index)}
+          activeChart={activeChart === 'HouseTab'}
+          selectedSegment={selectedSegment}
+        />
+      </ScrollView>
+
+      {/* Payment Modal */}
+      <AcceptServicePayment
+        visible={isPaymentModalVisible}
+        onClose={() => setIsPaymentModalVisible(false)}
+        onSuccess={handlePaymentSuccess}
+        taskData={selectedPaymentTask}
       />
-      <View style={styles.paginationDots}>
-        {tasks.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.paginationDot,
-              { backgroundColor: index === 0 ? '#22c55e' : '#e2e8f0' }
-            ]}
-          />
-        ))}
-      </View>
-    </View>
-  ) : (
-    <View style={styles.emptyContainer}>
-      <MaterialIcons name="check-circle" size={48} color="#22c55e" />
-      <Text style={styles.emptyTitle}>All Caught Up!</Text>
-      <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
-    </View>
-  )}
-</View>
-      {/* Balance Summary Cards */}
-      <View style={styles.summaryContainer}>
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <MaterialIcons name="account-balance-wallet" size={24} color="#22c55e" />
-            <Text style={styles.summaryLabel}>Your Balance</Text>
-          </View>
-          <Text style={styles.summaryAmount}>${yourBalance.toFixed(2)}</Text>
-        </View>
-
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <MaterialIcons name="group" size={24} color="#22c55e" />
-            <Text style={styles.summaryLabel}>House Balance</Text>
-          </View>
-          <Text style={styles.summaryAmount}>${houseBalance.toFixed(2)}</Text>
-        </View>
-      </View>
-
-      {/* Your Tab Chart Section */}
-      <View style={styles.chartCard}>
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Your Charges</Text>
-          <TouchableOpacity style={styles.chartButton}>
-            <MaterialIcons name="more-horiz" size={24} color="#64748b" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.chartContainer}>
-          <Text style={styles.centerAmount}>${yourBalance.toFixed(2)}</Text>
-          <VictoryPie
-            data={yourChargesData}
-            colorScale={yourChargesData.map(data => data.color)}
-            width={width - 80}
-            height={220}
-            innerRadius={70}
-            padAngle={2}
-            animate={{ duration: 500, easing: 'cubic' }}
-            style={{
-              labels: { fill: '#1e293b', fontSize: 14, fontWeight: '500' },
-              data: { stroke: '#fff', strokeWidth: 2 }
-            }}
-            labels={({ datum, index }) => renderLabel('YourTab', datum, index)}
-            events={[{
-              target: 'data',
-              eventHandlers: {
-                onPressIn: (_, props) => handlePress('YourTab', yourChargesData, props.index),
-              },
-            }]}
-          />
-        </View>
-      </View>
-
-      {/* House Tab Chart Section */}
-      <View style={styles.chartCard}>
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>House Distribution</Text>
-          <TouchableOpacity style={styles.chartButton}>
-            <MaterialIcons name="more-horiz" size={24} color="#64748b" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.chartContainer}>
-          <Text style={styles.centerAmount}>${houseBalance.toFixed(2)}</Text>
-          <VictoryPie
-            data={roommateChartData}
-            colorScale={roommateChartData.map(data => data.color)}
-            width={width - 80}
-            height={220}
-            innerRadius={70}
-            padAngle={2}
-            animate={{ duration: 500, easing: 'cubic' }}
-            style={{
-              labels: { fill: '#1e293b', fontSize: 14, fontWeight: '500' },
-              data: { stroke: '#fff', strokeWidth: 2 }
-            }}
-            labels={({ datum, index }) => renderLabel('HouseTab', datum, index)}
-            events={[{
-              target: 'data',
-              eventHandlers: {
-                onPressIn: (_, props) => handlePress('HouseTab', roommateChartData, props.index),
-              },
-            }]}
-          />
-        </View>
-      </View>
-
-      
-    </ScrollView>
+    </>
   );
 };
 
@@ -362,7 +411,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     marginBottom: 24,
     borderRadius: 16,
-    padding: 16, // Reduced padding
+    padding: 16,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -395,69 +444,32 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     zIndex: 1,
   },
-  tasksCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
-  tasksCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12, // Reduced margin
+    marginBottom: 12,
   },
   taskTitleGroup: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 8,
-},
-taskBadge: {
-  backgroundColor: '#f0fdf4',
-  paddingHorizontal: 10,
-  paddingVertical: 4,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: '#dcfce7',
-},
-taskBadgeText: {
-  color: '#22c55e',
-  fontSize: 13,
-  fontWeight: '500',
-},
-  taskCount: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  taskBadge: {
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
   },
-  taskCountText: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '600',
+  taskBadgeText: {
+    color: '#22c55e',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  horizontalTaskList: {
-    paddingHorizontal: 4,  // Small padding to accommodate shadows
-  },
-  taskList: {
-    marginTop: 4, // Reduced margin
+  taskListContent: {
+    paddingHorizontal: 16,
   },
   taskItemContainer: {
     width: width * 0.75,
@@ -467,11 +479,10 @@ taskBadgeText: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12, // Reduced margin
+    marginTop: 12,
     gap: 6,
   },
   paginationDot: {
-    width: 6,
     height: 6,
     borderRadius: 3,
   },
