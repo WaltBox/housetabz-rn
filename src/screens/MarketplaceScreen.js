@@ -20,7 +20,7 @@ import axios from "axios";
 
 const { width, height } = Dimensions.get("window");
 const CARD_GUTTER = 16;
-const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2; // Back to 2 per row (normal size)
+const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2;
 const API_URL = "http://localhost:3004";
 
 const MarketplaceScreen = () => {
@@ -125,25 +125,32 @@ const MarketplaceScreen = () => {
       {renderHeader()}
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Special Deals Section */}
         <View style={styles.specialDealsContainer}>
           <Text style={styles.sectionTitle}>Exclusive Offers 🎁</Text>
           <SpecialDeals />
         </View>
 
-        {/* Partner Grid */}
         <View style={styles.partnerGridContainer}>
           <Text style={styles.sectionTitle}>Featured Services</Text>
           {renderPartnerGrid()}
         </View>
       </ScrollView>
 
-      <Modal visible={!!selectedPartner} transparent animationType="fade">
+      <Modal
+        visible={!!selectedPartner}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseModal}
+      >
         <View style={styles.modalOverlay}>
-          <ViewCompanyCard partner={selectedPartner} onClose={handleCloseModal} />
-          <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
-            <MaterialIcons name="close" size={28} color="white" />
-          </TouchableOpacity>
+          {selectedPartner && (
+            <ViewCompanyCard
+              partner={selectedPartner}
+              visible={!!selectedPartner}
+              onClose={handleCloseModal}
+            />
+          )}
+       
         </View>
       </Modal>
     </View>
@@ -158,7 +165,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     width: "100%",
     zIndex: 10,
-    marginBottom: -height * 0.07, // Moves everything up ~10% screen height
+    marginBottom: -height * 0.07,
   },
   gradientBackground: {
     height: 110,
@@ -187,7 +194,7 @@ const styles = StyleSheet.create({
   },
   specialDealsContainer: {
     marginBottom: 24,
-    marginTop: -height * 0.05, // Moves Special Deals section up slightly
+    marginTop: -height * 0.05,
   },
   sectionTitle: {
     fontSize: 20,
@@ -217,8 +224,7 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.92)",
-    justifyContent: "center",
-    padding: 20,
+    justifyContent: "flex-end",
   },
   closeButton: {
     position: "absolute",
@@ -227,6 +233,40 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 20,
     padding: 10,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    color: "#64748b",
+    fontSize: 16,
+  },
+  errorContainer: {
+    backgroundColor: "#fee2e2",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    margin: 16,
+  },
+  errorText: {
+    color: "#dc2626",
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#22c55e",
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryText: {
+    color: "white",
+    fontWeight: "600",
   },
 });
 
