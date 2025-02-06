@@ -44,7 +44,7 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
         <View style={styles.heroSection}>
           <Image
             source={{
-              uri: partner.marketplace_cover || 'https://via.placeholder.com/400',
+              uri: partner.company_cover || 'https://via.placeholder.com/400',
               headers: { Pragma: 'no-cache' }
             }}
             style={styles.coverImage}
