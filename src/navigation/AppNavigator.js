@@ -12,6 +12,8 @@ import ViewForm from '../screens/ViewForm';
 import ViewPlansCard from '../screens/ViewPlansCard';
 import DashboardScreen from '../screens/DashboardScreen'; // Import your Dashboard screen
 import InAppBrowser from '../screens/InAppBrowser';
+import PaymentMethodsSettings from '../screens/PaymentMethodsSettings';
+
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
@@ -29,6 +31,14 @@ const AppNavigator = () => {
         <Stack.Screen name="ViewPlans" component={ViewPlansScreen} />
         <Stack.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
         <Stack.Screen name="ViewForm" component={ViewForm} />
+        <Stack.Screen 
+  name="PaymentMethods" 
+  component={PaymentMethodsSettings}
+  options={{
+    title: 'Payment Methods',
+    headerBackTitle: 'Settings',
+  }}
+/>
       </Stack.Navigator>
     </NavigationContainer>
   );

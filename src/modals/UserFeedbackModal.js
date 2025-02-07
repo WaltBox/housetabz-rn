@@ -7,117 +7,230 @@ import {
   StyleSheet,
   Alert,
   Image,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const UserFeedbackModal = () => {
   const [feedback, setFeedback] = useState('');
+  const [category, setCategory] = useState('general');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [charCount, setCharCount] = useState(0);
 
-  const handleSubmit = () => {
-    if (!feedback.trim()) {
-      Alert.alert('Error', 'Please enter your feedback.');
+  const MAX_CHARS = 500;
+  const CATEGORIES = [
+    { id: 'bug', icon: 'bug', label: 'Report Issue' },
+    { id: 'suggestion', icon: 'lightbulb-on', label: 'Suggestion' },
+    { id: 'praise', icon: 'star', label: 'Compliment' },
+    { id: 'general', icon: 'message', label: 'General' },
+  ];
+
+  const handleSubmit = async () => {
+    if (!feedback.trim() || feedback.length < 10) {
+      Alert.alert('Help Us Understand', 'Please write at least 10 characters');
       return;
     }
 
-    Alert.alert('Thank You!', 'Your feedback has been submitted.');
-    setFeedback(''); // Clear input after submission
+    try {
+      setIsSubmitting(true);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      
+      Alert.alert('Thank You!', 'Your feedback makes us better', [
+        { text: 'OK', onPress: () => setFeedback('') }
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header Section */}
-      <Text style={styles.title}>We’d love to hear from you!</Text>
-      <Text style={styles.subtitle}>How can we make HouseTabz even better?</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <View style={styles.content}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Share Your Thoughts</Text>
+          <Text style={styles.subtitle}>We're all ears! How can we improve your experience?</Text>
+        </View>
 
-      {/* Feedback Input */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          multiline
-          placeholder="Write your feedback here..."
-          placeholderTextColor="#aaa"
-          value={feedback}
-          onChangeText={setFeedback}
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSubmit}>
-          <Text style={styles.sendButtonText}>Submit</Text>
+        {/* Category Pills */}
+        <View style={styles.categoryContainer}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryPill,
+                category === cat.id && styles.activeCategoryPill
+              ]}
+              onPress={() => setCategory(cat.id)}
+              activeOpacity={0.9}
+            >
+              <MaterialCommunityIcons
+                name={cat.icon}
+                size={16}
+                color={category === cat.id ? '#fff' : '#28a745'}
+              />
+              <Text style={[
+                styles.categoryText,
+                category === cat.id && styles.activeCategoryText
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Feedback Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            multiline
+            placeholder="What's on your mind..."
+            placeholderTextColor="#94a3b8"
+            value={feedback}
+            onChangeText={(text) => {
+              setFeedback(text);
+              setCharCount(text.length);
+            }}
+            maxLength={MAX_CHARS}
+            editable={!isSubmitting}
+          />
+          <Text style={styles.charCount}>
+            {charCount}/{MAX_CHARS}
+          </Text>
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          activeOpacity={0.9}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              Send Feedback
+            </Text>
+          )}
         </TouchableOpacity>
-      </View>
 
-      {/* Peeking Image */}
-      <Image
-        source={require('../../assets/feedbacktabz.png')}
-        style={styles.peekingLogo}
-        resizeMode="contain"
-      />
-    </View>
+        {/* Peeking Image */}
+        <Image
+          source={require('../../assets/feedbacktabz.png')}
+          style={styles.peekingImage}
+          resizeMode="contain"
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    
+    backgroundColor: '#f8fafc',
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    paddingTop: 48,
+  },
+  header: {
+    marginBottom: 32,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 20,
+    color: '#64748b',
+    lineHeight: 24,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 24,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  activeCategoryPill: {
+    backgroundColor: '#28a745',
+    borderColor: '#28a745',
+  },
+  categoryText: {
+    fontSize: 14,
+    color: '#28a745',
+    fontWeight: '500',
+  },
+  activeCategoryText: {
+    color: '#fff',
   },
   inputContainer: {
-    width: '100%',
     backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 24,
   },
   textInput: {
-    width: '100%',
-    height: 120,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 10,
+    height: 140,
+    padding: 16,
+    fontSize: 16,
+    color: '#1e293b',
     textAlignVertical: 'top',
-    backgroundColor: '#f9f9f9',
-    fontSize: 14,
-    marginBottom: 10,
   },
-  sendButton: {
-    alignSelf: 'center',
-    backgroundColor: '#28a745', // Green for submission button
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginTop: 10,
-    elevation: 2,
+  charCount: {
+    textAlign: 'right',
+    padding: 16,
+    paddingTop: 0,
+    fontSize: 12,
+    color: '#94a3b8',
   },
-  sendButtonText: {
+  submitButton: {
+    backgroundColor: '#28a745',
+    padding: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#28a745',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
   },
-  peekingLogo: {
-    width: 100,
-    height: 250,
+  peekingImage: {
+    width: 120,
+    height: 180,
     position: 'absolute',
-    bottom: -35, // Slightly below the screen
-    right: -40, // Slightly to the right
-    transform: [{ rotate: '-10deg' }], // Fun playful tilt
+    bottom: -30,
+    right: -20,
     opacity: 0.9,
+    transform: [{ rotate: '-8deg' }],
   },
 });
 

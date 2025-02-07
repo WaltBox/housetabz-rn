@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 
-const SettingsModal = () => {
+const SettingsModal = ({ onNavigateToPaymentMethods }) => {
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -77,7 +77,7 @@ const SettingsModal = () => {
             icon="credit-card"
             title="Payment Methods"
             subtitle="Manage connected accounts"
-            onPress={() => Alert.alert('Navigate to Payment Methods')}
+            onPress={onNavigateToPaymentMethods}
           />
           <SettingsRow
             icon="autorenew"

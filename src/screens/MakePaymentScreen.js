@@ -4,19 +4,24 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ScrollView,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
-const MakePaymentScreen = () => {
-  const [user, setUser] = useState({ balance: 0, dueNow: 0, bank: null });
+const TABS = {
+  PAY: 'pay',
+  METHODS: 'methods',
+  HISTORY: 'history',
+};
+
+const BillingScreen = () => {
+  const [activeTab, setActiveTab] = useState(TABS.PAY);
   const [loading, setLoading] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState('bank');
+  const [user, setUser] = useState(null);
   const [autopayEnabled, setAutopayEnabled] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -25,60 +30,176 @@ const MakePaymentScreen = () => {
   const fetchUserData = async () => {
     try {
       const response = await axios.get('http://localhost:3004/api/users/1');
-      // Calculate dueNow from charges that are past due
-      const dueNow = response.data.charges
-        .filter(charge => !charge.paid && new Date(charge.dueDate) <= new Date())
-        .reduce((sum, charge) => sum + charge.amount, 0);
-      
-      setUser({
-        ...response.data,
-        dueNow
-      });
+      setUser(response.data);
+      setAutopayEnabled(response.data.autopayEnabled || false);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePaymentMethodPress = (method) => {
-    setPaymentMethod(method);
-  };
+  const renderPayTab = () => (
+    <ScrollView style={styles.tabContent}>
+      {/* Balance Overview */}
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceLabel}>Amount Due</Text>
+        <Text style={styles.balanceAmount}>$245.00</Text>
+        <View style={styles.balanceBreakdown}>
+          <View style={styles.breakdownItem}>
+            <Text style={styles.breakdownLabel}>Bills</Text>
+            <Text style={styles.breakdownValue}>$175.00</Text>
+          </View>
+          <View style={styles.breakdownDivider} />
+          <View style={styles.breakdownItem}>
+            <Text style={styles.breakdownLabel}>Pledged</Text>
+            <Text style={styles.breakdownValue}>$70.00</Text>
+          </View>
+        </View>
+      </View>
 
-  const setupAutopay = () => {
-    if (!user.bank) {
-      Alert.alert(
-        'Bank Account Required',
-        'Please connect your bank account to enable autopay.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Connect Bank',
-            onPress: () => {/* Navigate to bank connection */}
-          }
-        ]
-      );
-      return;
-    }
-    setAutopayEnabled(true);
-  };
+      {/* Active Bills Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Active Bills</Text>
+        
+        <View style={styles.billCard}>
+          <View style={styles.billHeader}>
+            <MaterialIcons name="flash-on" size={20} color="#22c55e" style={styles.icon} />
+            <Text style={styles.billTitle}>February Energy Bill</Text>
+          </View>
+          <View style={styles.billDetails}>
+            <View>
+              <Text style={styles.billShare}>Your Share</Text>
+              <Text style={styles.billAmount}>$45.00</Text>
+            </View>
+            <TouchableOpacity style={styles.payButton}>
+              <Text style={styles.payButtonText}>Pay Now</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.billDue}>Due in 5 days</Text>
+        </View>
 
-  const handlePayment = async () => {
-    setIsProcessing(true);
-    try {
-      // Simulated payment processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      Alert.alert(
-        'Payment Successful',
-        'Your payment has been processed successfully.',
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      Alert.alert('Payment Failed', 'Please try again.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+        <View style={styles.billCard}>
+          <View style={styles.billHeader}>
+            <MaterialIcons name="wifi" size={20} color="#22c55e" style={styles.icon} />
+            <Text style={styles.billTitle}>Internet - Xfinity</Text>
+          </View>
+          <View style={styles.billDetails}>
+            <View>
+              <Text style={styles.billShare}>Your Share</Text>
+              <Text style={styles.billAmount}>$35.00</Text>
+            </View>
+            <TouchableOpacity style={styles.payButton}>
+              <Text style={styles.payButtonText}>Pay Now</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.billDue}>Due in 8 days</Text>
+        </View>
+      </View>
+
+      {/* Pledged Payments Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pledged Payments</Text>
+        
+        <View style={styles.pledgeCard}>
+          <View style={styles.pledgeHeader}>
+            <MaterialIcons name="cleaning-services" size={20} color="#22c55e" style={styles.icon} />
+            <Text style={styles.pledgeTitle}>Monthly Cleaning</Text>
+          </View>
+          <View style={styles.pledgeDetails}>
+            <View>
+              <Text style={styles.pledgeShare}>Your Share</Text>
+              <Text style={styles.pledgeAmount}>$70.00</Text>
+            </View>
+            <View style={styles.pledgeStatus}>
+              <MaterialIcons name="schedule" size={20} color="#22c55e" style={styles.icon} />
+              <Text style={styles.pledgeStatusText}>Pending Approval</Text>
+            </View>
+          </View>
+          <Text style={styles.pledgeNote}>
+            Payment will be processed when all roommates approve
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  const renderMethodsTab = () => (
+    <ScrollView style={styles.tabContent}>
+      {/* Default Payment Method */}
+      <View style={styles.section}>
+        <View style={styles.defaultMethodHeader}>
+          <Text style={styles.sectionTitle}>Default Payment Method</Text>
+          <Text style={styles.defaultMethodNote}>Used for pledges & autopay</Text>
+        </View>
+        <View style={styles.defaultMethodCard}>
+          <MaterialIcons name="account-balance" size={20} color="#22c55e" style={styles.icon} />
+          <View style={styles.methodInfo}>
+            <Text style={styles.methodTitle}>Chase Bank •••• 4523</Text>
+            <Text style={styles.methodSubtitle}>Default Payment Method</Text>
+          </View>
+          <TouchableOpacity>
+            <Text style={styles.changeMethodText}>Change</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Autopay */}
+      <View style={styles.section}>
+        <View style={styles.autopayHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Autopay</Text>
+            <Text style={styles.autopaySubtitle}>Pay bills automatically</Text>
+          </View>
+          <Switch
+            value={autopayEnabled}
+            onValueChange={(value) => setAutopayEnabled(value)}
+            trackColor={{ false: '#e2e8f0', true: '#bbf7d0' }}
+            thumbColor={autopayEnabled ? '#22c55e' : '#94a3b8'}
+          />
+        </View>
+      </View>
+
+      {/* Other Payment Methods */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Other Payment Methods</Text>
+          <TouchableOpacity style={styles.addButton}>
+            <MaterialIcons name="add" size={20} color="#22c55e" style={styles.icon} />
+            <Text style={styles.addButtonText}>Add New</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.methodCard}>
+          <MaterialIcons name="credit-card" size={20} color="#22c55e" style={styles.icon} />
+          <View style={styles.methodInfo}>
+            <Text style={styles.methodTitle}>Visa •••• 8832</Text>
+            <Text style={styles.methodSubtitle}>Expires 05/26</Text>
+          </View>
+          <TouchableOpacity>
+            <MaterialIcons name="more-vert" size={20} color="#22c55e" style={styles.icon} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  const renderHistoryTab = () => (
+    <ScrollView style={styles.tabContent}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Transactions</Text>
+        <View style={styles.transactionCard}>
+          <View style={styles.transactionLeft}>
+            <MaterialIcons name="wifi" size={20} color="#22c55e" style={styles.icon} />
+            <View>
+              <Text style={styles.transactionTitle}>Internet Bill</Text>
+              <Text style={styles.transactionDate}>Jan 15, 2025</Text>
+            </View>
+          </View>
+          <Text style={styles.transactionAmount}>-$35.00</Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
 
   if (loading) {
     return (
@@ -90,373 +211,371 @@ const MakePaymentScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Balance Summary */}
-        <View style={styles.balanceCard}>
-          <View style={styles.totalBalance}>
-            <Text style={styles.balanceLabel}>Total Balance</Text>
-            <Text style={styles.balanceAmount}>${user.balance.toFixed(2)}</Text>
-          </View>
-
-          <View style={styles.balanceDivider} />
-
-          <TouchableOpacity 
-            style={styles.dueNowSection}
-            onPress={() => {/* Show charges breakdown */}}
-          >
-            <View>
-              <Text style={styles.dueNowLabel}>Amount Due Now</Text>
-              <Text style={styles.dueNowAmount}>${user.dueNow.toFixed(2)}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color="#64748b" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Payment Methods */}
-        <View style={styles.methodsSection}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          
+      {/* Tab Navigation */}
+      <View style={styles.tabBar}>
+        {Object.values(TABS).map((tab) => (
           <TouchableOpacity
-            style={[styles.methodCard, paymentMethod === 'bank' && styles.selectedMethod]}
-            onPress={() => handlePaymentMethodPress('bank')}
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
+            onPress={() => setActiveTab(tab)}
           >
-            <View style={styles.methodLeft}>
-              <View style={styles.methodIcon}>
-                <MaterialIcons name="account-balance" size={24} color="#22c55e" />
-              </View>
-              <View>
-                <Text style={styles.methodTitle}>Bank Account (ACH)</Text>
-                <Text style={styles.methodSubtitle}>
-                  {user.bank ? `****${user.bank.last4}` : 'Connect Bank'}
-                </Text>
-              </View>
-            </View>
-            {paymentMethod === 'bank' && (
-              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.methodCard, paymentMethod === 'card' && styles.selectedMethod]}
-            onPress={() => handlePaymentMethodPress('card')}
-          >
-            <View style={styles.methodLeft}>
-              <View style={styles.methodIcon}>
-                <MaterialIcons name="credit-card" size={24} color="#22c55e" />
-              </View>
-              <View>
-                <Text style={styles.methodTitle}>Credit Card</Text>
-                <Text style={styles.methodSubtitle}>3% processing fee</Text>
-              </View>
-            </View>
-            {paymentMethod === 'card' && (
-              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* AutoPay Option - Only show for bank payments */}
-        {paymentMethod === 'bank' && (
-          <View style={styles.autopayCard}>
-            <View style={styles.autopayHeader}>
-              <View style={styles.autopayLeft}>
-                <MaterialIcons name="schedule" size={24} color="#22c55e" />
-                <View>
-                  <Text style={styles.autopayTitle}>Set Up AutoPay</Text>
-                  <Text style={styles.autopaySubtitle}>
-                    Pay automatically on due dates
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity 
-                style={styles.setupButton}
-                onPress={setupAutopay}
-              >
-                <Text style={styles.setupButtonText}>Setup</Text>
-                <MaterialIcons name="arrow-forward" size={16} color="#22c55e" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Payment Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Amount Due</Text>
-            <Text style={styles.summaryValue}>${user.dueNow.toFixed(2)}</Text>
-          </View>
-          {paymentMethod === 'card' && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Processing Fee (3%)</Text>
-              <Text style={styles.summaryValue}>
-                ${(user.dueNow * 0.03).toFixed(2)}
-              </Text>
-            </View>
-          )}
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>Total to Pay</Text>
-            <Text style={styles.totalValue}>
-              ${(user.dueNow * (paymentMethod === 'card' ? 1.03 : 1)).toFixed(2)}
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Fixed Bottom Section */}
-      <View style={styles.bottomSection}>
-        <TouchableOpacity
-          style={styles.payButton}
-          onPress={handlePayment}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <MaterialIcons name="lock" size={20} color="white" />
-              <Text style={styles.payButtonText}>
-                Pay ${(user.dueNow * (paymentMethod === 'card' ? 1.03 : 1)).toFixed(2)}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.secureText}>
-          <MaterialIcons name="verified-user" size={14} color="#64748b" />
-          {' '}Secure payment by Stripe
-        </Text>
+          </TouchableOpacity>
+        ))}
       </View>
+
+      {/* Tab Content */}
+      {activeTab === TABS.PAY && renderPayTab()}
+      {activeTab === TABS.METHODS && renderMethodsTab()}
+      {activeTab === TABS.HISTORY && renderHistoryTab()}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // General Container Styles
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
   },
-  balanceCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+
+  // Tab Navigation
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  totalBalance: {
+  tab: {
+    flex: 1,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 16,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#22c55e',
+  },
+  tabText: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#22c55e',
+  },
+  tabContent: {
+    flex: 1,
+  },
+
+  // Icon (Unified)
+  icon: {
+    marginRight: 8,
+  },
+
+  // Balance Card
+  balanceCard: {
+    margin: 16,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   balanceLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748b',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   balanceAmount: {
     fontSize: 36,
     fontWeight: '700',
     color: '#1e293b',
-  },
-  balanceDivider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
   },
-  dueNowSection: {
+  balanceBreakdown: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  dueNowLabel: {
-    fontSize: 14,
+  breakdownItem: {
+    alignItems: 'center',
+  },
+  breakdownLabel: {
+    fontSize: 13,
     color: '#64748b',
     marginBottom: 4,
   },
-  dueNowAmount: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-  methodsSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  breakdownValue: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 16,
   },
-  methodCard: {
+  breakdownDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 24,
+  },
+
+  // Section Headers & General Section Styling
+  section: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+
+  // Bill Card
+  billCard: {
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  },
-  selectedMethod: {
-    backgroundColor: '#f0fdf4',
     borderWidth: 1,
-    borderColor: '#22c55e',
-  },
-  methodLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  methodIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f1f5f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  methodTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  methodSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  autopayCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    elevation: 2,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  autopayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  autopayLeft: {
+  billHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
-  autopayTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  billTitle: {
+    fontSize: 15,
+    fontWeight: '500',
     color: '#1e293b',
   },
-  autopaySubtitle: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  setupButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#f0fdf4',
-    borderRadius: 8,
-  },
-  setupButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#22c55e',
-  },
-  summaryCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  summaryRow: {
+  billDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  summaryLabel: {
-    fontSize: 14,
+  billShare: {
+    fontSize: 13,
     color: '#64748b',
+    marginBottom: 2,
   },
-  summaryValue: {
-    fontSize: 14,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 12,
-  },
-  totalLabel: {
+  billAmount: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
   },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#22c55e',
-  },
-  bottomSection: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+  billDue: {
+    fontSize: 13,
+    color: '#64748b',
   },
   payButton: {
     backgroundColor: '#22c55e',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   payButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  secureText: {
+
+  // Pledge Card
+  pledgeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  pledgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pledgeTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  pledgeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pledgeShare: {
     fontSize: 13,
     color: '#64748b',
-    textAlign: 'center',
-    marginTop: 12,
+    marginBottom: 2,
+  },
+  pledgeAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  pledgeStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eef2ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  pledgeStatusText: {
+    fontSize: 12,
+    color: '#22c55e',
+    fontWeight: '500',
+  },
+  pledgeNote: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+
+  // Payment Method Section
+  defaultMethodHeader: {
+    marginBottom: 12,
+  },
+  defaultMethodNote: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  defaultMethodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  methodInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  methodTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  methodSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  changeMethodText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Autopay
+  autopayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  autopaySubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+
+  // Other Payment Methods (Add Button & Method Card)
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+
+  // Transaction History
+  transactionCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  transactionDate: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  transactionAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
   },
 });
 
-export default MakePaymentScreen;
+export default BillingScreen;

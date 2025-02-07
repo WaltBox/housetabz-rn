@@ -9,16 +9,17 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from '@expo/vector-icons';
 
 const AcceptServicePayment = ({ 
   visible,
   onClose,
   taskData,
-  onSuccess
+  onSuccess,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('bank');
+  const [paymentMethod, setPaymentMethod] = useState('bank'); // default method is bank
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
 
   if (!taskData?.stagedRequest) return null;
   const { stagedRequest, paymentAmount } = taskData;
@@ -28,7 +29,7 @@ const AcceptServicePayment = ({
     try {
       await onSuccess({
         paymentMethod,
-        amount: paymentAmount
+        amount: paymentAmount,
       });
     } catch (error) {
       console.error('Payment failed:', error);
@@ -37,6 +38,7 @@ const AcceptServicePayment = ({
     }
   };
 
+  // Calculate total amount based on selected payment method
   const totalAmount = Number(paymentAmount) * (paymentMethod === 'card' ? 1.03 : 1);
 
   return (
@@ -50,7 +52,7 @@ const AcceptServicePayment = ({
         <SafeAreaView style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Accept Service</Text>
+            <Text style={styles.headerTitle}>Confirm Your Pledge</Text>
             <TouchableOpacity onPress={onClose}>
               <MaterialIcons name="close" size={24} color="#64748b" />
             </TouchableOpacity>
@@ -69,79 +71,122 @@ const AcceptServicePayment = ({
               <View style={styles.costBreakdown}>
                 <View style={styles.costRow}>
                   <Text style={styles.label}>Total Cost</Text>
-                  <Text style={styles.value}>${Number(stagedRequest.estimatedAmount).toFixed(2)}</Text>
+                  <Text style={styles.value}>
+                    ${Number(stagedRequest.estimatedAmount).toFixed(2)}
+                  </Text>
                 </View>
                 <View style={styles.costRow}>
-                  <Text style={styles.label}>Your Share</Text>
+                  <Text style={styles.label}>Your Pledge</Text>
                   <Text style={styles.shareAmount}>${paymentAmount.toFixed(2)}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Escrow Info */}
+            {/* Pledge Info */}
             <View style={styles.infoCard}>
               <MaterialIcons name="security" size={20} color="#22c55e" />
               <Text style={styles.infoText}>
-                Your payment will be held securely until all roommates approve. 
-                Funds can be withdrawn if any roommate declines.
+                By pledging your payment, you authorize HouseTabz to pull your funds automatically once all roommates agree to this expense. If any roommate declines, your pledge will be canceled and your funds remain secure.
               </Text>
             </View>
 
-            {/* Payment Method Selection */}
+            {/* Payment Method Section */}
             <Text style={styles.sectionTitle}>Payment Method</Text>
-            <View style={styles.paymentOptions}>
+            {!showPaymentOptions ? (
               <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'bank' && styles.selectedOption
-                ]}
-                onPress={() => setPaymentMethod('bank')}
+                style={styles.defaultPaymentCard}
+                onPress={() => setShowPaymentOptions(true)}
               >
                 <View style={styles.optionContent}>
-                  <MaterialIcons 
-                    name="account-balance" 
-                    size={24} 
-                    color={paymentMethod === 'bank' ? "#22c55e" : "#64748b"}
-                  />
+                  {paymentMethod === 'bank' ? (
+                    <MaterialIcons 
+                      name="account-balance" 
+                      size={24} 
+                      color="#22c55e" 
+                      style={styles.icon} 
+                    />
+                  ) : (
+                    <MaterialIcons 
+                      name="credit-card" 
+                      size={24} 
+                      color="#22c55e" 
+                      style={styles.icon} 
+                    />
+                  )}
                   <View>
-                    <Text style={styles.optionTitle}>Bank Account</Text>
-                    <Text style={styles.optionSubtitle}>No fees</Text>
+                    <Text style={styles.optionTitle}>
+                      {paymentMethod === 'bank' ? 'Bank Account' : 'Credit Card'}
+                    </Text>
+                    <Text style={styles.optionSubtitle}>
+                      {paymentMethod === 'bank' ? 'No fees' : '3% processing fee'}
+                    </Text>
                   </View>
                 </View>
-                {paymentMethod === 'bank' && (
-                  <MaterialIcons name="check-circle" size={20} color="#22c55e" />
-                )}
+                <Text style={styles.changeText}>Change</Text>
               </TouchableOpacity>
+            ) : (
+              <View style={styles.paymentOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === 'bank' && styles.selectedOption,
+                  ]}
+                  onPress={() => {
+                    setPaymentMethod('bank');
+                    setShowPaymentOptions(false);
+                  }}
+                >
+                  <View style={styles.optionContent}>
+                    <MaterialIcons 
+                      name="account-balance" 
+                      size={24} 
+                      color={paymentMethod === 'bank' ? '#22c55e' : '#64748b'} 
+                      style={styles.icon}
+                    />
+                    <View>
+                      <Text style={styles.optionTitle}>Bank Account</Text>
+                      <Text style={styles.optionSubtitle}>No fees</Text>
+                    </View>
+                  </View>
+                  {paymentMethod === 'bank' && (
+                    <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+                  )}
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'card' && styles.selectedOption
-                ]}
-                onPress={() => setPaymentMethod('card')}
-              >
-                <View style={styles.optionContent}>
-                  <MaterialIcons 
-                    name="credit-card" 
-                    size={24} 
-                    color={paymentMethod === 'card' ? "#22c55e" : "#64748b"}
-                  />
-                  <View>
-                    <Text style={styles.optionTitle}>Credit Card</Text>
-                    <Text style={styles.optionSubtitle}>3% processing fee</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === 'card' && styles.selectedOption,
+                  ]}
+                  onPress={() => {
+                    setPaymentMethod('card');
+                    setShowPaymentOptions(false);
+                  }}
+                >
+                  <View style={styles.optionContent}>
+                    <MaterialIcons 
+                      name="credit-card" 
+                      size={24} 
+                      color={paymentMethod === 'card' ? '#22c55e' : '#64748b'} 
+                      style={styles.icon}
+                    />
+                    <View>
+                      <Text style={styles.optionTitle}>Credit Card</Text>
+                      <Text style={styles.optionSubtitle}>3% processing fee</Text>
+                    </View>
                   </View>
-                </View>
-                {paymentMethod === 'card' && (
-                  <MaterialIcons name="check-circle" size={20} color="#22c55e" />
-                )}
-              </TouchableOpacity>
-            </View>
+                  {paymentMethod === 'card' && (
+                    <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
 
           {/* Fixed Bottom Section */}
           <View style={styles.bottomSection}>
             <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>Total to Pay</Text>
+              <Text style={styles.totalLabel}>Total to Pledge</Text>
               <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
             </View>
             <View style={styles.buttonRow}>
@@ -159,7 +204,7 @@ const AcceptServicePayment = ({
                 {isProcessing ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text style={styles.confirmButtonText}>Confirm Payment</Text>
+                  <Text style={styles.confirmButtonText}>Confirm Pledge</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -263,6 +308,21 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 12,
   },
+  defaultPaymentCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#fff',
+  },
+  changeText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   paymentOptions: {
     gap: 8,
   },
@@ -344,6 +404,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
+  },
+  icon: {
+    marginRight: 8,
   },
 });
 

@@ -63,10 +63,17 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
         {task.paymentRequired && (
           <View style={styles.paymentBadge}>
             <MaterialIcons name="schedule" size={12} color="#6366f1" />
-            <Text style={styles.paymentBadgeText}>Due upfront</Text>
+            <Text style={styles.paymentBadgeText}>Pledge Pending</Text>
           </View>
         )}
       </View>
+
+      {/* Friendly Pledge Messaging */}
+      {task.paymentRequired && (
+        <Text style={styles.pledgeInfoText}>
+          By confirming your pledge, you're agreeing to cover your share of the expense as long as everyone else does too. 
+        </Text>
+      )}
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -82,14 +89,8 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
           onPress={handleAccept} 
           style={[styles.button, styles.acceptButton]}
         >
-          <MaterialIcons 
-            name={task.paymentRequired ? "lock" : "check"} 
-            size={16} 
-            color="#22c55e" 
-          />
-          <Text style={styles.acceptText}>
-            {task.paymentRequired ? 'Pay & Accept' : 'Accept'}
-          </Text>
+          <MaterialIcons name="check" size={16} color="#22c55e" />
+          <Text style={styles.acceptText}>Confirm Pledge</Text>
         </TouchableOpacity>
       </View>
 
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   amount: {
     fontSize: 18,
@@ -169,6 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#6366f1',
+  },
+  pledgeInfoText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
   actions: {
     flexDirection: 'row',
