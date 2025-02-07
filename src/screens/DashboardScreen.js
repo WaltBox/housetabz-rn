@@ -9,39 +9,61 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  SafeAreaView,
 } from 'react-native';
 import { VictoryPie } from 'victory-native';
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import ServiceRequestTask from '../components/ServiceRequestTask';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 
 const { width } = Dimensions.get('window');
 
+// ---------------------
+// Dashboard Header
+// ---------------------
+const DashboardHeader = () => (
+  <View style={styles.header}>
+    <Text style={styles.headerTitle}>Dashboard</Text>
+    <TouchableOpacity style={styles.headerButton}>
+    
+    </TouchableOpacity>
+  </View>
+);
+
+// ---------------------
 // Helper Components
+// ---------------------
 const SummaryCard = ({ icon, label, amount }) => (
   <View style={styles.summaryCard}>
     <View style={styles.summaryHeader}>
-      <MaterialIcons name={icon} size={24} color="#22c55e" />
+      <MaterialIcons name={icon} size={24} color="#22c55e" style={styles.icon} />
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
     <Text style={styles.summaryAmount}>${amount.toFixed(2)}</Text>
   </View>
 );
 
-const ChargesPieChart = ({ title, amount, data, onSegmentPress, activeChart, selectedSegment }) => (
+const ChargesPieChart = ({
+  title,
+  amount,
+  data,
+  onSegmentPress,
+  activeChart,
+  selectedSegment,
+}) => (
   <View style={styles.chartCard}>
     <View style={styles.chartHeader}>
       <Text style={styles.chartTitle}>{title}</Text>
       <TouchableOpacity style={styles.chartButton}>
-        <MaterialIcons name="more-horiz" size={24} color="#64748b" />
+        <MaterialIcons name="more-horiz" size={24} color="#64748b" style={styles.icon} />
       </TouchableOpacity>
     </View>
     <View style={styles.chartContainer}>
       <Text style={styles.centerAmount}>${amount.toFixed(2)}</Text>
       <VictoryPie
         data={data}
-        colorScale={data.map(item => item.color)}
+        colorScale={data.map((item) => item.color)}
         width={width - 80}
         height={220}
         innerRadius={70}
@@ -49,22 +71,27 @@ const ChargesPieChart = ({ title, amount, data, onSegmentPress, activeChart, sel
         animate={{ duration: 500, easing: 'cubic' }}
         style={{
           labels: { fill: '#1e293b', fontSize: 14, fontWeight: '500' },
-          data: { stroke: '#fff', strokeWidth: 2 }
+          data: { stroke: '#fff', strokeWidth: 2 },
         }}
-        labels={({ datum, index }) => 
+        labels={({ datum, index }) =>
           activeChart && selectedSegment === index ? `${datum.x}\n$${datum.y}` : ''
         }
-        events={[{
-          target: 'data',
-          eventHandlers: {
-            onPressIn: (_, props) => onSegmentPress(props),
+        events={[
+          {
+            target: 'data',
+            eventHandlers: {
+              onPressIn: (_, props) => onSegmentPress(props),
+            },
           },
-        }]}
+        ]}
       />
     </View>
   </View>
 );
 
+// ---------------------
+// Main Dashboard Screen
+// ---------------------
 const DashboardScreen = () => {
   // State Management
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
@@ -82,6 +109,7 @@ const DashboardScreen = () => {
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
 
+  // Update active task index on horizontal scroll
   const handleScroll = (event) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffset / (width * 0.75 + 12));
@@ -99,36 +127,42 @@ const DashboardScreen = () => {
       const { balance = 0, charges = [], houseId } = userResponse.data;
       setYourBalance(balance);
 
-      // Process charges for pie chart
-      const processedCharges = charges.length > 0 
-        ? charges.map(charge => ({
-            x: charge.name || 'Charge',
-            y: parseFloat(charge.amount) || 0,
-            color: charge.paid ? '#22c55e' : '#ef4444',
-          }))
-        : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
+      // Process charges for the pie chart
+      const processedCharges =
+        charges.length > 0
+          ? charges.map((charge) => ({
+              x: charge.name || 'Charge',
+              y: parseFloat(charge.amount) || 0,
+              color: charge.paid ? '#22c55e' : '#ef4444',
+            }))
+          : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
       setYourChargesData(processedCharges);
 
       // Fetch tasks
       const tasksResponse = await axios.get('http://localhost:3004/api/tasks/user/1');
-      const pendingTasks = tasksResponse.data.tasks.filter(task => task.status === false);
+      const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
       setTasks(pendingTasks);
       setTaskCount(pendingTasks.length);
 
-      // Fetch house data
+      // Fetch house data if available
       if (houseId) {
         const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
         const { bills = [], users = [] } = houseResponse.data;
 
-        const totalHouseBalance = bills.reduce((sum, bill) => 
-          sum + (parseFloat(bill.amount) || 0), 0);
+        const totalHouseBalance = bills.reduce(
+          (sum, bill) => sum + (parseFloat(bill.amount) || 0),
+          0
+        );
         setHouseBalance(totalHouseBalance);
 
         const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
         const roommateData = users.map((user, index) => ({
           x: user.username || `User ${index + 1}`,
-          y: user.charges?.reduce((sum, charge) => 
-            sum + (parseFloat(charge.amount) || 0), 0) || 1,
+          y:
+            user.charges?.reduce(
+              (sum, charge) => sum + (parseFloat(charge.amount) || 0),
+              0
+            ) || 1,
           color: colors[index % colors.length],
         }));
         setRoommateChartData(roommateData);
@@ -149,12 +183,13 @@ const DashboardScreen = () => {
     fetchData();
   }, []);
 
-  // Event Handlers
+  // Refresh Control Handler
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
   };
 
+  // Handle pie chart segment press
   const handlePress = (chartName, data, index) => {
     if (activeChart === chartName && selectedSegment === index) {
       setActiveChart(null);
@@ -165,6 +200,7 @@ const DashboardScreen = () => {
     }
   };
 
+  // Task action handler (accept/reject)
   const handleTaskAction = async (data, action) => {
     try {
       const taskId = typeof data === 'object' ? data.taskId : data;
@@ -174,7 +210,7 @@ const DashboardScreen = () => {
         setIsPaymentModalVisible(true);
       } else {
         await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
-          response: action
+          response: action,
         });
         fetchData();
       }
@@ -183,12 +219,13 @@ const DashboardScreen = () => {
     }
   };
 
+  // Payment modal success handler
   const handlePaymentSuccess = async () => {
     if (selectedPaymentTask) {
       try {
         await axios.patch(`http://localhost:3004/api/tasks/${selectedPaymentTask.taskId}`, {
           response: 'accepted',
-          paymentStatus: 'completed'
+          paymentStatus: 'completed',
         });
         fetchData();
       } catch (error) {
@@ -199,33 +236,37 @@ const DashboardScreen = () => {
     setSelectedPaymentTask(null);
   };
 
-  // Loading and Error States
+  // ---------------------
+  // Render Loading & Error States
+  // ---------------------
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#22c55e" />
         <Text style={styles.loadingText}>Loading dashboard...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer}>
         <MaterialIcons name="error-outline" size={48} color="#ef4444" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  // ---------------------
   // Main Render
+  // ---------------------
   return (
-    <>
+    <SafeAreaView style={styles.container}>
+      <DashboardHeader />
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
@@ -235,7 +276,7 @@ const DashboardScreen = () => {
         <View style={styles.chartCard}>
           <View style={styles.taskHeader}>
             <View style={styles.taskTitleGroup}>
-              <MaterialIcons name="assignment" size={20} color="#22c55e" />
+              <MaterialIcons name="assignment" size={20} color="#22c55e" style={styles.icon} />
               <Text style={styles.chartTitle}>Tasks</Text>
             </View>
             {taskCount > 0 && (
@@ -244,7 +285,6 @@ const DashboardScreen = () => {
               </View>
             )}
           </View>
-
           {tasks.length > 0 ? (
             <View>
               <FlatList
@@ -274,10 +314,11 @@ const DashboardScreen = () => {
                     key={index}
                     style={[
                       styles.paginationDot,
-                      { 
-                        backgroundColor: index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
+                      {
+                        backgroundColor:
+                          index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
                         width: index === activeTaskIndex ? 12 : 6,
-                      }
+                      },
                     ]}
                   />
                 ))}
@@ -285,7 +326,7 @@ const DashboardScreen = () => {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="check-circle" size={48} color="#22c55e" />
+              <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
               <Text style={styles.emptyTitle}>All Caught Up!</Text>
               <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
             </View>
@@ -299,11 +340,7 @@ const DashboardScreen = () => {
             label="Your Balance"
             amount={yourBalance}
           />
-          <SummaryCard
-            icon="group"
-            label="House Balance"
-            amount={houseBalance}
-          />
+          <SummaryCard icon="group" label="House Balance" amount={houseBalance} />
         </View>
 
         {/* Charts */}
@@ -333,11 +370,12 @@ const DashboardScreen = () => {
         onSuccess={handlePaymentSuccess}
         taskData={selectedPaymentTask}
       />
-    </>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // General Layout
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -350,7 +388,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
+    paddingHorizontal: 24,
   },
+  // Header Styles
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  headerButton: {
+    padding: 4,
+  },
+  // Loading & Error Text
   loadingText: {
     marginTop: 12,
     fontSize: 16,
@@ -374,17 +434,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Summary Cards
   summaryContainer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
     marginBottom: 24,
-    gap: 16,
+    justifyContent: 'space-between',
   },
   summaryCard: {
     flex: 1,
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 16,
+    marginHorizontal: 8,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -395,7 +457,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    gap: 8,
   },
   summaryLabel: {
     fontSize: 14,
@@ -406,6 +467,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
   },
+  // Chart Card
   chartCard: {
     backgroundColor: 'white',
     marginHorizontal: 24,
@@ -444,6 +506,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     zIndex: 1,
   },
+  // Task Section
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -453,7 +516,6 @@ const styles = StyleSheet.create({
   taskTitleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   taskBadge: {
     backgroundColor: '#f0fdf4',
@@ -480,11 +542,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
-    gap: 6,
   },
   paginationDot: {
     height: 6,
     borderRadius: 3,
+    marginHorizontal: 3,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -500,6 +562,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#64748b',
+  },
+  // Icon Spacing
+  icon: {
+    marginRight: 8,
   },
 });
 

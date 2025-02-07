@@ -6,12 +6,16 @@ import ModalComponent from '../components/ModalComponent';
 import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
 import UserFeedbackModal from '../modals/UserFeedbackModal';
+import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 
 const TopBar = () => {
   const userId = 1; // Replace with dynamic user ID as needed
+  
+  // Modal visibility states
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
   const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
+  const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   // Fetch notifications
@@ -34,6 +38,11 @@ const TopBar = () => {
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval); // Cleanup interval on component unmount
   }, [userId]);
+
+  const handlePaymentMethodsOpen = () => {
+    setIsSettingsVisible(false); // Close settings modal
+    setIsPaymentMethodsVisible(true); // Open payment methods modal
+  };
 
   return (
     <View style={styles.headerContainer}>
@@ -78,7 +87,15 @@ const TopBar = () => {
         visible={isSettingsVisible}
         onClose={() => setIsSettingsVisible(false)}
       >
-        <SettingsModal />
+        <SettingsModal onNavigateToPaymentMethods={handlePaymentMethodsOpen} />
+      </ModalComponent>
+
+      {/* Payment Methods Modal */}
+      <ModalComponent
+        visible={isPaymentMethodsVisible}
+        onClose={() => setIsPaymentMethodsVisible(false)}
+      >
+        <PaymentMethodsSettings />
       </ModalComponent>
 
       {/* User Feedback Modal */}
@@ -107,7 +124,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginLeft: 5,
     marginTop: 32,
-    // fontFamily: 'Montserrat_700Bold', // Use the bold font
   },
   iconContainer: {
     flexDirection: 'row',
@@ -115,7 +131,7 @@ const styles = StyleSheet.create({
     marginTop: 33,
   },
   icon: {
-    marginLeft: 16, // Space between icons
+    marginLeft: 16,
   },
   notificationIconContainer: {
     position: 'relative',
