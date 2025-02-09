@@ -9,44 +9,31 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://localhost:3004'; // Change this to your API URL
+const API_URL = 'http://localhost:3004';
 
 const PaymentMethodsSettings = () => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { user } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchPaymentMethods();
-  }, []);
-
-  const getAuthToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      return token;
-    } catch (error) {
-      console.error('Error getting auth token:', error);
-      return null;
+    if (user?.id) {
+      fetchPaymentMethods();
     }
-  };
+  }, [user?.id]);
 
   const fetchPaymentMethods = async () => {
     try {
-      const token = await getAuthToken();
-      if (!token) {
+      if (!user) {
         Alert.alert('Error', 'Please log in to view payment methods');
         return;
       }
 
-      const response = await axios.get(`${API_URL}/api/payment-methods`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
+      const response = await axios.get(`${API_URL}/api/payment-methods`);
       setPaymentMethods(response.data.paymentMethods || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
@@ -56,26 +43,20 @@ const PaymentMethodsSettings = () => {
 
   const handleAddPaymentMethod = async () => {
     try {
-      setLoading(true);
-      const token = await getAuthToken();
-      
-      if (!token) {
+      if (!user) {
         Alert.alert('Error', 'Please log in to add a payment method');
         return;
       }
 
-      // Get setupIntent client secret
-      const response = await axios.post(`${API_URL}/api/payment-methods/setup-intent`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      setLoading(true);
 
+      // Get setupIntent client secret
+      const response = await axios.post(`${API_URL}/api/payment-methods/setup-intent`);
       const { clientSecret } = response.data;
 
       // Initialize Payment Sheet
       const { error: initError } = await initPaymentSheet({
-        setupIntentClientSecret: clientSecret, // Note: changed from paymentIntentClientSecret
+        setupIntentClientSecret: clientSecret,
         merchantDisplayName: 'HouseTabz',
         style: 'automatic',
         returnURL: 'housetabz://stripe-redirect',
@@ -91,14 +72,12 @@ const PaymentMethodsSettings = () => {
 
       if (presentError) {
         if (presentError.code === 'Canceled') {
-          // User canceled the payment sheet
           return;
         }
         Alert.alert('Error', presentError.message);
         return;
       }
 
-      // Success
       Alert.alert('Success', 'Payment method added successfully');
       await fetchPaymentMethods();
     } catch (error) {
@@ -111,15 +90,9 @@ const PaymentMethodsSettings = () => {
 
   const handleSetDefault = async (methodId) => {
     try {
-      const token = await getAuthToken();
-      if (!token) return;
+      if (!user) return;
 
-      await axios.put(`${API_URL}/api/payment-methods/${methodId}/default`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
+      await axios.put(`${API_URL}/api/payment-methods/${methodId}/default`);
       await fetchPaymentMethods();
     } catch (error) {
       console.error('Error setting default payment method:', error);
@@ -128,6 +101,8 @@ const PaymentMethodsSettings = () => {
   };
 
   const handleDelete = async (methodId) => {
+    if (!user) return;
+
     Alert.alert(
       "Remove Payment Method",
       "Are you sure you want to remove this payment method?",
@@ -138,14 +113,7 @@ const PaymentMethodsSettings = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              const token = await getAuthToken();
-              if (!token) return;
-
-              await axios.delete(`${API_URL}/api/payment-methods/${methodId}`, {
-                headers: {
-                  Authorization: `Bearer ${token}`
-                }
-              });
+              await axios.delete(`${API_URL}/api/payment-methods/${methodId}`);
               await fetchPaymentMethods();
             } catch (error) {
               console.error('Error removing payment method:', error);

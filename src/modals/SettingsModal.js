@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { 
   View, 
   Text, 
@@ -11,6 +12,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 
 const SettingsModal = ({ onNavigateToPaymentMethods }) => {
+  const {user, logout} = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -58,6 +60,27 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
     </TouchableOpacity>
   );
 
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
   return (
     <View style={styles.container}>
       <ScrollView 
@@ -160,10 +183,10 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
 
         {/* Sign Out */}
         <View style={styles.signOutContainer}>
-          <TouchableOpacity 
-            style={styles.signOutButton}
-            onPress={() => Alert.alert('Sign Out', 'Are you sure you want to sign out?')}
-          >
+        <TouchableOpacity 
+    style={styles.signOutButton}
+    onPress={handleSignOut}
+  >
             <MaterialIcons name="exit-to-app" size={20} color="#ef4444" />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>

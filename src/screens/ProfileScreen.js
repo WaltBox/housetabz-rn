@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 import WaveBackground from '../components/WaveBackground';
 import ModalComponent from '../components/ModalComponent';
 import UserTabModal from '../modals/UserTabModal';
@@ -29,7 +30,8 @@ const DEFAULT_USER = {
 };
 
 const ProfileScreen = () => {
-  const [user, setUser] = useState(DEFAULT_USER);
+  const { user: authUser } = useAuth();
+  const [userData, setUserData] = useState(DEFAULT_USER);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,9 +39,15 @@ const ProfileScreen = () => {
   const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
 
   const fetchUserData = useCallback(async () => {
+    if (!authUser?.id) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.get('http://localhost:3004/api/users/1');
-      setUser({
+      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}`);
+      setUserData({
         ...DEFAULT_USER,
         ...response.data,
         house: response.data.house || { name: 'Unknown' },
@@ -47,13 +55,13 @@ const ProfileScreen = () => {
       });
       setError(null);
     } catch (err) {
-      setError('Unable to load user data. Please try again.');
       console.error('Error fetching user data:', err);
+      setError('Unable to load user data. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [authUser?.id]);
 
   useEffect(() => {
     fetchUserData();
@@ -89,7 +97,6 @@ const ProfileScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Wave Background Component */}
       <WaveBackground style={styles.waveBackground} />
 
       <ScrollView
@@ -117,14 +124,14 @@ const ProfileScreen = () => {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.nameText}>{user.username}</Text>
-          <Text style={styles.houseBadge}>{user.house.name}</Text>
+          <Text style={styles.nameText}>{userData.username}</Text>
+          <Text style={styles.houseBadge}>{userData.house.name}</Text>
         </View>
 
         {/* Stats Cards Container */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>${user.credit?.toFixed(2) || '0.00'}</Text>
+            <Text style={styles.statValue}>${userData.credit?.toFixed(2) || '0.00'}</Text>
             <Text style={styles.statLabel}>Available Credit</Text>
             <MaterialIcons 
               name="attach-money" 
@@ -135,7 +142,7 @@ const ProfileScreen = () => {
           </View>
           
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{user.points || 0}</Text>
+            <Text style={styles.statValue}>{userData.points || 0}</Text>
             <Text style={styles.statLabel}>Loyalty Points</Text>
             <MaterialIcons 
               name="star" 
@@ -151,7 +158,7 @@ const ProfileScreen = () => {
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Next Level Progress</Text>
             <Text style={styles.progressSubtitle}>
-              {Math.max(100 - (user.points || 0), 0)} points to go
+              {Math.max(100 - (userData.points || 0), 0)} points to go
             </Text>
           </View>
           <View style={styles.progressBarBackground}>
@@ -159,8 +166,8 @@ const ProfileScreen = () => {
               style={[
                 styles.progressBarFill,
                 { 
-                  width: `${Math.min((user.points || 0), 100)}%`,
-                  backgroundColor: user.points >= 100 ? '#f59e0b' : '#22c55e'
+                  width: `${Math.min((userData.points || 0), 100)}%`,
+                  backgroundColor: userData.points >= 100 ? '#f59e0b' : '#22c55e'
                 }
               ]}
             />
@@ -205,14 +212,14 @@ const ProfileScreen = () => {
         visible={isUserTabVisible}
         onClose={() => setIsUserTabVisible(false)}
       >
-        <UserTabModal user={user} />
+        <UserTabModal user={userData} />
       </ModalComponent>
 
       <ModalComponent
         visible={isTransactionsModalVisible}
         onClose={() => setIsTransactionsModalVisible(false)}
       >
-        <UserTransactionsModal user={user} />
+        <UserTransactionsModal user={userData} />
       </ModalComponent>
     </View>
   );

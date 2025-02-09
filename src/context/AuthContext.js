@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_URL, API_ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext({});
 
@@ -10,21 +11,20 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUser();
+    loadStoredUser();
   }, []);
 
-  const checkUser = async () => {
+  const loadStoredUser = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const userData = await AsyncStorage.getItem('userData');
-      
-      if (token && userData) {
-        // Set default auth header
+      const storedUser = await AsyncStorage.getItem('userData');
+
+      if (token && storedUser) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setUser(JSON.parse(userData));
+        setUser(JSON.parse(storedUser));
       }
     } catch (error) {
-      console.error('Error checking auth state:', error);
+      console.error('Error loading stored user:', error);
     } finally {
       setLoading(false);
     }
@@ -32,43 +32,64 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:3004/api/auth/login', {
+      console.log('Attempting login...', { email });
+      console.log('Using API URL:', API_URL);
+
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.login}`, {
         email,
         password
       });
 
-      const { token, data } = response.data;
-      
-      // Save token and user data
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-      
-      // Set default auth header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Update state
-      setUser(data.user);
-      
-      return true;
+      console.log('Login response:', response.data);
+
+      // Check if we have the token and user data
+      if (!response.data.data?.token || !response.data.data?.user) {
+        throw new Error('Invalid response structure from server');
+      }
+
+      const { token, user } = response.data.data;
+
+      // Store auth data
+      if (token && user) {
+        await AsyncStorage.setItem('userToken', token);
+        await AsyncStorage.setItem('userData', JSON.stringify(user));
+
+        // Set axios default header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+        // Update state
+        setUser(user);
+        console.log('Login successful:', user);
+
+        return true;
+      } else {
+        throw new Error('Missing token or user data');
+      }
     } catch (error) {
       console.error('Login error:', error);
+      console.error('Error details:', error.response?.data);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      // Clear storage
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('userData');
-      
-      // Clear auth header
       delete axios.defaults.headers.common['Authorization'];
-      
-      // Clear state
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const register = async (userData) => {
+    try {
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.register}`, userData);
+      return response.data;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     }
   };
 
@@ -79,7 +100,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
-        isAuthenticated: !!user,
+        register,
+        isAuthenticated: !!user
       }}
     >
       {children}
