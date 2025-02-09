@@ -10,24 +10,32 @@ import {
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 const NotificationsModal = ({ onClose }) => {
-  const userId = 1;
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('unread');
   const [toastMessage, setToastMessage] = useState(null);
   const [toastOpacity] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (user?.id) {
+      fetchNotifications();
+    }
+  }, [user?.id]);
 
   const fetchNotifications = async () => {
     try {
+      if (!user?.id) {
+        console.error('No authenticated user found');
+        return;
+      }
+
       const response = await axios.get(
-        `http://localhost:3004/api/users/${userId}/notifications`
+        `http://localhost:3004/api/users/${user.id}/notifications`
       );
       setNotifications(
         response.data.map((notification) => ({
@@ -59,8 +67,13 @@ const NotificationsModal = ({ onClose }) => {
 
   const markAsRead = async (notificationId) => {
     try {
+      if (!user?.id) {
+        console.error('No authenticated user found');
+        return;
+      }
+
       await axios.patch(
-        `http://localhost:3004/api/users/${userId}/notifications/${notificationId}`
+        `http://localhost:3004/api/users/${user.id}/notifications/${notificationId}`
       );
       setNotifications((prev) =>
         prev.map((n) =>
@@ -181,7 +194,7 @@ const NotificationsModal = ({ onClose }) => {
             </Text>
             <Text style={styles.emptyText}>
               {filter === 'unread' 
-                ? 'Youre up to date with all your notifications' 
+                ? 'You\'re up to date with all your notifications' 
                 : 'Previously read notifications will appear here'}
             </Text>
           </View>
@@ -198,6 +211,7 @@ const NotificationsModal = ({ onClose }) => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

@@ -14,6 +14,7 @@ import {
 import { VictoryPie } from 'victory-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import ServiceRequestTask from '../components/ServiceRequestTask';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 
@@ -26,7 +27,6 @@ const DashboardHeader = () => (
   <View style={styles.header}>
     <Text style={styles.headerTitle}>Dashboard</Text>
     <TouchableOpacity style={styles.headerButton}>
-    
     </TouchableOpacity>
   </View>
 );
@@ -89,11 +89,8 @@ const ChargesPieChart = ({
   </View>
 );
 
-// ---------------------
-// Main Dashboard Screen
-// ---------------------
 const DashboardScreen = () => {
-  // State Management
+  const { user } = useAuth();
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [yourBalance, setYourBalance] = useState(0);
   const [yourChargesData, setYourChargesData] = useState([]);
@@ -109,21 +106,23 @@ const DashboardScreen = () => {
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
 
-  // Update active task index on horizontal scroll
   const handleScroll = (event) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffset / (width * 0.75 + 12));
     setActiveTaskIndex(index);
   };
 
-  // Data Fetching
   const fetchData = async () => {
     try {
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
       setError(null);
       setLoading(true);
 
       // Fetch user data
-      const userResponse = await axios.get('http://localhost:3004/api/users/1');
+      const userResponse = await axios.get(`http://localhost:3004/api/users/${user.id}`);
       const { balance = 0, charges = [], houseId } = userResponse.data;
       setYourBalance(balance);
 
@@ -139,7 +138,7 @@ const DashboardScreen = () => {
       setYourChargesData(processedCharges);
 
       // Fetch tasks
-      const tasksResponse = await axios.get('http://localhost:3004/api/tasks/user/1');
+      const tasksResponse = await axios.get(`http://localhost:3004/api/tasks/user/${user.id}`);
       const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
       setTasks(pendingTasks);
       setTaskCount(pendingTasks.length);
@@ -158,8 +157,7 @@ const DashboardScreen = () => {
         const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
         const roommateData = users.map((user, index) => ({
           x: user.username || `User ${index + 1}`,
-          y:
-            user.charges?.reduce(
+          y: user.charges?.reduce(
               (sum, charge) => sum + (parseFloat(charge.amount) || 0),
               0
             ) || 1,
@@ -172,7 +170,7 @@ const DashboardScreen = () => {
       }
     } catch (err) {
       console.error('Dashboard data fetch error:', err);
-      setError(err.response?.data?.message || 'Unable to load dashboard data. Please try again.');
+      setError(err.message || 'Unable to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -181,15 +179,13 @@ const DashboardScreen = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.id]); // Refetch when user ID changes
 
-  // Refresh Control Handler
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
   };
 
-  // Handle pie chart segment press
   const handlePress = (chartName, data, index) => {
     if (activeChart === chartName && selectedSegment === index) {
       setActiveChart(null);
@@ -200,7 +196,6 @@ const DashboardScreen = () => {
     }
   };
 
-  // Task action handler (accept/reject)
   const handleTaskAction = async (data, action) => {
     try {
       const taskId = typeof data === 'object' ? data.taskId : data;
@@ -211,6 +206,7 @@ const DashboardScreen = () => {
       } else {
         await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
           response: action,
+          userId: user.id
         });
         fetchData();
       }
@@ -219,13 +215,13 @@ const DashboardScreen = () => {
     }
   };
 
-  // Payment modal success handler
   const handlePaymentSuccess = async () => {
     if (selectedPaymentTask) {
       try {
         await axios.patch(`http://localhost:3004/api/tasks/${selectedPaymentTask.taskId}`, {
           response: 'accepted',
           paymentStatus: 'completed',
+          userId: user.id
         });
         fetchData();
       } catch (error) {
@@ -236,9 +232,6 @@ const DashboardScreen = () => {
     setSelectedPaymentTask(null);
   };
 
-  // ---------------------
-  // Render Loading & Error States
-  // ---------------------
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -260,9 +253,6 @@ const DashboardScreen = () => {
     );
   }
 
-  // ---------------------
-  // Main Render
-  // ---------------------
   return (
     <SafeAreaView style={styles.container}>
       <DashboardHeader />
@@ -272,66 +262,67 @@ const DashboardScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
         }
       >
-        {/* Tasks Section */}
-        <View style={styles.chartCard}>
-          <View style={styles.taskHeader}>
-            <View style={styles.taskTitleGroup}>
-              <MaterialIcons name="assignment" size={20} color="#22c55e" style={styles.icon} />
-              <Text style={styles.chartTitle}>Tasks</Text>
-            </View>
-            {taskCount > 0 && (
-              <View style={styles.taskBadge}>
-                <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
-              </View>
-            )}
+        {/* Rest of your JSX remains the same */}
+      {/* Tasks Section */}
+<View style={styles.chartCard}>
+  <View style={styles.taskHeader}>
+    <View style={styles.taskTitleGroup}>
+      <MaterialIcons name="assignment" size={20} color="#22c55e" style={styles.icon} />
+      <Text style={styles.chartTitle}>Tasks</Text>
+    </View>
+    {taskCount > 0 && (
+      <View style={styles.taskBadge}>
+        <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
+      </View>
+    )}
+  </View>
+  {tasks.length > 0 ? (
+    <View>
+      <FlatList
+        data={tasks}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.taskItemContainer}>
+            <ServiceRequestTask
+              task={item}
+              onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
+              onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
+            />
           </View>
-          {tasks.length > 0 ? (
-            <View>
-              <FlatList
-                data={tasks}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={styles.taskItemContainer}>
-                    <ServiceRequestTask
-                      task={item}
-                      onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
-                      onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
-                    />
-                  </View>
-                )}
-                contentContainerStyle={styles.taskListContent}
-                decelerationRate="fast"
-                snapToInterval={width * 0.75 + 12}
-                snapToAlignment="start"
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-              />
-              <View style={styles.paginationDots}>
-                {tasks.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.paginationDot,
-                      {
-                        backgroundColor:
-                          index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
-                        width: index === activeTaskIndex ? 12 : 6,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
-              <Text style={styles.emptyTitle}>All Caught Up!</Text>
-              <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
-            </View>
-          )}
-        </View>
+        )}
+        contentContainerStyle={styles.taskListContent}
+        decelerationRate="fast"
+        snapToInterval={width * 0.75 + 12}
+        snapToAlignment="start"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      />
+      <View style={styles.paginationDots}>
+        {tasks.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.paginationDot,
+              {
+                backgroundColor:
+                  index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
+                width: index === activeTaskIndex ? 12 : 6,
+              },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  ) : (
+    <View style={styles.emptyContainer}>
+      <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
+      <Text style={styles.emptyTitle}>All Caught Up!</Text>
+      <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
+    </View>
+  )}
+</View>
 
         {/* Balance Summary */}
         <View style={styles.summaryContainer}>

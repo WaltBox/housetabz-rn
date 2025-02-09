@@ -1,3 +1,4 @@
+// src/navigation/BottomBar.js
 import * as React from 'react';
 import {
   View,
@@ -5,7 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { NavigationContainer, useNavigation, useNavigationState } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -20,6 +21,7 @@ import ViewCompanyCard from '../modals/ViewCompanyCard';
 import ViewPlansScreen from '../screens/ViewPlansScreen';
 import ViewPlansCard from '../screens/ViewPlansCard';
 import ViewForm from '../screens/ViewForm';
+
 const Tab = createBottomTabNavigator();
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
@@ -40,14 +42,14 @@ const MyHouseStack = () => (
 );
 
 const MarketplaceStack = () => (
-    <Market.Navigator screenOptions={{ headerShown: false }}>
-      <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
-      <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
-      <Market.Screen name="ViewPlans" component={ViewPlansScreen} />
-      <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
-      <Market.Screen name="ViewForm" component={ViewForm} />
-    </Market.Navigator>
-  );
+  <Market.Navigator screenOptions={{ headerShown: false }}>
+    <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+    <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
+    <Market.Screen name="ViewPlans" component={ViewPlansScreen} />
+    <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
+    <Market.Screen name="ViewForm" component={ViewForm} />
+  </Market.Navigator>
+);
 
 const ProfileStack = () => (
   <Profile.Navigator screenOptions={{ headerShown: false }}>
@@ -70,10 +72,9 @@ const FloatingButton = () => {
 
   const isMakePaymentScreen = currentRouteName === 'Make Payment';
 
-  // Using require with Expo
   const logo = isMakePaymentScreen
-    ? require('../../assets/housetabzwinklogo.png')  // Adjust path based on your structure
-    : require('../../assets/housetabzlogo.png');     // Adjust path based on your structure
+    ? require('../../assets/housetabzwinklogo.png')
+    : require('../../assets/housetabzlogo.png');
 
   return (
     <TouchableOpacity
@@ -84,14 +85,13 @@ const FloatingButton = () => {
     </TouchableOpacity>
   );
 };
-  
 
 const TabNavigator = () => (
   <View style={{ flex: 1 }}>
+    <TopBar />
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          console.log('Icon size:', size);
           let iconName;
           if (route.name === 'Dashboard') {
             iconName = focused ? 'grid' : 'grid-outline';
@@ -116,18 +116,8 @@ const TabNavigator = () => (
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
 
-    {/* Floating Button */}
     <FloatingButton />
   </View>
-);
-
-const App = () => (
-  <React.Fragment>
-    <TopBar />
-    <NavigationContainer>
-      <TabNavigator />
-    </NavigationContainer>
-  </React.Fragment>
 );
 
 const styles = StyleSheet.create({
@@ -153,4 +143,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
+export default TabNavigator;
