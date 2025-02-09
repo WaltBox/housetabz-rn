@@ -8,10 +8,14 @@ import {
   Dimensions,
   RefreshControl,
   ActivityIndicator,
+  Share,
+  Clipboard,
+  Platform,
 } from "react-native";
 import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
 import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useAuth } from '../context/AuthContext';
 import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
@@ -19,24 +23,51 @@ import PaidHouseTabz from "../modals/PaidHouseTabz";
 const { width } = Dimensions.get('window');
 
 const HouseTabzScreen = () => {
+  const { user } = useAuth();
   const [house, setHouse] = useState(null);
   const [error, setError] = useState(null);
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  const getInviteLink = () => `https://housetabz.com/join/${user?.houseId}`;
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Join my house on HouseTabz!\n${getInviteLink()}`,
+        url: getInviteLink(),
+        title: 'Join my house on HouseTabz'
+      });
+      if (result.action === Share.sharedAction) setShowInviteModal(false);
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
+  };
+
+  const copyToClipboard = () => {
+    Clipboard.setString(getInviteLink());
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2000);
+  };
 
   const fetchHouseData = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:3004/api/houses/1"
-      );
+      if (!user?.houseId) {
+        setError("No house assigned. Please join a house first.");
+        setLoading(false);
+        return;
+      }
+      const response = await axios.get(`http://localhost:3004/api/houses/${user.houseId}`);
       setHouse(response.data);
       setError(null);
     } catch (err) {
-      setError("Failed to load house data");
-      console.error(err);
+      console.error('Error fetching house data:', err);
+      setError(err.response?.data?.message || "Failed to load house data");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -44,8 +75,8 @@ const HouseTabzScreen = () => {
   };
 
   useEffect(() => {
-    fetchHouseData();
-  }, []);
+    if (user?.id) fetchHouseData();
+  }, [user?.id, user?.houseId]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -69,24 +100,54 @@ const HouseTabzScreen = () => {
     };
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchHouseData}>
-          <Text style={styles.retryButtonText}>Retry</Text>
+  const InviteModal = () => (
+    <View style={styles.inviteModalContent}>
+      <Text style={styles.inviteTitle}>Invite Roommates</Text>
+      <Text style={styles.inviteDescription}>
+        Share this link with your roommates to join your house
+      </Text>
+      
+      <View style={styles.linkContainer}>
+        <Text style={styles.linkText} numberOfLines={1}>{getInviteLink()}</Text>
+        <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+          <MaterialIcons 
+            name={inviteCopied ? "check" : "content-copy"} 
+            size={20} 
+            color={inviteCopied ? "#22c55e" : "#64748b"} 
+          />
         </TouchableOpacity>
       </View>
-    );
-  }
+
+      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <MaterialIcons name="share" size={20} color="white" />
+        <Text style={styles.shareButtonText}>Share Invite Link</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) return (
+    <View style={styles.centerContainer}>
+      <ActivityIndicator size="large" color="#22c55e" />
+    </View>
+  );
+
+  if (error) return (
+    <View style={styles.centerContainer}>
+      <MaterialIcons name="error-outline" size={48} color="#ef4444" />
+      <Text style={styles.errorText}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={fetchHouseData}>
+        <Text style={styles.retryButtonText}>Retry</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (!user?.houseId) return (
+    <View style={styles.centerContainer}>
+      <MaterialIcons name="home" size={48} color="#64748b" />
+      <Text style={styles.errorText}>No House Assigned</Text>
+      <Text style={styles.subErrorText}>Join a house to view this screen</Text>
+    </View>
+  );
 
   const hsiProgress = house ? house.hsi / 100 : 0;
 
@@ -103,13 +164,23 @@ const HouseTabzScreen = () => {
           />
         }
       >
-        {/* Header Section */}
+        {/* Improved Header Section */}
         <View style={styles.header}>
-          <Text style={styles.houseName}>{house?.name || "Loading..."}</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.houseName} numberOfLines={1}>
+              {house?.name || "Loading..."}
+            </Text>
+            <TouchableOpacity 
+              style={styles.inviteButton}
+              onPress={() => setShowInviteModal(true)}
+            >
+              <MaterialIcons name="link" size={18} color="white" />
+              <Text style={styles.inviteButtonText}>Invite</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.underline} />
         </View>
 
-        {/* HSI Progress Section */}
         <View style={styles.hsiCard}>
           <View style={styles.progressContainer}>
             <Svg height="140" width="140" viewBox="0 0 100 100">
@@ -135,11 +206,8 @@ const HouseTabzScreen = () => {
             </Svg>
 
             <View style={styles.hsiContainer}>
-              <Text style={styles.hsiText}>{house ? house.hsi : "0"}</Text>
-              <TouchableOpacity 
-                onPress={() => setShowTooltip(true)}
-                style={styles.infoButton}
-              >
+              <Text style={styles.hsiText}>{house?.hsi || "0"}</Text>
+              <TouchableOpacity onPress={() => setShowTooltip(true)} style={styles.infoButton}>
                 <MaterialIcons name="info-outline" size={20} color="#22c55e" />
               </TouchableOpacity>
             </View>
@@ -147,25 +215,22 @@ const HouseTabzScreen = () => {
           </View>
         </View>
 
-        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>
-              {house && house.hsi >= 75 ? "Great" : "Needs Work"}
+              {house?.hsi >= 75 ? "Great" : "Needs Work"}
             </Text>
             <Text style={styles.statLabel}>House Status</Text>
             <MaterialIcons 
-              name={house && house.hsi >= 75 ? "check-circle" : "warning"} 
+              name={house?.hsi >= 75 ? "check-circle" : "warning"} 
               size={24} 
-              color={house && house.hsi >= 75 ? "#22c55e" : "#f59e0b"} 
+              color={house?.hsi >= 75 ? "#22c55e" : "#f59e0b"} 
               style={styles.statIcon} 
             />
           </View>
           
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {house?.users?.length || 0}
-            </Text>
+            <Text style={styles.statValue}>{house?.users?.length || 0}</Text>
             <Text style={styles.statLabel}>Members</Text>
             <MaterialIcons 
               name="group" 
@@ -176,23 +241,19 @@ const HouseTabzScreen = () => {
           </View>
         </View>
 
-        {/* Scoreboard Section */}
         <View style={styles.scoreboardCard}>
           <Text style={styles.cardTitle}>Score Board</Text>
-          {house?.users
-            ?.sort((a, b) => b.points - a.points)
-            .map((user) => (
-              <View key={user.id} style={styles.userRow}>
-                <View style={styles.userInfo}>
-                  <MaterialIcons name="person" size={20} color="#64748b" />
-                  <Text style={styles.username}>{user.username}</Text>
-                </View>
-                <Text style={styles.points}>{user.points} pts</Text>
+          {house?.users?.sort((a, b) => b.points - a.points).map((user) => (
+            <View key={user.id} style={styles.userRow}>
+              <View style={styles.userInfo}>
+                <MaterialIcons name="person" size={20} color="#64748b" />
+                <Text style={styles.username}>{user.username}</Text>
               </View>
-            ))}
+              <Text style={styles.points}>{user.points} pts</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Action Cards */}
         <View style={styles.actionCards}>
           <TouchableOpacity
             style={styles.actionCard}
@@ -214,7 +275,18 @@ const HouseTabzScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Info Tooltip */}
+      <ModalComponent visible={showInviteModal} onClose={() => setShowInviteModal(false)}>
+        <InviteModal />
+      </ModalComponent>
+
+      <ModalComponent visible={isCurrentTabVisible} onClose={() => setIsCurrentTabVisible(false)}>
+        <CurrentHouseTab house={house} />
+      </ModalComponent>
+
+      <ModalComponent visible={isPaidTabVisible} onClose={() => setIsPaidTabVisible(false)}>
+        <PaidHouseTabz house={house} />
+      </ModalComponent>
+
       {showTooltip && (
         <TouchableOpacity 
           style={styles.tooltipOverlay} 
@@ -227,30 +299,12 @@ const HouseTabzScreen = () => {
               The HSI represents the health and activity of your house. Higher numbers 
               indicate a more active and responsible house.
             </Text>
-            <TouchableOpacity
-              style={styles.tooltipButton}
-              onPress={() => setShowTooltip(false)}
-            >
+            <TouchableOpacity style={styles.tooltipButton} onPress={() => setShowTooltip(false)}>
               <Text style={styles.tooltipButtonText}>Got it</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       )}
-
-      {/* Modals */}
-      <ModalComponent
-        visible={isCurrentTabVisible}
-        onClose={() => setIsCurrentTabVisible(false)}
-      >
-        <CurrentHouseTab house={house} />
-      </ModalComponent>
-
-      <ModalComponent
-        visible={isPaidTabVisible}
-        onClose={() => setIsPaidTabVisible(false)}
-      >
-        <PaidHouseTabz house={house} />
-      </ModalComponent>
     </View>
   );
 };
@@ -271,20 +325,47 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    alignItems: "center",
     marginBottom: 32,
+    paddingHorizontal: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   houseName: {
     fontSize: 28,
     fontWeight: "800",
     color: "#1e293b",
-    marginBottom: 8,
+    flex: 1,
+    marginRight: 16,
   },
   underline: {
-    height: 3,
-    width: width * 0.3,
-    backgroundColor: "#22c55e",
+    height: 2,
+    width: '100%',
+    backgroundColor: '#22c55e',
     borderRadius: 1.5,
+    opacity: 0.2,
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22c55e',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  inviteButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   hsiCard: {
     backgroundColor: "white",
@@ -475,6 +556,60 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  inviteModalContent: {
+    padding: 24,
+  },
+  inviteTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  inviteDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  linkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginBottom: 16,
+  },
+  linkText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#64748b',
+    marginRight: 12,
+  },
+  copyButton: {
+    padding: 8,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#22c55e',
+    borderRadius: 8,
+    padding: 16,
+    gap: 8,
+  },
+  shareButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  subErrorText: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    marginTop: 8,
   }
 });
 

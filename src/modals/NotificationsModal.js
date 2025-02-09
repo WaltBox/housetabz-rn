@@ -140,13 +140,7 @@ const NotificationsModal = ({ onClose }) => {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Text style={styles.title}>Notifications</Text>
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={onClose}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialIcons name="close" size={22} color="#64748b" />
-          </TouchableOpacity>
+          
         </View>
 
         {/* Filter Tabs */}

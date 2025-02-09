@@ -21,9 +21,13 @@ const ModalComponent = ({ visible, onClose, children }) => {
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
-          {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <MaterialIcons name="close" size={24} color="#fff" />
+          {/* Close Button - Right Aligned */}
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onClose}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="close" size={24} color="#22c55e" />
           </TouchableOpacity>
 
           {/* Modal Content */}
@@ -38,32 +42,35 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0)", // Semi-transparent black background
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   modalContent: {
     height: MODAL_HEIGHT,
-    backgroundColor: "white", // Match `ViewCompanyCard` background
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 40, // Increased for button space
     paddingBottom: 20,
-    borderWidth: 1,
-    borderColor: "#ddd", // Match `ViewCompanyCard` border style
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 20,
   },
   closeButton: {
     position: "absolute",
-    top: 20,
-    left: 20,
+    top: 16,
+    right: 16,
     zIndex: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 15,
-    padding: 5,
+    backgroundColor: "#f8fafc",
+    borderRadius: 20,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 
