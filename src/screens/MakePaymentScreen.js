@@ -124,64 +124,110 @@ const BillingScreen = () => {
     </ScrollView>
   );
 
-  const renderMethodsTab = () => (
-    <ScrollView style={styles.tabContent}>
-      {/* Default Payment Method */}
-      <View style={styles.section}>
-        <View style={styles.defaultMethodHeader}>
-          <Text style={styles.sectionTitle}>Default Payment Method</Text>
-          <Text style={styles.defaultMethodNote}>Used for pledges & autopay</Text>
-        </View>
+ // In BillingScreen.js, add a new state for payment methods
+const [paymentMethods, setPaymentMethods] = useState([]);
+const [defaultMethod, setDefaultMethod] = useState(null);
+
+// Add a function to fetch payment methods
+const fetchPaymentMethods = async () => {
+  try {
+    const response = await axios.get('http://localhost:3004/api/payment-methods');
+    const methods = response.data.paymentMethods;
+    setPaymentMethods(methods);
+    setDefaultMethod(methods.find(method => method.isDefault));
+  } catch (error) {
+    console.error('Error fetching payment methods:', error);
+  }
+};
+
+// Update useEffect to also fetch payment methods
+useEffect(() => {
+  fetchUserData();
+  fetchPaymentMethods();
+}, []);
+
+// Update the renderMethodsTab function
+const renderMethodsTab = () => (
+  <ScrollView style={styles.tabContent}>
+    {/* Default Payment Method */}
+    <View style={styles.section}>
+      <View style={styles.defaultMethodHeader}>
+        <Text style={styles.sectionTitle}>Default Payment Method</Text>
+        <Text style={styles.defaultMethodNote}>Used for pledges & autopay</Text>
+      </View>
+      {defaultMethod ? (
         <View style={styles.defaultMethodCard}>
-          <MaterialIcons name="account-balance" size={20} color="#22c55e" style={styles.icon} />
+          <MaterialIcons 
+            name={defaultMethod.type === 'card' ? 'credit-card' : 'account-balance'} 
+            size={20} 
+            color="#22c55e" 
+            style={styles.icon} 
+          />
           <View style={styles.methodInfo}>
-            <Text style={styles.methodTitle}>Chase Bank •••• 4523</Text>
+            <Text style={styles.methodTitle}>
+              {defaultMethod.type === 'card' 
+                ? `${defaultMethod.brand} •••• ${defaultMethod.last4}`
+                : `Bank Account •••• ${defaultMethod.last4}`
+              }
+            </Text>
             <Text style={styles.methodSubtitle}>Default Payment Method</Text>
           </View>
           <TouchableOpacity>
             <Text style={styles.changeMethodText}>Change</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      ) : (
+        <View style={styles.defaultMethodCard}>
+          <Text style={styles.methodSubtitle}>No default payment method set</Text>
+        </View>
+      )}
+    </View>
 
-      {/* Autopay */}
-      <View style={styles.section}>
-        <View style={styles.autopayHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Autopay</Text>
-            <Text style={styles.autopaySubtitle}>Pay bills automatically</Text>
-          </View>
-          <Switch
-            value={autopayEnabled}
-            onValueChange={(value) => setAutopayEnabled(value)}
-            trackColor={{ false: '#e2e8f0', true: '#bbf7d0' }}
-            thumbColor={autopayEnabled ? '#22c55e' : '#94a3b8'}
-          />
-        </View>
-      </View>
+    {/* Other Payment Methods */}
+ {/* Other Payment Methods */}
+<View style={styles.section}>
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>Other Payment Methods</Text>
+  </View>
+  
+  {/* Add New Payment Method Card */}
+  <TouchableOpacity style={styles.addMethodCard}>
+    <View style={styles.addMethodContent}>
+      <MaterialIcons name="add-circle-outline" size={24} color="#22c55e" />
+      <Text style={styles.addMethodText}>Add New Payment Method</Text>
+    </View>
+  </TouchableOpacity>
 
-      {/* Other Payment Methods */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Other Payment Methods</Text>
-          <TouchableOpacity style={styles.addButton}>
-            <MaterialIcons name="add" size={20} color="#22c55e" style={styles.icon} />
-            <Text style={styles.addButtonText}>Add New</Text>
-          </TouchableOpacity>
+  {/* Existing Payment Methods */}
+  {paymentMethods
+    .filter(method => !method.isDefault)
+    .map(method => (
+      <View key={method.id} style={styles.methodCard}>
+        <MaterialIcons 
+          name={method.type === 'card' ? 'credit-card' : 'account-balance'} 
+          size={20} 
+          color="#22c55e" 
+          style={styles.icon} 
+        />
+        <View style={styles.methodInfo}>
+          <Text style={styles.methodTitle}>
+            {method.type === 'card' 
+              ? `${method.brand} •••• ${method.last4}`
+              : `Bank Account •••• ${method.last4}`
+            }
+          </Text>
+          <Text style={styles.methodSubtitle}>
+            {method.type === 'card' && `Expires ${method.expiryMonth}/${method.expiryYear}`}
+          </Text>
         </View>
-        <View style={styles.methodCard}>
-          <MaterialIcons name="credit-card" size={20} color="#22c55e" style={styles.icon} />
-          <View style={styles.methodInfo}>
-            <Text style={styles.methodTitle}>Visa •••• 8832</Text>
-            <Text style={styles.methodSubtitle}>Expires 05/26</Text>
-          </View>
-          <TouchableOpacity>
-            <MaterialIcons name="more-vert" size={20} color="#22c55e" style={styles.icon} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity>
+          <MaterialIcons name="more-vert" size={20} color="#22c55e" style={styles.icon} />
+        </TouchableOpacity>
       </View>
-    </ScrollView>
-  );
+    ))}
+</View>
+  </ScrollView>
+);
 
   const renderHistoryTab = () => (
     <ScrollView style={styles.tabContent}>
@@ -575,6 +621,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
+  },
+  addMethodCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  addMethodContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  addMethodText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#22c55e',
+    marginLeft: 8,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import axios from 'axios';
 
 const AcceptServicePayment = ({ 
   visible,
@@ -18,18 +19,35 @@ const AcceptServicePayment = ({
   onSuccess,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('bank'); // default method is bank
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedMethod, setSelectedMethod] = useState(null);
 
-  if (!taskData?.stagedRequest) return null;
-  const { stagedRequest, paymentAmount } = taskData;
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        const response = await axios.get('http://localhost:3004/api/payment-methods');
+        const methods = response.data.paymentMethods;
+        setPaymentMethods(methods);
+        
+        const defaultMethod = methods.find(method => method.isDefault);
+        setSelectedMethod(defaultMethod?.id || methods[0]?.id);
+      } catch (error) {
+        console.error('Error fetching payment methods:', error);
+      }
+    };
+    
+    if (visible) {
+      fetchPaymentMethods();
+    }
+  }, [visible]);
 
   const handleAccept = async () => {
     setIsProcessing(true);
     try {
       await onSuccess({
-        paymentMethod,
-        amount: paymentAmount,
+        paymentMethod: selectedMethod,
+        amount: taskData.paymentAmount,
       });
     } catch (error) {
       console.error('Payment failed:', error);
@@ -38,8 +56,19 @@ const AcceptServicePayment = ({
     }
   };
 
-  // Calculate total amount based on selected payment method
-  const totalAmount = Number(paymentAmount) * (paymentMethod === 'card' ? 1.03 : 1);
+  const getPaymentMethodDisplay = (method) => {
+    if (!method) return 'Select payment method';
+    return method.type === 'card' 
+      ? `${method.brand} •••• ${method.last4}`
+      : `Bank Account •••• ${method.last4}`;
+  };
+
+  const getMethodIcon = (type) => {
+    return type === 'card' ? 'credit-card' : 'account-balance';
+  };
+
+  if (!taskData?.stagedRequest) return null;
+  const { stagedRequest, paymentAmount } = taskData;
 
   return (
     <Modal
@@ -86,7 +115,8 @@ const AcceptServicePayment = ({
             <View style={styles.infoCard}>
               <MaterialIcons name="security" size={20} color="#22c55e" />
               <Text style={styles.infoText}>
-                By pledging your payment, you authorize HouseTabz to pull your funds automatically once all roommates agree to this expense. If any roommate declines, your pledge will be canceled and your funds remain secure.
+                By pledging your payment, you authorize us to pull funds once all roommates agree. 
+                If anyone declines, your pledge will be canceled automatically.
               </Text>
             </View>
 
@@ -98,27 +128,18 @@ const AcceptServicePayment = ({
                 onPress={() => setShowPaymentOptions(true)}
               >
                 <View style={styles.optionContent}>
-                  {paymentMethod === 'bank' ? (
-                    <MaterialIcons 
-                      name="account-balance" 
-                      size={24} 
-                      color="#22c55e" 
-                      style={styles.icon} 
-                    />
-                  ) : (
-                    <MaterialIcons 
-                      name="credit-card" 
-                      size={24} 
-                      color="#22c55e" 
-                      style={styles.icon} 
-                    />
-                  )}
+                  <MaterialIcons 
+                    name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)} 
+                    size={24} 
+                    color="#22c55e" 
+                    style={styles.icon} 
+                  />
                   <View>
                     <Text style={styles.optionTitle}>
-                      {paymentMethod === 'bank' ? 'Bank Account' : 'Credit Card'}
+                      {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
                     </Text>
                     <Text style={styles.optionSubtitle}>
-                      {paymentMethod === 'bank' ? 'No fees' : '3% processing fee'}
+                      {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && 'Default'}
                     </Text>
                   </View>
                 </View>
@@ -126,59 +147,39 @@ const AcceptServicePayment = ({
               </TouchableOpacity>
             ) : (
               <View style={styles.paymentOptions}>
-                <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    paymentMethod === 'bank' && styles.selectedOption,
-                  ]}
-                  onPress={() => {
-                    setPaymentMethod('bank');
-                    setShowPaymentOptions(false);
-                  }}
-                >
-                  <View style={styles.optionContent}>
-                    <MaterialIcons 
-                      name="account-balance" 
-                      size={24} 
-                      color={paymentMethod === 'bank' ? '#22c55e' : '#64748b'} 
-                      style={styles.icon}
-                    />
-                    <View>
-                      <Text style={styles.optionTitle}>Bank Account</Text>
-                      <Text style={styles.optionSubtitle}>No fees</Text>
+                {paymentMethods.map(method => (
+                  <TouchableOpacity
+                    key={method.id}
+                    style={[
+                      styles.paymentOption,
+                      selectedMethod === method.id && styles.selectedOption,
+                    ]}
+                    onPress={() => {
+                      setSelectedMethod(method.id);
+                      setShowPaymentOptions(false);
+                    }}
+                  >
+                    <View style={styles.optionContent}>
+                      <MaterialIcons 
+                        name={getMethodIcon(method.type)} 
+                        size={24} 
+                        color={selectedMethod === method.id ? '#22c55e' : '#64748b'} 
+                        style={styles.icon}
+                      />
+                      <View>
+                        <Text style={styles.optionTitle}>
+                          {getPaymentMethodDisplay(method)}
+                        </Text>
+                        {method.isDefault && (
+                          <Text style={styles.optionSubtitle}>Default</Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                  {paymentMethod === 'bank' && (
-                    <MaterialIcons name="check-circle" size={20} color="#22c55e" />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.paymentOption,
-                    paymentMethod === 'card' && styles.selectedOption,
-                  ]}
-                  onPress={() => {
-                    setPaymentMethod('card');
-                    setShowPaymentOptions(false);
-                  }}
-                >
-                  <View style={styles.optionContent}>
-                    <MaterialIcons 
-                      name="credit-card" 
-                      size={24} 
-                      color={paymentMethod === 'card' ? '#22c55e' : '#64748b'} 
-                      style={styles.icon}
-                    />
-                    <View>
-                      <Text style={styles.optionTitle}>Credit Card</Text>
-                      <Text style={styles.optionSubtitle}>3% processing fee</Text>
-                    </View>
-                  </View>
-                  {paymentMethod === 'card' && (
-                    <MaterialIcons name="check-circle" size={20} color="#22c55e" />
-                  )}
-                </TouchableOpacity>
+                    {selectedMethod === method.id && (
+                      <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
           </ScrollView>
@@ -187,7 +188,7 @@ const AcceptServicePayment = ({
           <View style={styles.bottomSection}>
             <View style={styles.totalSection}>
               <Text style={styles.totalLabel}>Total to Pledge</Text>
-              <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
+              <Text style={styles.totalAmount}>${paymentAmount.toFixed(2)}</Text>
             </View>
             <View style={styles.buttonRow}>
               <TouchableOpacity 
@@ -214,6 +215,8 @@ const AcceptServicePayment = ({
     </Modal>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   modalOverlay: {
