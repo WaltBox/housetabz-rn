@@ -12,12 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
-const AcceptServicePayment = ({ 
-  visible,
-  onClose,
-  taskData,
-  onSuccess,
-}) => {
+const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -51,7 +46,6 @@ const AcceptServicePayment = ({
         setPaymentMethods(methods);
         setSelectedMethod(methods.find(m => m.isDefault)?.id || methods[0]?.id);
         setBundleDetails(bundleData);
-
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
@@ -162,15 +156,15 @@ const AcceptServicePayment = ({
               </View>
             )}
 
- {/* Pledge Info */}
- <View style={styles.infoCard}>
+            {/* Pledge Info */}
+            <View style={styles.infoCard}>
               <MaterialIcons name="verified-user" size={22} color="#16a34a" />
               <Text style={styles.infoText}>
-              By confirming your pledge, HouseTabz will process your payment wheneveryone in house pledges.
+                By confirming your pledge, HouseTabz will process your payment when everyone in house pledges.
               </Text>
             </View>
 
-            {/* Redesigned Participants Section */}
+            {/* Participants Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Waiting On ({pendingParticipants.length})</Text>
@@ -265,8 +259,6 @@ const AcceptServicePayment = ({
                 </View>
               )}
             </View>
-
-           
           </ScrollView>
 
           {/* Footer */}
@@ -292,7 +284,7 @@ const AcceptServicePayment = ({
                 ) : (
                   <View style={styles.buttonContent}>
                     <MaterialIcons name="lock" size={18} color="white" />
-                    <Text style={styles.confirmText}>Secure Pledge</Text>
+                    <Text style={styles.confirmText}>Confirm Pledge</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -350,7 +342,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
   },
   headerTitle: {
     fontSize: 20,
@@ -358,9 +350,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: -0.3,
   },
-  closeIcon: {
-    // any additional style if needed
-  },
+  closeIcon: {},
   contentContainer: {
     padding: 20,
   },
@@ -397,7 +387,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   serviceCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 18,
     marginBottom: 20,
@@ -469,22 +459,6 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontWeight: '600',
   },
-  participantsContainer: {
-    gap: 8,
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    padding: 12,
-  },
-  participantRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  participantName: {
-    fontSize: 14,
-    color: '#0f172a',
-  },
   avatarScroll: {
     paddingHorizontal: 4,
   },
@@ -528,7 +502,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -566,7 +540,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
   },
   selectedOption: {
     backgroundColor: '#f0fdf4',
@@ -593,7 +567,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
   },
   totalRow: {
     flexDirection: 'row',
@@ -646,7 +620,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   confirmText: {
-    color: 'white',
+    color: '#fff',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -657,7 +631,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   errorCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',

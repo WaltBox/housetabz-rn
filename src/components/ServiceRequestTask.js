@@ -94,13 +94,7 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        onPress={() => onViewMore?.(task.id)} 
-        style={styles.viewMore}
-      >
-        <Text style={styles.viewMoreText}>View details</Text>
-        <MaterialIcons name="arrow-forward" size={14} color="#64748b" />
-      </TouchableOpacity>
+     
     </View>
   );
 };
