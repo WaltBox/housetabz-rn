@@ -296,27 +296,7 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   );
 };
 
-const LoadingModal = ({ visible }) => (
-  <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
-      <ActivityIndicator size="large" color="#16a34a" />
-    </View>
-  </Modal>
-);
 
-const ErrorModal = ({ visible, error, onClose }) => (
-  <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
-      <View style={styles.errorCard}>
-        <MaterialIcons name="error-outline" size={40} color="#dc2626" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={onClose}>
-          <Text style={styles.retryText}>Close</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-);
 
 const styles = StyleSheet.create({
   modalOverlay: {
@@ -656,3 +636,27 @@ const styles = StyleSheet.create({
 });
 
 export default AcceptServicePayment;
+
+
+
+const LoadingModal = ({ visible }) => (
+  <Modal transparent visible={visible}>
+    <View style={styles.centerContainer}>
+      <ActivityIndicator size="large" color="#16a34a" />
+    </View>
+  </Modal>
+);
+
+const ErrorModal = ({ visible, error, onClose }) => (
+  <Modal transparent visible={visible}>
+    <View style={styles.centerContainer}>
+      <View style={styles.errorCard}>
+        <MaterialIcons name="error-outline" size={40} color="#dc2626" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={onClose}>
+          <Text style={styles.retryText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
