@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 
 const UserTabModal = ({ user }) => {
-  // Filter unpaid charges
-  const unpaidCharges = user.charges.filter((charge) => !charge.paid);
+  // Safely filter unpaid charges if they exist
+  const unpaidCharges = user?.charges?.filter((charge) => !charge.paid) || [];
 
   const renderCharge = ({ item }) => (
     <View style={styles.chargeItem}>
@@ -17,14 +17,14 @@ const UserTabModal = ({ user }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>User Tab</Text>
-      <Text style={styles.info}>Welcome, {user.username}!</Text>
-      <Text style={styles.info}>Your current balance: ${user.balance}</Text>
+      <Text style={styles.info}>Welcome, {user?.username || 'User'}!</Text>
+      <Text style={styles.info}>Your current balance: ${user?.balance || '0'}</Text>
 
       <Text style={styles.subtitle}>Unpaid Charges:</Text>
-      {unpaidCharges.length > 0 ? (
+      {unpaidCharges && unpaidCharges.length > 0 ? (
         <FlatList
           data={unpaidCharges}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) => item.id?.toString() || index.toString()}
           renderItem={renderCharge}
           contentContainerStyle={styles.chargeList}
         />
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   chargeAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#e74c3c', // Red for unpaid charges
+    color: '#e74c3c',
   },
   noChargesText: {
     fontSize: 16,

@@ -9,25 +9,27 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from "@expo/vector-icons";
 import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SpecialDeals from "../components/SpecialDeals";
 import axios from "axios";
 
-const screenWidth = Dimensions.get("window").width;
-const API_URL = "http://localhost:3004"; // Consider moving to config file
+const { width, height } = Dimensions.get("window");
+const CARD_GUTTER = 16;
+const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2; // Back to 2 per row (normal size)
+const API_URL = "http://localhost:3004";
 
 const MarketplaceScreen = () => {
-  // State management
   const [partnerDetails, setPartnerDetails] = useState([]);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [scaleValue] = useState(new Animated.Value(1));
+  const cardScale = useState(new Animated.Value(1))[0];
 
-  // Fetch partner data
   useEffect(() => {
     fetchPartnerDetails();
   }, []);
@@ -36,148 +38,122 @@ const MarketplaceScreen = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/api/partners`);
-      console.log('Raw API response:', response); // Log full response
-      console.log('Partner data type:', typeof response.data); // Check data type
-      console.log('Partner data:', response.data); // Log actual data
-  
-      // Ensure we're getting an array
-      const partners = Array.isArray(response.data) ? response.data : 
-                      response.data.partners ? response.data.partners : [];
-      
-      setPartnerDetails(partners);
-    } catch (error) {
-      console.error('Error fetching partners:', error);
-      setError('Unable to load marketplace data. Please try again later.');
-      setPartnerDetails([]); // Ensure we set an empty array on error
+      const { data } = await axios.get(`${API_URL}/api/partners`);
+      setPartnerDetails(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError("Unable to load marketplace data. Please try again.");
+      console.error("Fetch error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Animation handlers
   const handleCardPress = (partner) => {
     setSelectedPartner(partner);
-    Animated.timing(scaleValue, {
-      toValue: 0.9,
-      duration: 300,
+    Animated.spring(cardScale, {
+      toValue: 0.96,
+      friction: 3,
       useNativeDriver: true,
     }).start();
   };
 
   const handleCloseModal = () => {
-    Animated.timing(scaleValue, {
+    Animated.spring(cardScale, {
       toValue: 1,
-      duration: 300,
+      friction: 3,
       useNativeDriver: true,
     }).start(() => setSelectedPartner(null));
   };
 
-  // Render helpers
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={["#22c55e", "#22c55e"]}
-        style={styles.gradientBackground}
-      >
-        <View style={styles.textContainer}>
-          <Text style={styles.headerText}>HouseTabz</Text>
-          <Text style={styles.headerText}>Marketplace</Text>
+      <LinearGradient colors={["#22c55e", "#16a34a"]} style={styles.gradientBackground}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerText}>HouseTabz Marketplace</Text>
+          </View>
+          <Image
+            source={require("../../assets/housetabz-marketplace3.png")}
+            style={styles.headerImage}
+            resizeMode="contain"
+          />
         </View>
-        <Image
-          source={require("../../assets/housetabz-marketplace3.png")}
-          style={styles.headerImage}
-          resizeMode="contain"
-        />
       </LinearGradient>
     </View>
   );
 
-  const renderPartnerCards = () => {
-    if (isLoading) {
+  const renderPartnerGrid = () => {
+    if (isLoading)
       return (
-        <View style={styles.centerContainer}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#22c55e" />
+          <Text style={styles.loadingText}>Loading Marketplace...</Text>
         </View>
       );
-    }
-  
-    if (error) {
+
+    if (error)
       return (
-        <View style={styles.centerContainer}>
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error" size={32} color="#dc2626" />
           <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchPartnerDetails}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       );
-    }
-  
-    // Ensure partnerDetails is an array
-    const partners = Array.isArray(partnerDetails) ? partnerDetails : [];
-  
-    if (partners.length === 0) {
-      return (
-        <View style={styles.centerContainer}>
-          <Text style={styles.noDataText}>No companies available</Text>
-        </View>
-      );
-    }
-  
+
     return (
       <View style={styles.cardGrid}>
-        {partners.map((partner) => (
-          <View key={partner.id} style={styles.cardContainer}>
+        {partnerDetails.map((partner) => (
+          <Animated.View key={partner.id} style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
             <CompanyCardComponent
               name={partner.name}
               description={partner.about}
               logoUrl={partner.logo}
               coverUrl={partner.marketplace_cover}
               onPress={() => handleCardPress(partner)}
-              cardWidth={(screenWidth - 60) / 2}
+              cardWidth={CARD_WIDTH}
             />
-          </View>
+          </Animated.View>
         ))}
       </View>
     );
   };
 
-  // Main render
   return (
-    <Animated.View style={[styles.container, { transform: [{ scale: scaleValue }] }]}>
+    <View style={styles.container}>
       {renderHeader()}
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* Special Deals Section */}
         <View style={styles.specialDealsContainer}>
+          <Text style={styles.sectionTitle}>Exclusive Offers 🎁</Text>
           <SpecialDeals />
         </View>
 
-        <View style={styles.cardsContainer}>
-          {renderPartnerCards()}
+        {/* Partner Grid */}
+        <View style={styles.partnerGridContainer}>
+          <Text style={styles.sectionTitle}>Featured Services</Text>
+          {renderPartnerGrid()}
         </View>
       </ScrollView>
 
-      {selectedPartner && (
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={true}
-          onRequestClose={handleCloseModal}
-        >
-          <View style={styles.modalBackground}>
-            <ViewCompanyCard
-              partner={selectedPartner}
-              visible={true}
-              onClose={handleCloseModal}
-            />
-          </View>
-        </Modal>
-      )}
-    </Animated.View>
+      <Modal visible={!!selectedPartner} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <ViewCompanyCard partner={selectedPartner} onClose={handleCloseModal} />
+          <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
+            <MaterialIcons name="close" size={28} color="white" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9f5f0",
+    backgroundColor: "#f8fafc",
   },
   centerContent: {
     flex: 1,
@@ -197,82 +173,76 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: "100%",
-    position: "absolute",
-    top: 0,
     zIndex: 10,
+    marginBottom: -height * 0.07, // Moves everything up ~10% screen height
   },
   gradientBackground: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    height: 120,
-    borderBottomRightRadius: 60,
-    paddingLeft: 20,
-    paddingRight: 20,
+    height: 110,
+    paddingHorizontal: 24,
+    borderBottomRightRadius: 50,
   },
-  textContainer: {
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     flex: 1,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "bold",
-    fontFamily: "montserrat-bold",
     color: "#FFFFFF",
   },
   headerImage: {
-    width: 150,
-    height: 100,
-    marginLeft: 10,
+    width: 130,
+    height: 80,
   },
   scrollContainer: {
-    paddingTop: 140,
-    paddingHorizontal: 20,
+    paddingTop: 110,
+    paddingHorizontal: CARD_GUTTER,
+    paddingBottom: 40,
   },
   specialDealsContainer: {
-    marginBottom: 10,
+    marginBottom: 24,
+    marginTop: -height * 0.05, // Moves Special Deals section up slightly
   },
-  cardsContainer: {
-    marginTop: -30,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 16,
+  },
+  partnerGridContainer: {
+    marginTop: 8,
   },
   cardGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingVertical: 5,
   },
-  cardContainer: {
-    width: (screenWidth - 60) / 2,
-    height: 220,
-    marginBottom: 20,
-    borderRadius: 10,
-    overflow: "hidden",
+  cardWrapper: {
+    width: CARD_WIDTH,
+    marginBottom: CARD_GUTTER,
+    borderRadius: 12,
     backgroundColor: "#ffffff",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    elevation: 3,
+    shadowColor: "#22c55e",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
-  modalBackground: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  centerContainer: {
-    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
     justifyContent: "center",
-    alignItems: "center",
     padding: 20,
   },
-  errorText: {
-    color: "#dc2626",
-    fontSize: 16,
-    textAlign: "center",
-  },
-  noDataText: {
-    color: "#666",
-    fontSize: 16,
-    textAlign: "center",
+  closeButton: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 20,
+    padding: 10,
   },
 });
 

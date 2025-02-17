@@ -8,6 +8,7 @@ import {
   Dimensions,
   Platform,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
@@ -18,13 +19,33 @@ const MODAL_HEIGHT = screenHeight * 0.94;
 
 const ViewCompanyCard = ({ visible, onClose, partner }) => {
   const [showBrowser, setShowBrowser] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   if (!visible || !partner) return null;
 
+  // Construct the shop URL with ref and partner_id
+  const constructShopUrl = () => {
+    try {
+      // The base URL with the html file
+      const baseUrl = 'https://e4ee-2605-a601-a0c6-4f00-5d24-14ce-b2b5-24fc.ngrok-free.app/cleaning-test.html';
+      
+      console.log('Base URL:', baseUrl);
+      
+      // Construct final URL by adding query parameters
+      const finalUrl = `${baseUrl}?ref=housetabz&partner_id=${partner.id || '12'}`;
+      
+      console.log('Final URL:', finalUrl);
+      return finalUrl;
+
+    } catch (error) {
+      console.error('Error constructing URL:', error);
+      return '';
+    }
+  };
+
   return (
     <View style={styles.modalContainer}>
-      {Platform.OS === "ios" && <View style={styles.iosStatusBarBackground} />}
-
       {/* Fixed Close Button */}
       <TouchableOpacity
         style={[styles.fixedCloseButton, { display: showBrowser ? "none" : "flex" }]}
@@ -40,31 +61,49 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Cover Image with Dissolving Effect */}
-            {/* Cover Image with Dissolving Effect */}
-<View style={styles.coverImageContainer}>
-  <Image
-    source={{
-      uri: partner.image_url  // Assuming the image URL is stored in partner.image_url
-    }}
-    style={styles.coverImage}
-    onError={(error) => {
-      console.error("Image Load Error:", error.nativeEvent.error);
-    }}
-    // Add a default fallback image if the main image fails to load
-    defaultSource={require('../../assets/placeholder.png')}  // Adjust the path to your placeholder image
-  />
-  <LinearGradient
-    colors={["transparent", "#f8f8f8"]}
-    style={styles.dissolveGradient}
-  />
-</View>
+            <View style={styles.coverImageContainer}>
+              <Image
+                source={{
+                  uri: partner.marketplace_cover || 'https://via.placeholder.com/400',
+                  headers: {
+                    Pragma: 'no-cache'
+                  }
+                }}
+                style={styles.coverImage}
+                onLoadStart={() => setImageLoading(true)}
+                onLoadEnd={() => {
+                  setImageLoading(false);
+                  setImageError(false);
+                }}
+                onError={(error) => {
+                  console.error("Image Load Error:", error.nativeEvent.error);
+                  setImageError(true);
+                  setImageLoading(false);
+                }}
+              />
+              {imageLoading && (
+                <View style={styles.imageLoadingContainer}>
+                  <ActivityIndicator size="large" color="#6A0DAD" />
+                </View>
+              )}
+              <LinearGradient
+                colors={['transparent', '#f8f8f8']}
+                style={styles.dissolveGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+              />
+            </View>
 
             {/* Company Details */}
             <View style={styles.companyDetailsContainer}>
               <View style={styles.card}>
                 <Text style={styles.title}>{partner.name}</Text>
-                <Text style={styles.description}>{partner.description}</Text>
-                <Text style={styles.avgRoommate}>AVG / Roommate: $50 (example)</Text>
+                <Text style={styles.description}>{partner.about || "No description available."}</Text>
+                {partner.avg_price && (
+                  <Text style={styles.avgRoommate}>
+                    AVG / Roommate: ${parseFloat(partner.avg_price).toFixed(2)}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -96,9 +135,12 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
           <View style={styles.shopButtonContainer}>
             <TouchableOpacity
               style={styles.shopButton}
-              onPress={() => setShowBrowser(true)}
+              onPress={() => partner.link ? setShowBrowser(true) : null}
+              disabled={!partner.link}
             >
-              <Text style={styles.shopButtonText}>Shop {partner.name}</Text>
+              <Text style={styles.shopButtonText}>
+                Shop {partner.name}
+              </Text>
             </TouchableOpacity>
           </View>
         </>
@@ -117,28 +159,32 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
             </Text>
           </View>
           <WebView
-  source={{ 
-    uri: 'https://e4ee-2605-a601-a0c6-4f00-5d24-14ce-b2b5-24fc.ngrok-free.app/cleaning-test.html?ref=housetabz&partner_id=12',
-    headers: {
-      'Cache-Control': 'no-cache',
-      'Access-Control-Allow-Origin': '*'
-    }
-  }}
-  style={styles.webView}
-  onLoadStart={() => console.log("WebView Started Loading")}
-  onLoadEnd={() => console.log("WebView Finished Loading")}
-  onError={(syntheticEvent) => {
-    const { nativeEvent } = syntheticEvent;
-    console.warn('WebView error: ', nativeEvent);
-  }}
-  originWhitelist={['*']}
-  javaScriptEnabled={true}
-  domStorageEnabled={true}
-  startInLoadingState={true}
-  scalesPageToFit={true}
-  allowsInlineMediaPlayback={true}
-  mixedContentMode="always"
-/>
+            source={{ 
+              uri: (() => {
+                const url = constructShopUrl();
+                console.log('URL being used in WebView:', url);
+                return url;
+              })(),
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Access-Control-Allow-Origin': '*'
+              }
+            }}
+            style={styles.webView}
+            onLoadStart={() => console.log("WebView Started Loading")}
+            onLoadEnd={() => console.log("WebView Finished Loading")}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.warn('WebView error: ', nativeEvent);
+            }}
+            originWhitelist={['*']}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            scalesPageToFit={true}
+            allowsInlineMediaPlayback={true}
+            mixedContentMode="always"
+          />
         </View>
       )}
     </View>
@@ -175,6 +221,16 @@ const styles = StyleSheet.create({
     height: "100%",
     resizeMode: "cover",
   },
+  imageLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(248, 248, 248, 0.7)',
+  },
   dissolveGradient: {
     position: "absolute",
     bottom: 0,
@@ -210,7 +266,6 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
     marginBottom: 10,
-    // fontFamily: 'montserrat-bold'
   },
   description: {
     fontSize: 16,
