@@ -16,6 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SpecialDeals from "../components/SpecialDeals";
+import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 
 const { width, height } = Dimensions.get("window");
@@ -24,6 +25,7 @@ const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2;
 const API_URL = "http://localhost:3004";
 
 const MarketplaceScreen = () => {
+  const { user } = useAuth();
   const [partnerDetails, setPartnerDetails] = useState([]);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +51,7 @@ const MarketplaceScreen = () => {
   };
 
   const handleCardPress = (partner) => {
+    console.log('User ID when card pressed:', user?.id);
     setSelectedPartner(partner);
     Animated.spring(cardScale, {
       toValue: 0.96,
@@ -105,10 +108,12 @@ const MarketplaceScreen = () => {
     return (
       <View style={styles.cardGrid}>
         {partnerDetails.map((partner) => (
-          <Animated.View key={partner.id} style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
+          <Animated.View
+            key={partner.id}
+            style={{ transform: [{ scale: cardScale }] }}
+          >
             <CompanyCardComponent
               name={partner.name}
-              description={partner.about}
               logoUrl={partner.logo}
               coverUrl={partner.marketplace_cover}
               onPress={() => handleCardPress(partner)}
@@ -123,19 +128,16 @@ const MarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       {renderHeader()}
-
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.specialDealsContainer}>
           <Text style={styles.sectionTitle}>Exclusive Offers 🎁</Text>
           <SpecialDeals />
         </View>
-
         <View style={styles.partnerGridContainer}>
           <Text style={styles.sectionTitle}>Featured Services</Text>
           {renderPartnerGrid()}
         </View>
       </ScrollView>
-
       <Modal
         visible={!!selectedPartner}
         transparent
@@ -148,9 +150,9 @@ const MarketplaceScreen = () => {
               partner={selectedPartner}
               visible={!!selectedPartner}
               onClose={handleCloseModal}
+              userId={user?.id}
             />
           )}
-       
         </View>
       </Modal>
     </View>
@@ -225,17 +227,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-  },
-  cardWrapper: {
-    width: CARD_WIDTH,
-    marginBottom: CARD_GUTTER,
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
-    elevation: 3,
-    shadowColor: "#22c55e",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
   },
   modalOverlay: {
     flex: 1,

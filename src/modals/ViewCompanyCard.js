@@ -16,15 +16,55 @@ import { LinearGradient } from "expo-linear-gradient";
 const { height } = Dimensions.get("window");
 const MODAL_HEIGHT = height * 0.94;
 
-const ViewCompanyCard = ({ visible, onClose, partner }) => {
+const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
   const [showBrowser, setShowBrowser] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
   if (!visible || !partner) return null;
 
+  const getInjectedScript = () => {
+    return `
+      (function() {
+        try {
+          window.sessionStorage.setItem('housetabz_user_id', '${userId || ""}');
+          
+          // Send logs back to React Native
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'log',
+            message: 'Session Storage Check',
+            data: {
+              storedUserId: window.sessionStorage.getItem('housetabz_user_id'),
+              attemptedId: '${userId || ""}'
+            }
+          }));
+
+          // Override console.log
+          const originalConsole = console.log;
+          console.log = (...args) => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'console',
+              message: args.map(arg => JSON.stringify(arg)).join(' ')
+            }));
+            originalConsole.apply(console, args);
+          };
+
+        } catch (error) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'error',
+            message: error.toString()
+          }));
+        }
+      })();
+      true;
+    `;
+  };
+
+
+
   const constructShopUrl = () => {
     try {
-      const baseUrl = 'https://b6f8-2605-a601-a0c6-4f00-ed09-8474-5322-829a.ngrok-free.app/cleaning-test.html';
+      console.log('User ID when constructing shop URL:', userId); // Add this
+      const baseUrl = 'https://c55d-2605-a601-a0c6-4f00-b4d7-311b-b26b-3a5e.ngrok-free.app/cleaning-test.html';
       return `${baseUrl}?ref=housetabz&partner_id=${partner.id || '2'}`;
     } catch (error) {
       console.error('Error constructing URL:', error);
@@ -133,20 +173,27 @@ const ViewCompanyCard = ({ visible, onClose, partner }) => {
           {partner.name}
         </Text>
       </View>
+
       <WebView
-        source={{ 
-          uri: constructShopUrl(),
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Access-Control-Allow-Origin': '*'
-          }
-        }}
-        style={styles.webView}
-        startInLoadingState={true}
-        renderLoading={() => (
-          <View style={styles.webviewLoading}>
-            <ActivityIndicator size="large" color="#22c55e" />
-          </View>
+      source={{ 
+        uri: constructShopUrl(),
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }}
+      style={styles.webView}
+      startInLoadingState={true}
+      injectedJavaScript={getInjectedScript()}
+      onMessage={(event) => {
+        const data = JSON.parse(event.nativeEvent.data);
+        // Log messages from WebView
+        console.log('WebView Message:', data);
+      }}
+      renderLoading={() => (
+        <View style={styles.webviewLoading}>
+          <ActivityIndicator size="large" color="#22c55e" />
+        </View>
         )}
       />
     </View>
