@@ -164,22 +164,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    color: 'red',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  noDataText: {
-    color: '#666',
-    fontSize: 16,
-    textAlign: 'center',
-  },
   headerContainer: {
     width: "100%",
     zIndex: 10,
