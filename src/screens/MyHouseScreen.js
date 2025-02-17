@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#333",
     marginBottom: 10,
-    fontFamily: 'montserrat-bold'
+    // fontFamily: 'montserrat-bold'
   },
   underline: {
     height: 3,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#4CAF50",
     marginRight: 5,
-    fontFamily: 'montserrat-bold'
+    // fontFamily: 'montserrat-bold'
   },
   tooltip: {
     position: "absolute",
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     color: "#555",
     textAlign: "center",
     marginBottom: 20,
-    fontFamily: 'montserrat-regular'
+    // fontFamily: 'montserrat-regular'
   },
   scoreboard: {
     backgroundColor: "#f9f9f9",
@@ -273,19 +273,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
     marginBottom: 20,
-    fontFamily: 'montserrat-regular'
+    // fontFamily: 'montserrat-regular'
   },
   clickableTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    fontFamily: 'montserrat-bold'
+    // fontFamily: 'montserrat-bold'
   },
   sectionHeader: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 10,
     color: "#333",
-    fontFamily: 'montserrat-bold'
+    // fontFamily: 'montserrat-bold'
   },
 });
 

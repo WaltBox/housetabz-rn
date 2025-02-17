@@ -1,15 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import axios from 'axios';
 import ModalComponent from '../components/ModalComponent';
 import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
 import UserFeedbackModal from '../modals/UserFeedbackModal';
 
 const TopBar = () => {
+  const userId = 1; // Replace with dynamic user ID as needed
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
   const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:3004/api/users/${userId}/notifications`
+      );
+      const unread = response.data.some((notification) => !notification.isRead);
+      setHasUnreadNotifications(unread);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Optional: Polling to check for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval); // Cleanup interval on component unmount
+  }, [userId]);
 
   return (
     <View style={styles.headerContainer}>
@@ -21,12 +45,17 @@ const TopBar = () => {
       {/* Icons */}
       <View style={styles.iconContainer}>
         <TouchableOpacity onPress={() => setIsNotificationsVisible(true)}>
-          <Icon
-            name="notifications-outline"
-            size={24}
-            color="green"
-            style={styles.icon}
-          />
+          <View style={styles.notificationIconContainer}>
+            <Icon
+              name="notifications-outline"
+              size={24}
+              color="green"
+              style={styles.icon}
+            />
+            {hasUnreadNotifications && (
+              <View style={styles.notificationBadge} />
+            )}
+          </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsFeedbackVisible(true)}>
           <Icon name="create-outline" size={24} color="green" style={styles.icon} />
@@ -41,7 +70,7 @@ const TopBar = () => {
         visible={isNotificationsVisible}
         onClose={() => setIsNotificationsVisible(false)}
       >
-        <NotificationsModal />
+        <NotificationsModal onMarkAsRead={fetchNotifications} />
       </ModalComponent>
 
       {/* Settings Modal */}
@@ -78,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginLeft: 5,
     marginTop: 32,
-    fontFamily: 'Montserrat_700Bold', // Use the bold font
+    // fontFamily: 'Montserrat_700Bold', // Use the bold font
   },
   iconContainer: {
     flexDirection: 'row',
@@ -88,8 +117,18 @@ const styles = StyleSheet.create({
   icon: {
     marginLeft: 16, // Space between icons
   },
+  notificationIconContainer: {
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'red',
+  },
 });
-
-
 
 export default TopBar;

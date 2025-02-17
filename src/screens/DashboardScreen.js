@@ -10,6 +10,7 @@ const DashboardScreen = () => {
   const [yourBalance, setYourBalance] = useState(0);
   const [yourChargesData, setYourChargesData] = useState([]);
   const [houseBalance, setHouseBalance] = useState(0);
+ 
   const [roommateChartData, setRoommateChartData] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [taskCount, setTaskCount] = useState(0);
@@ -45,6 +46,8 @@ const DashboardScreen = () => {
           const { bills, users } = houseResponse.data;
 
           const totalHouseBalance = bills.reduce((sum, bill) => sum + bill.amount, 0);
+
+
           setHouseBalance(totalHouseBalance);
 
           setRoommateChartData(
@@ -214,9 +217,10 @@ const styles = StyleSheet.create({
   
   sectionTitle: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: 10,
     color: '#333',
+    fontFamily: 'Roboto', // Use Roboto font
   },
   centeredContainer: {
     alignItems: 'center',

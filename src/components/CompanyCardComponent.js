@@ -2,40 +2,77 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 
 const CompanyCardComponent = ({ name, description, logoUrl, coverUrl, onPress, cardWidth }) => {
+  // Handle empty or undefined text props
+  const displayName = name || 'Company Name';
+  const displayDescription = description || 'No description available';
+
+  // Handle image loading errors
+  const handleImageError = (error) => {
+    console.log('Image loading error:', error);
+  };
+
+  // Direct use of S3 URLs - no need for local asset fallbacks since we're using S3
+  const coverImage = { uri: coverUrl };
+  const logoImage = { uri: logoUrl };
+
   return (
     <TouchableOpacity onPress={onPress} style={[styles.card, { width: cardWidth }]}>
       {/* Cover Photo */}
-      <Image 
-        source={coverUrl ? { uri: coverUrl } : require('../../assets/rhythmenergycover.jpeg')} 
-        style={styles.coverPhoto} 
-        resizeMode="cover"
-      />
+      <View style={styles.coverPhotoContainer}>
+        <Image 
+          source={coverImage}
+          style={styles.coverPhoto} 
+          resizeMode="cover"
+          onError={handleImageError}
+        />
+      </View>
+
       <View style={styles.content}>
         {/* Row with Logo and Text */}
         <View style={styles.row}>
           {/* Logo */}
-          <Image 
-            source={logoUrl ? { uri: logoUrl } : require('../../assets/rhythmlogo.png')}
-            style={styles.logo} 
-            resizeMode="contain"
-          />
+          <View style={styles.logoContainer}>
+            <Image 
+              source={logoImage}
+              style={styles.logo} 
+              resizeMode="contain"
+              onError={handleImageError}
+            />
+          </View>
+
           {/* Name and Description */}
           <View style={styles.textContainer}>
-            <Text style={styles.title}>{name}</Text>
-            <Text style={styles.description} numberOfLines={2}>
-              {description}
+            <Text 
+              style={styles.title}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {displayName}
+            </Text>
+            <Text 
+              style={styles.description} 
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {displayDescription}
             </Text>
           </View>
         </View>
+
         {/* AVG Cost Section */}
         <View style={styles.costContainer}>
-          <Text style={styles.costLabel}>Est / Roommate:</Text>
-          <Text style={styles.costValue}>$123</Text> {/* Replace with dynamic cost if available */}
+          <Text style={styles.costLabel}>
+            Est / Roommate:
+          </Text>
+          <Text style={styles.costValue}>
+            $123
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
 
 const styles = StyleSheet.create({
   card: {
