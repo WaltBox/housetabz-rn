@@ -135,7 +135,7 @@ const UserFeedbackModal = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
   },
   content: {
     flex: 1,

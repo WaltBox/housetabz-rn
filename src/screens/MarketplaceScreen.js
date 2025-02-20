@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
@@ -30,10 +29,25 @@ const MarketplaceScreen = () => {
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [specialDealsCount, setSpecialDealsCount] = useState(0);
   const cardScale = useState(new Animated.Value(1))[0];
 
   useEffect(() => {
     fetchPartnerDetails();
+  }, []);
+
+  useEffect(() => {
+    // Fetch deals count for the Special Deals header
+    const fetchDealsCount = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/deals?includeExpired=true`);
+        setSpecialDealsCount(response.data.deals.length);
+      } catch (err) {
+        console.error("Error fetching deals count:", err);
+      }
+    };
+
+    fetchDealsCount();
   }, []);
 
   const fetchPartnerDetails = async () => {
@@ -51,7 +65,6 @@ const MarketplaceScreen = () => {
   };
 
   const handleCardPress = (partner) => {
-    console.log('User ID when card pressed:', user?.id);
     setSelectedPartner(partner);
     Animated.spring(cardScale, {
       toValue: 0.96,
@@ -70,10 +83,11 @@ const MarketplaceScreen = () => {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <LinearGradient colors={["#22c55e", "#16a34a"]} style={styles.gradientBackground}>
+      <View style={styles.solidHeader}>
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerText}>HouseTabz Marketplace</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>HouseTabz</Text>
+            <Text style={styles.headerSubtitle}>Marketplace</Text>
           </View>
           <Image
             source={require("../../assets/housetabz-marketplace3.png")}
@@ -81,7 +95,7 @@ const MarketplaceScreen = () => {
             resizeMode="contain"
           />
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 
@@ -89,7 +103,7 @@ const MarketplaceScreen = () => {
     if (isLoading)
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#22c55e" />
+          <ActivityIndicator size="large" color="#34d399" />
           <Text style={styles.loadingText}>Loading Marketplace...</Text>
         </View>
       );
@@ -108,10 +122,7 @@ const MarketplaceScreen = () => {
     return (
       <View style={styles.cardGrid}>
         {partnerDetails.map((partner) => (
-          <Animated.View
-            key={partner.id}
-            style={{ transform: [{ scale: cardScale }] }}
-          >
+          <Animated.View key={partner.id} style={{ transform: [{ scale: cardScale }] }}>
             <CompanyCardComponent
               name={partner.name}
               logoUrl={partner.logo}
@@ -128,16 +139,33 @@ const MarketplaceScreen = () => {
   return (
     <View style={styles.container}>
       {renderHeader()}
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.specialDealsContainer}>
-          <Text style={styles.sectionTitle}>Exclusive Offers 🎁</Text>
-          <SpecialDeals />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer} 
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Special Deals Section with Header */}
+        <View style={styles.offersContainerWrapper}>
+          <View style={styles.offersContainer}>
+            <View style={styles.offersHeader}>
+              <MaterialIcons name="local-offer" size={24} color="#34d399" />
+              <Text style={styles.offersTitle}>
+                Special Deals ({specialDealsCount})
+              </Text>
+            </View>
+            {/* Special deals component with no padding from parent */}
+            <View style={styles.specialDealsWrapper}>
+              <SpecialDeals />
+            </View>
+          </View>
         </View>
+
+        {/* Featured Services */}
         <View style={styles.partnerGridContainer}>
           <Text style={styles.sectionTitle}>Featured Services</Text>
           {renderPartnerGrid()}
         </View>
       </ScrollView>
+      
       <Modal
         visible={!!selectedPartner}
         transparent
@@ -162,28 +190,37 @@ const MarketplaceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#ffffff",
   },
   headerContainer: {
     width: "100%",
     zIndex: 10,
     marginBottom: -height * 0.07,
   },
-  gradientBackground: {
+  solidHeader: {
+    backgroundColor: "#34d399",
     height: 110,
     paddingHorizontal: 24,
     borderBottomRightRadius: 50,
+    justifyContent: "center",
   },
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerTextContainer: {
     flex: 1,
   },
-  headerText: {
-    fontSize: 22,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
+  },
+  headerSubtitle: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    marginTop: 4,
   },
   headerImage: {
     width: 130,
@@ -191,21 +228,51 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingTop: 110,
-    paddingHorizontal: CARD_GUTTER,
     paddingBottom: 40,
   },
-  specialDealsContainer: {
+  // Wrapper to provide horizontal padding for the entire offers section
+  offersContainerWrapper: {
+    paddingHorizontal: CARD_GUTTER,
     marginBottom: 24,
-    marginTop: -height * 0.05,
+  },
+  // Offers container with compact styling
+  offersContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    overflow: 'hidden', // Ensures children don't overflow rounded corners
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  offersHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  offersTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginLeft: 8,
+  },
+  // New wrapper to ensure SpecialDeals is not affected by parent padding
+  specialDealsWrapper: {
+    marginHorizontal: -16, // Counteract the parent padding
+    width: width, // Force full width
+    alignSelf: 'center', // Center this component
+  },
+  partnerGridContainer: {
+    marginTop: 8,
+    paddingHorizontal: CARD_GUTTER,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1e293b",
     marginBottom: 16,
-  },
-  partnerGridContainer: {
-    marginTop: 8,
   },
   cardGrid: {
     flexDirection: "row",
@@ -214,16 +281,8 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.92)",
+    backgroundColor: "rgba(0,0,0,0.9)",
     justifyContent: "flex-end",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 50,
-    right: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 20,
-    padding: 10,
   },
   loadingContainer: {
     height: 200,
@@ -249,7 +308,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   retryButton: {
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 8,

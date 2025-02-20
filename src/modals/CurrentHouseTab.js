@@ -101,13 +101,13 @@ const CurrentHouseTab = ({ house }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#dff6f0",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#dff6f0",
   },
   loadingText: {
     marginTop: 12,

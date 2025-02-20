@@ -228,7 +228,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
   },
   waveBackground: {
     position: 'absolute',
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
   },
   scrollContent: {
     paddingTop: 120,

@@ -64,7 +64,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
   const constructShopUrl = () => {
     try {
       console.log('User ID when constructing shop URL:', userId); // Add this
-      const baseUrl = 'https://c55d-2605-a601-a0c6-4f00-b4d7-311b-b26b-3a5e.ngrok-free.app/cleaning-test.html';
+      const baseUrl = 'https://69cc-2605-a601-a0c6-4f00-b9c5-962b-1f98-dae6.ngrok-free.app/cleaning-test.html';
       return `${baseUrl}?ref=housetabz&partner_id=${partner.id || '2'}`;
     } catch (error) {
       console.error('Error constructing URL:', error);
@@ -97,7 +97,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
             </View>
           )}
           <LinearGradient
-            colors={['transparent', '#f8fafc']}
+            colors={['transparent', '#dff6f0']}
             style={styles.imageGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: MODAL_HEIGHT,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#dff6f0",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: "hidden",

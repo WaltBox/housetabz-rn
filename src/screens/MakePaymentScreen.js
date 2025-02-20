@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   // General Container Styles
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
   },
   loadingContainer: {
     flex: 1,

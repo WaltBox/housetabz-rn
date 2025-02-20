@@ -21,6 +21,24 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Determine the effective payment amount.
+  // For stagedRequest, we expect taskData.paymentAmount to be set.
+  // For takeoverRequest, if taskData.paymentAmount is null, use monthlyAmount.
+  const effectivePaymentAmount = (() => {
+    if (!taskData) return 0;
+    const paymentAmt = taskData.paymentAmount;
+    if (paymentAmt !== null && paymentAmt !== undefined) {
+      return Number(paymentAmt);
+    }
+    // Fallback: if there's a takeoverRequest, try monthlyAmount.
+    const takeover =
+      taskData.serviceRequestBundle && taskData.serviceRequestBundle.takeOverRequest;
+    if (takeover && takeover.monthlyAmount) {
+      return Number(takeover.monthlyAmount);
+    }
+    return 0;
+  })();
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -62,7 +80,7 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
     try {
       await onSuccess({
         paymentMethod: selectedMethod,
-        amount: taskData.paymentAmount,
+        amount: effectivePaymentAmount,
       });
     } catch (error) {
       console.error('Payment failed:', error);
@@ -95,10 +113,13 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   if (error) return <ErrorModal visible={visible} error={error} onClose={onClose} />;
   if (!bundleDetails) return null;
 
-  const { stagedRequest, status, creator, tasks = [] } = bundleDetails;
-  const { paymentAmount } = taskData;
+  // Treat both stagedRequest and takeOverRequest the same way.
+  const request = bundleDetails.stagedRequest || bundleDetails.takeOverRequest;
+  const isStaged = true; // Render as if it were a staged request.
+
+  const { status, creator, tasks = [] } = bundleDetails;
   const pendingParticipants = tasks.filter(
-    task => task.type === 'service_request' && task.response === 'pending'
+    task => task.response === 'pending'
   );
   const acceptedCount = tasks.filter(t => t.response === 'accepted').length;
   const totalParticipants = tasks.length;
@@ -109,7 +130,9 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
         <SafeAreaView style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Secure Group Commitment</Text>
+            <Text style={styles.headerTitle}>
+              Secure Group Commitment
+            </Text>
             <MaterialIcons 
               name="close" 
               size={24} 
@@ -123,7 +146,9 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
             {/* Status Section */}
             <View style={styles.statusSection}>
               <View style={styles.statusRow}>
-                <Text style={styles.statusLabel}>Commitment Status</Text>
+                <Text style={styles.statusLabel}>
+                  {isStaged ? 'Commitment Status' : 'Request Status'}
+                </Text>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '1a' }]}>
                   <Text style={[styles.statusText, { color: getStatusColor(status) }]}>
                     {status?.toUpperCase()}
@@ -137,20 +162,24 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
             </View>
 
             {/* Service Details */}
-            {stagedRequest && (
+            {request && (
               <View style={styles.serviceCard}>
-                <Text style={styles.serviceName}>{stagedRequest.serviceName}</Text>
-                <Text style={styles.providerName}>with {stagedRequest.partnerName}</Text>
+                <Text style={styles.serviceName}>{request.serviceName}</Text>
+                <Text style={styles.providerName}>
+                  {request.partnerName ? `with ${request.partnerName}` : ''}
+                </Text>
                 <View style={styles.costBreakdown}>
                   <View style={styles.costRow}>
-                    <Text style={styles.label}>Total Service Cost</Text>
+                    <Text style={styles.label}>
+                      {isStaged ? 'Total Service Cost' : 'Monthly Amount'}
+                    </Text>
                     <Text style={styles.value}>
-                      ${Number(stagedRequest.estimatedAmount).toFixed(2)}
+                      ${Number(request.estimatedAmount || request.monthlyAmount || 0).toFixed(2)}
                     </Text>
                   </View>
                   <View style={[styles.costRow, styles.highlightedRow]}>
-                    <Text style={styles.label}>Your Contribution</Text>
-                    <Text style={styles.shareAmount}>${paymentAmount.toFixed(2)}</Text>
+                    <Text style={styles.label}>Your Share</Text>
+                    <Text style={styles.shareAmount}>${effectivePaymentAmount.toFixed(2)}</Text>
                   </View>
                 </View>
               </View>
@@ -264,8 +293,10 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
           {/* Footer */}
           <View style={styles.footer}>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Commitment Total</Text>
-              <Text style={styles.totalAmount}>${paymentAmount.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>
+                {isStaged ? 'Commitment Total' : 'Monthly Share'}
+              </Text>
+              <Text style={styles.totalAmount}>${effectivePaymentAmount.toFixed(2)}</Text>
             </View>
             <View style={styles.buttonContainer}>
               <TouchableOpacity 
@@ -296,8 +327,32 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   );
 };
 
+export default AcceptServicePayment;
+
+const LoadingModal = ({ visible }) => (
+  <Modal transparent visible={visible}>
+    <View style={styles.centerContainer}>
+      <ActivityIndicator size="large" color="#16a34a" />
+    </View>
+  </Modal>
+);
+
+const ErrorModal = ({ visible, error, onClose }) => (
+  <Modal transparent visible={visible}>
+    <View style={styles.centerContainer}>
+      <View style={styles.errorCard}>
+        <MaterialIcons name="error-outline" size={40} color="#dc2626" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={onClose}>
+          <Text style={styles.retryText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
 
 
+// [Styles remain exactly the same as provided in your snippet]
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
@@ -305,7 +360,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '90%',
@@ -476,7 +531,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#f8fafc',
+    borderColor: '#dff6f0',
   },
   paymentCard: {
     flexDirection: 'row',
@@ -540,14 +595,14 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 15,
-    color: '#166534',
+    color: 'black',
     lineHeight: 22,
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    backgroundColor: '#fff',
+    backgroundColor: '#dff6f0',
   },
   totalRow: {
     flexDirection: 'row',
@@ -634,29 +689,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default AcceptServicePayment;
-
-
-
-const LoadingModal = ({ visible }) => (
-  <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
-      <ActivityIndicator size="large" color="#16a34a" />
-    </View>
-  </Modal>
-);
-
-const ErrorModal = ({ visible, error, onClose }) => (
-  <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
-      <View style={styles.errorCard}>
-        <MaterialIcons name="error-outline" size={40} color="#dc2626" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={onClose}>
-          <Text style={styles.retryText}>Close</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-);

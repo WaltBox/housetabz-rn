@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   // General Layout
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff1f0',
   },
   scrollContent: {
     paddingVertical: 24,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
     paddingHorizontal: 24,
   },
   // Header Styles

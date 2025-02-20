@@ -15,52 +15,48 @@ const getServiceIcon = (serviceType) => {
   }
 };
 
-const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
-  const stagedRequest = task.serviceRequestBundle?.stagedRequest;
+const ServiceRequestTask = ({ task, onAccept, onReject }) => {
+  const { stagedRequest, takeOverRequest } = task.serviceRequestBundle || {};
+  const isTakeOver = !!takeOverRequest && !stagedRequest;
   
-  if (!stagedRequest) return null;
-
-  const handleAccept = () => {
-    if (task.paymentRequired) {
-      onAccept({
-        taskId: task.id,
-        bundleId: task.serviceRequestBundleId,
-        paymentAmount: task.paymentAmount,
-        stagedRequest: {
-          partnerName: stagedRequest.partnerName,
-          serviceName: stagedRequest.serviceName,
-          estimatedAmount: stagedRequest.estimatedAmount,
-          requiredUpfrontPayment: stagedRequest.requiredUpfrontPayment
-        }
-      });
-    } else {
-      onAccept(task.id);
-    }
-  };
+  if (!task.serviceRequestBundle) return null;
+  
+  const request = stagedRequest || takeOverRequest;
+  if (!request) return null;
+  
+  const iconName = getServiceIcon(request.serviceType);
+  const amount = isTakeOver ? request.monthlyAmount : task.paymentAmount;
+  const formattedPrice = `$${Number(amount).toFixed(2)}${isTakeOver ? '/mo' : ''}`;
+  const subtitle = request.partnerName || request.accountNumber ? 
+    (request.partnerName ? request.partnerName : `Account: ${request.accountNumber}`) : '';
+    
+  const showPledgePending = task.paymentRequired || isTakeOver;
+    
+  const handleConfirmPress = () => onAccept(task);
 
   return (
     <View style={styles.taskCard}>
-      {/* Header with Service Info */}
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           <MaterialIcons 
-            name={getServiceIcon(stagedRequest.serviceType)} 
+            name={iconName}
             size={20} 
             color="#22c55e" 
           />
         </View>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>{stagedRequest.serviceName}</Text>
-          <Text style={styles.subtitle}>{stagedRequest.partnerName}</Text>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            {request.serviceName}
+          </Text>
+          {subtitle !== '' && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
       </View>
 
-      {/* Payment Info */}
-      <View style={styles.paymentInfo}>
-        <Text style={styles.amount}>
-          ${Number(task.paymentAmount).toFixed(2)}
-        </Text>
-        {task.paymentRequired && (
+      <View style={styles.statusRow}>
+        <View style={styles.pricePill}>
+          <Text style={styles.pricePillText}>Price: {formattedPrice}</Text>
+        </View>
+        {showPledgePending && (
           <View style={styles.paymentBadge}>
             <MaterialIcons name="schedule" size={12} color="#6366f1" />
             <Text style={styles.paymentBadgeText}>Pledge Pending</Text>
@@ -68,14 +64,6 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
         )}
       </View>
 
-      {/* Friendly Pledge Messaging */}
-      {task.paymentRequired && (
-        <Text style={styles.pledgeInfoText}>
-          By confirming your pledge, you're agreeing to cover your share of the expense as long as everyone else does too. 
-        </Text>
-      )}
-
-      {/* Actions */}
       <View style={styles.actions}>
         <TouchableOpacity 
           onPress={() => onReject(task.id)} 
@@ -86,15 +74,13 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          onPress={handleAccept} 
+          onPress={handleConfirmPress} 
           style={[styles.button, styles.acceptButton]}
         >
           <MaterialIcons name="check" size={16} color="#22c55e" />
           <Text style={styles.acceptText}>Confirm Pledge</Text>
         </TouchableOpacity>
       </View>
-
-     
     </View>
   );
 };
@@ -102,7 +88,7 @@ const ServiceRequestTask = ({ task, onAccept, onReject, onViewMore }) => {
 const styles = StyleSheet.create({
   taskCard: {
     width: CARD_WIDTH,
-    backgroundColor: 'white',
+    backgroundColor: '#dff1f0', // updated barely tan background
     borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
@@ -110,12 +96,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#34d399',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   iconContainer: {
     width: 40,
@@ -124,35 +111,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   headerContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 2,
   },
   subtitle: {
     fontSize: 14,
     color: '#64748b',
+    marginTop: 4,
   },
-  paymentInfo: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  amount: {
-    fontSize: 18,
+  pricePill: {
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  pricePillText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#1e293b',
+    color: '#22c55e',
   },
   paymentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     backgroundColor: '#eef2ff',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -164,26 +159,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#6366f1',
-  },
-  pledgeInfoText: {
-    fontSize: 12,
-    color: '#64748b',
-    fontStyle: 'italic',
-    marginBottom: 12,
+    marginLeft: 4,
   },
   actions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: 8,
-    marginBottom: 12,
   },
   button: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    gap: 6,
   },
   acceptButton: {
     backgroundColor: '#f0fdf4',
@@ -204,17 +192,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#dc2626',
-  },
-  viewMore: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  viewMoreText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
   },
 });
 

@@ -53,7 +53,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
           value={value}
           onValueChange={onPress}
           trackColor={{ false: '#e2e8f0', true: '#bbf7d0' }}
-          thumbColor={value ? '#22c55e' : '#f8fafc'}
+          thumbColor={value ? '#22c55e' : '#dff6f0'}
           ios_backgroundColor="#e2e8f0"
         />
       )}
