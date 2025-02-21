@@ -58,7 +58,7 @@ const TopBar = () => {
             <Icon
               name="notifications-outline"
               size={24}
-              color="green"
+              color="#34d399"
               style={styles.icon}
             />
             {hasUnreadNotifications && (
@@ -67,10 +67,10 @@ const TopBar = () => {
           </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsFeedbackVisible(true)}>
-          <Icon name="create-outline" size={24} color="green" style={styles.icon} />
+          <Icon name="create-outline" size={24} color="#34d399" style={styles.icon} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsSettingsVisible(true)}>
-          <Icon name="settings-outline" size={24} color="green" style={styles.icon} />
+          <Icon name="settings-outline" size={24} color="#34d399" style={styles.icon} />
         </TouchableOpacity>
       </View>
 
@@ -120,7 +120,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    color: 'green',
+    fontFamily: 'Montserrat-Black', // Updated font
+    color: '#34d399',               // Updated color
     fontSize: 20,
     marginLeft: 5,
     marginTop: 32,

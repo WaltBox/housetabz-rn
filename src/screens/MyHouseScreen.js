@@ -121,7 +121,7 @@ const HouseTabzScreen = () => {
           <MaterialIcons
             name={inviteCopied ? "check" : "content-copy"}
             size={20}
-            color={inviteCopied ? "#22c55e" : "#64748b"}
+            color={inviteCopied ? "#34d399" : "#64748b"}
           />
         </TouchableOpacity>
       </View>
@@ -135,7 +135,7 @@ const HouseTabzScreen = () => {
   if (loading)
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
       </View>
     );
 
@@ -189,7 +189,7 @@ const HouseTabzScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#22c55e"
+              tintColor="#34d399"
             />
           }
         >
@@ -216,7 +216,7 @@ const HouseTabzScreen = () => {
               <Svg height="140" width="140" viewBox="0 0 100 100">
                 <Defs>
                   <LinearGradient id="semiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <Stop offset="0%" stopColor="#22c55e" stopOpacity="1" />
+                    <Stop offset="0%" stopColor="#34d399" stopOpacity="1" />
                     <Stop offset="100%" stopColor="#4ade80" stopOpacity="1" />
                   </LinearGradient>
                 </Defs>
@@ -240,7 +240,7 @@ const HouseTabzScreen = () => {
                   onPress={() => setShowTooltip(true)}
                   style={styles.infoButton}
                 >
-                  <MaterialIcons name="info-outline" size={20} color="#22c55e" />
+                  <MaterialIcons name="info-outline" size={20} color="#34d399" />
                 </TouchableOpacity>
               </View>
               <Text style={styles.hsiLabel}>House Status Index</Text>
@@ -257,14 +257,14 @@ const HouseTabzScreen = () => {
               <MaterialIcons
                 name={house?.hsi >= 75 ? "check-circle" : "warning"}
                 size={24}
-                color={house?.hsi >= 75 ? "#22c55e" : "#f59e0b"}
+                color={house?.hsi >= 75 ? "#34d399" : "#f59e0b"}
                 style={styles.statIcon}
               />
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{house?.users?.length || 0}</Text>
               <Text style={styles.statLabel}>Members</Text>
-              <MaterialIcons name="group" size={24} color="#22c55e" style={styles.statIcon} />
+              <MaterialIcons name="group" size={24} color="#34d399" style={styles.statIcon} />
             </View>
           </View>
 
@@ -290,7 +290,7 @@ const HouseTabzScreen = () => {
               style={styles.actionCard}
               onPress={() => setIsCurrentTabVisible(true)}
             >
-              <MaterialIcons name="receipt" size={28} color="#22c55e" />
+              <MaterialIcons name="receipt" size={28} color="#34d399" />
               <Text style={styles.actionCardText}>Current Tab</Text>
               <MaterialIcons name="chevron-right" size={24} color="#ccc" />
             </TouchableOpacity>
@@ -298,7 +298,7 @@ const HouseTabzScreen = () => {
               style={styles.actionCard}
               onPress={() => setIsPaidTabVisible(true)}
             >
-              <MaterialIcons name="history" size={28} color="#22c55e" />
+              <MaterialIcons name="history" size={28} color="#34d399" />
               <Text style={styles.actionCardText}>Paid Tabz</Text>
               <MaterialIcons name="chevron-right" size={24} color="#ccc" />
             </TouchableOpacity>
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     height: 3,
     width: "100%",
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
   },
   scrollContent: {
     paddingTop: 24,
@@ -403,14 +403,14 @@ const styles = StyleSheet.create({
   underline: {
     height: 2,
     width: "100%",
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     borderRadius: 1.5,
     opacity: 0.2,
   },
   inviteButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 24,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   hsiText: {
     fontSize: 32,
     fontWeight: "700",
-    color: "#22c55e",
+    color: "#34d399",
     marginRight: 8,
   },
   hsiLabel: {
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   },
   points: {
     fontSize: 16,
-    color: "#22c55e",
+    color: "#34d399",
     fontWeight: "600",
   },
   actionCards: {
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tooltipButton: {
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     borderRadius: 8,
     padding: 12,
     alignItems: "center",
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#22c55e",
+    backgroundColor: "#34d399",
     borderRadius: 8,
     padding: 16,
     gap: 8,

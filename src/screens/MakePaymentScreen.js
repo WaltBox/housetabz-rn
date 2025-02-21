@@ -64,7 +64,7 @@ const BillingScreen = () => {
         
         <View style={styles.billCard}>
           <View style={styles.billHeader}>
-            <MaterialIcons name="flash-on" size={20} color="#22c55e" style={styles.icon} />
+            <MaterialIcons name="flash-on" size={20} color="#34d399" style={styles.icon} />
             <Text style={styles.billTitle}>February Energy Bill</Text>
           </View>
           <View style={styles.billDetails}>
@@ -81,7 +81,7 @@ const BillingScreen = () => {
 
         <View style={styles.billCard}>
           <View style={styles.billHeader}>
-            <MaterialIcons name="wifi" size={20} color="#22c55e" style={styles.icon} />
+            <MaterialIcons name="wifi" size={20} color="#34d399" style={styles.icon} />
             <Text style={styles.billTitle}>Internet - Xfinity</Text>
           </View>
           <View style={styles.billDetails}>
@@ -103,7 +103,7 @@ const BillingScreen = () => {
         
         <View style={styles.pledgeCard}>
           <View style={styles.pledgeHeader}>
-            <MaterialIcons name="cleaning-services" size={20} color="#22c55e" style={styles.icon} />
+            <MaterialIcons name="cleaning-services" size={20} color="#34d399" style={styles.icon} />
             <Text style={styles.pledgeTitle}>Monthly Cleaning</Text>
           </View>
           <View style={styles.pledgeDetails}>
@@ -112,7 +112,7 @@ const BillingScreen = () => {
               <Text style={styles.pledgeAmount}>$70.00</Text>
             </View>
             <View style={styles.pledgeStatus}>
-              <MaterialIcons name="schedule" size={20} color="#22c55e" style={styles.icon} />
+              <MaterialIcons name="schedule" size={20} color="#34d399" style={styles.icon} />
               <Text style={styles.pledgeStatusText}>Pending Approval</Text>
             </View>
           </View>
@@ -160,7 +160,7 @@ const renderMethodsTab = () => (
           <MaterialIcons 
             name={defaultMethod.type === 'card' ? 'credit-card' : 'account-balance'} 
             size={20} 
-            color="#22c55e" 
+            color="#34d399" 
             style={styles.icon} 
           />
           <View style={styles.methodInfo}>
@@ -193,7 +193,7 @@ const renderMethodsTab = () => (
   {/* Add New Payment Method Card */}
   <TouchableOpacity style={styles.addMethodCard}>
     <View style={styles.addMethodContent}>
-      <MaterialIcons name="add-circle-outline" size={24} color="#22c55e" />
+      <MaterialIcons name="add-circle-outline" size={24} color="#34d399" />
       <Text style={styles.addMethodText}>Add New Payment Method</Text>
     </View>
   </TouchableOpacity>
@@ -206,7 +206,7 @@ const renderMethodsTab = () => (
         <MaterialIcons 
           name={method.type === 'card' ? 'credit-card' : 'account-balance'} 
           size={20} 
-          color="#22c55e" 
+          color="#34d399" 
           style={styles.icon} 
         />
         <View style={styles.methodInfo}>
@@ -221,7 +221,7 @@ const renderMethodsTab = () => (
           </Text>
         </View>
         <TouchableOpacity>
-          <MaterialIcons name="more-vert" size={20} color="#22c55e" style={styles.icon} />
+          <MaterialIcons name="more-vert" size={20} color="#34d399" style={styles.icon} />
         </TouchableOpacity>
       </View>
     ))}
@@ -235,7 +235,7 @@ const renderMethodsTab = () => (
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
         <View style={styles.transactionCard}>
           <View style={styles.transactionLeft}>
-            <MaterialIcons name="wifi" size={20} color="#22c55e" style={styles.icon} />
+            <MaterialIcons name="wifi" size={20} color="#34d399" style={styles.icon} />
             <View>
               <Text style={styles.transactionTitle}>Internet Bill</Text>
               <Text style={styles.transactionDate}>Jan 15, 2025</Text>
@@ -250,7 +250,7 @@ const renderMethodsTab = () => (
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
       </View>
     );
   }
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#22c55e',
+    borderBottomColor: '#34d399',
   },
   tabText: {
     fontSize: 15,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#22c55e',
+    color: '#34d399',
   },
   tabContent: {
     flex: 1,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   payButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   },
   pledgeStatusText: {
     fontSize: 12,
-    color: '#22c55e',
+    color: '#34d399',
     fontWeight: '500',
   },
   pledgeNote: {
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   changeMethodText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
   addMethodText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#22c55e',
+    color: '#34d399',
     marginLeft: 8,
   },
 });

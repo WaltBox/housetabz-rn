@@ -27,7 +27,7 @@ const ModalComponent = ({ visible, onClose, children }) => {
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="close" size={24} color="#22c55e" />
+            <MaterialIcons name="close" size={24} color="#34d399" />
           </TouchableOpacity>
 
           {/* Modal Content */}

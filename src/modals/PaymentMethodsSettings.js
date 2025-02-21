@@ -66,7 +66,7 @@ const PaymentMethodsSettings = ({ onClose }) => {
         merchantDisplayName: 'HouseTabz',
         setupIntentClientSecret: clientSecret,
         allowsDelayedPaymentMethods: true,
-        appearance: { colors: { primary: '#22c55e' } },
+        appearance: { colors: { primary: '#34d399' } },
       });
 
       if (initResponse.error) {
@@ -151,7 +151,7 @@ const PaymentMethodsSettings = ({ onClose }) => {
         <MaterialIcons 
           name={method.type === 'bank' ? 'account-balance' : 'credit-card'} 
           size={20} 
-          color="#22c55e" 
+          color="#34d399" 
           style={styles.icon}
         />
         <View>
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   actionButtonText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   defaultText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginHorizontal: 16,
     padding: 16,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 12,
     shadowColor: '#000',
     shadowOpacity: 0.1,

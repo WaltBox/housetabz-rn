@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   moreDetails: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#22c55e',
+    color: '#34d399',
     textAlign: 'center',
     textDecorationLine: 'underline',
   },

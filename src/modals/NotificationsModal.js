@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#22c55e',
+    borderBottomColor: '#34d399',
   },
   tabText: {
     fontSize: 15,
@@ -259,10 +259,10 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   activeTabText: {
-    color: '#22c55e',
+    color: '#34d399',
   },
   badge: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
   },
   notificationContent: {
     flex: 1,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     left: '50%',
     transform: [{ translateX: -width * 0.4 }],
     width: width * 0.8,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',

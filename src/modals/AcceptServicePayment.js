@@ -92,7 +92,7 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending': return '#f59e0b';
-      case 'accepted': return '#22c55e';
+      case 'accepted': return '#34d399';
       case 'rejected': return '#dc2626';
       default: return '#64748b';
     }
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   },
   acceptedCount: {
     fontSize: 14,
-    color: '#22c55e',
+    color: '#34d399',
     fontWeight: '600',
   },
   avatarScroll: {
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#16a34a',
+    backgroundColor: '#34d399',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 10,

@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 14,
     fontWeight: '500',
   },

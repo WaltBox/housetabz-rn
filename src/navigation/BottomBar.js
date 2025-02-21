@@ -102,7 +102,7 @@ const TabNavigator = () => (
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
-          return iconName ? <Icon name={iconName} size={typeof size === 'number' ? size : 24} color={color} /> : null;
+          return iconName ? <Icon name={iconName} size={typeof size === 'number' ? size : 24} color="#34d399" /> : null;
         },
         headerShown: false,
         tabBarActiveTintColor: 'green',
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#22C55E',
+    shadowColor: '#34d399',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,
     shadowRadius: 4,

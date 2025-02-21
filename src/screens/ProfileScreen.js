@@ -79,7 +79,7 @@ const ProfileScreen = () => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
       </View>
     );
   }
@@ -105,7 +105,7 @@ const ProfileScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#22c55e"
+            tintColor="#34d399"
           />
         }
       >
@@ -136,7 +136,7 @@ const ProfileScreen = () => {
             <MaterialIcons 
               name="attach-money" 
               size={24} 
-              color="#22c55e" 
+              color="#34d399" 
               style={styles.statIcon} 
             />
           </View>
@@ -167,7 +167,7 @@ const ProfileScreen = () => {
                 styles.progressBarFill,
                 { 
                   width: `${Math.min((userData.points || 0), 100)}%`,
-                  backgroundColor: userData.points >= 100 ? '#f59e0b' : '#22c55e'
+                  backgroundColor: userData.points >= 100 ? '#f59e0b' : '#34d399'
                 }
               ]}
             />
@@ -180,7 +180,7 @@ const ProfileScreen = () => {
             style={styles.actionCard}
             onPress={() => setIsUserTabVisible(true)}
           >
-            <MaterialIcons name="person" size={28} color="#22c55e" />
+            <MaterialIcons name="person" size={28} color="#34d399" />
             <Text style={styles.actionCardText}>Your Tab</Text>
             <MaterialIcons name="chevron-right" size={24} color="#ccc" />
           </TouchableOpacity>
@@ -189,7 +189,7 @@ const ProfileScreen = () => {
             style={styles.actionCard}
             onPress={() => setIsTransactionsModalVisible(true)}
           >
-            <MaterialIcons name="receipt" size={28} color="#22c55e" />
+            <MaterialIcons name="receipt" size={28} color="#34d399" />
             <Text style={styles.actionCardText}>Transaction History</Text>
             <MaterialIcons name="chevron-right" size={24} color="#ccc" />
           </TouchableOpacity>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     right: 8,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 15,
     padding: 6,
     elevation: 2,
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   footerLink: {
-    color: '#22c55e',
+    color: '#34d399',
     textDecorationLine: 'underline',
   },
   footerCopyright: {
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

@@ -147,7 +147,7 @@ const MarketplaceScreen = () => {
         <View style={styles.chartCard}>
           <View style={styles.taskHeader}>
             <View style={styles.taskTitleGroup}>
-              <MaterialIcons name="local-offer" size={20} color="#22c55e" style={styles.icon} />
+              <MaterialIcons name="local-offer" size={20} color="#34d399" style={styles.icon} />
               <Text style={styles.chartTitle}>Special Deals</Text>
             </View>
             {specialDealsCount > 0 && (
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     borderColor: '#dcfce7',
   },
   taskBadgeText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 13,
     fontWeight: '500',
   },

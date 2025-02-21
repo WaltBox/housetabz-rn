@@ -42,7 +42,7 @@ const SpecialDeals = () => {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconContainer}>
-            <MaterialIcons name="local-offer" size={20} color="#22c55e" />
+            <MaterialIcons name="local-offer" size={20} color="#34d399" />
           </View>
           <View style={styles.headerContent}>
             <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
@@ -70,7 +70,7 @@ const SpecialDeals = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
         <Text style={styles.loadingText}>Loading deals...</Text>
       </View>
     );
@@ -79,7 +79,7 @@ const SpecialDeals = () => {
   if (deals.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
+        <MaterialIcons name="check-circle" size={48} color="#34d399" style={styles.icon} />
         <Text style={styles.emptyTitle}>No Deals Available</Text>
         <Text style={styles.emptyText}>Check back later for special offers.</Text>
       </View>
@@ -109,7 +109,7 @@ const SpecialDeals = () => {
               styles.paginationDot,
               {
                 backgroundColor:
-                  index === currentIndex ? '#22c55e' : '#e2e8f0',
+                  index === currentIndex ? '#34d399' : '#e2e8f0',
                 width: index === currentIndex ? 12 : 6,
               },
             ]}

@@ -35,7 +35,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
     >
       <View style={styles.settingsRowLeft}>
         <View style={styles.iconContainer}>
-          <MaterialIcons name={icon} size={20} color="#22c55e" />
+          <MaterialIcons name={icon} size={20} color="#34d399" />
         </View>
         <View style={styles.settingsRowText}>
           <Text style={styles.settingsRowTitle}>{title}</Text>
@@ -53,7 +53,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
           value={value}
           onValueChange={onPress}
           trackColor={{ false: '#e2e8f0', true: '#bbf7d0' }}
-          thumbColor={value ? '#22c55e' : '#dff6f0'}
+          thumbColor={value ? '#34d399' : '#dff6f0'}
           ios_backgroundColor="#e2e8f0"
         />
       )}

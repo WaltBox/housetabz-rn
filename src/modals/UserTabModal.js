@@ -12,7 +12,7 @@ const UserTabModal = ({ user }) => {
     <View style={styles.chargeCard}>
       <View style={styles.chargeHeader}>
         <View style={styles.chargeTitleContainer}>
-          <MaterialIcons name="account-balance" size={24} color="#22c55e" />
+          <MaterialIcons name="account-balance" size={24} color="#34d399" />
           <Text style={styles.chargeTitle}>
             {item.name || 'Unknown Charge'}
           </Text>
@@ -50,7 +50,7 @@ const UserTabModal = ({ user }) => {
   if (!user) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
         <Text style={styles.loadingText}>Loading your details...</Text>
       </View>
     );
@@ -80,7 +80,7 @@ const UserTabModal = ({ user }) => {
       {/* Balance Cards */}
       <View style={styles.balanceContainer}>
         <View style={styles.balanceCard}>
-          <MaterialIcons name="account-balance-wallet" size={24} color="#22c55e" />
+          <MaterialIcons name="account-balance-wallet" size={24} color="#34d399" />
           <Text style={styles.balanceLabel}>Current Balance</Text>
           <Text style={styles.balanceAmount}>
             ${user?.balance?.toFixed(2) || '0.00'}
@@ -110,7 +110,7 @@ const UserTabModal = ({ user }) => {
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <MaterialIcons name="check-circle" size={48} color="#22c55e" />
+            <MaterialIcons name="check-circle" size={48} color="#34d399" />
             <Text style={styles.emptyTitle}>All Clear!</Text>
             <Text style={styles.emptyText}>You have no unpaid charges.</Text>
           </View>
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
   payButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   payAllButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',

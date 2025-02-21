@@ -41,7 +41,7 @@ const ServiceRequestTask = ({ task, onAccept, onReject }) => {
           <MaterialIcons 
             name={iconName}
             size={20} 
-            color="#22c55e" 
+            color="#34d399" 
           />
         </View>
         <View style={styles.headerContent}>
@@ -77,7 +77,7 @@ const ServiceRequestTask = ({ task, onAccept, onReject }) => {
           onPress={handleConfirmPress} 
           style={[styles.button, styles.acceptButton]}
         >
-          <MaterialIcons name="check" size={16} color="#22c55e" />
+          <MaterialIcons name="check" size={16} color="#34d399" />
           <Text style={styles.acceptText}>Confirm Pledge</Text>
         </TouchableOpacity>
       </View>
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   pricePillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#22c55e',
+    color: '#34d399',
   },
   paymentBadge: {
     flexDirection: 'row',
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   acceptText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#22c55e',
+    color: '#34d399',
   },
   rejectText: {
     fontSize: 13,

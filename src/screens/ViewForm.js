@@ -47,7 +47,7 @@ const ViewForm = ({ route }) => {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#22c55e" style={styles.centered} />;
+    return <ActivityIndicator size="large" color="#34d399" style={styles.centered} />;
   }
 
   if (error) {
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#22c55e',
+    borderColor: '#34d399',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -172,14 +172,14 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
   },
   radioLabel: {
     fontSize: 16,
   },
   submitButton: {
     marginTop: 20,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',

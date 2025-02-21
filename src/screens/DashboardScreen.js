@@ -37,7 +37,7 @@ const DashboardHeader = () => (
 const SummaryCard = ({ icon, label, amount }) => (
   <View style={styles.summaryCard}>
     <View style={styles.summaryHeader}>
-      <MaterialIcons name={icon} size={24} color="#22c55e" style={styles.icon} />
+      <MaterialIcons name={icon} size={24} color="#34d399" style={styles.icon} />
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
     <Text style={styles.summaryAmount}>${amount.toFixed(2)}</Text>
@@ -132,9 +132,9 @@ const DashboardScreen = () => {
           ? charges.map((charge) => ({
               x: charge.name || 'Charge',
               y: parseFloat(charge.amount) || 0,
-              color: charge.paid ? '#22c55e' : '#ef4444',
+              color: charge.paid ? '#34d399' : '#ef4444',
             }))
-          : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
+          : [{ x: 'No Charges', y: 1, color: '#34d399' }];
       setYourChargesData(processedCharges);
 
       // Fetch tasks
@@ -154,7 +154,7 @@ const DashboardScreen = () => {
         );
         setHouseBalance(totalHouseBalance);
 
-        const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
+        const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
         const roommateData = users.map((user, index) => ({
           x: user.username || `User ${index + 1}`,
           y: user.charges?.reduce(
@@ -166,7 +166,7 @@ const DashboardScreen = () => {
         setRoommateChartData(roommateData);
       } else {
         setHouseBalance(0);
-        setRoommateChartData([{ x: 'No Data', y: 1, color: '#22c55e' }]);
+        setRoommateChartData([{ x: 'No Data', y: 1, color: '#34d399' }]);
       }
     } catch (err) {
       console.error('Dashboard data fetch error:', err);
@@ -235,7 +235,7 @@ const DashboardScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#22c55e" />
+        <ActivityIndicator size="large" color="#34d399" />
         <Text style={styles.loadingText}>Loading dashboard...</Text>
       </SafeAreaView>
     );
@@ -259,7 +259,7 @@ const DashboardScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34d399" />
         }
       >
         {/* Rest of your JSX remains the same */}
@@ -267,7 +267,7 @@ const DashboardScreen = () => {
 <View style={styles.chartCard}>
   <View style={styles.taskHeader}>
     <View style={styles.taskTitleGroup}>
-      <MaterialIcons name="assignment" size={20} color="#22c55e" style={styles.icon} />
+      <MaterialIcons name="assignment" size={20} color="#34d399" style={styles.icon} />
       <Text style={styles.chartTitle}>Tasks</Text>
     </View>
     {taskCount > 0 && (
@@ -307,7 +307,7 @@ const DashboardScreen = () => {
               styles.paginationDot,
               {
                 backgroundColor:
-                  index === activeTaskIndex ? '#22c55e' : '#e2e8f0',
+                  index === activeTaskIndex ? '#34d399' : '#e2e8f0',
                 width: index === activeTaskIndex ? 12 : 6,
               },
             ]}
@@ -317,7 +317,7 @@ const DashboardScreen = () => {
     </View>
   ) : (
     <View style={styles.emptyContainer}>
-      <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
+      <MaterialIcons name="check-circle" size={48} color="#34d399" style={styles.icon} />
       <Text style={styles.emptyTitle}>All Caught Up!</Text>
       <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
     </View>
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     borderColor: '#dcfce7',
   },
   taskBadgeText: {
-    color: '#22c55e',
+    color: '#34d399',
     fontSize: 13,
     fontWeight: '500',
   },
