@@ -1,6 +1,6 @@
 // SpecialDeals.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -27,119 +27,133 @@ const SpecialDeals = () => {
     fetchDeals();
   }, []);
 
-  const scrollToIndex = (index) => {
-    if (scrollViewRef.current && index >= 0 && index < deals.length) {
-      // Calculate the x position to scroll to
-      const xOffset = index * (CARD_WIDTH + 12);
-      scrollViewRef.current.scrollTo({ x: xOffset, animated: true });
-      setCurrentIndex(index);
-    }
-  };
-
   const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + 12));
-    
-    if (index !== currentIndex) {
-      setCurrentIndex(index);
-    }
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / (CARD_WIDTH + 12));
+    setCurrentIndex(index);
   };
 
   // Render a single deal card
   const renderDealCard = (deal, index) => (
     <View 
-      style={[
-        styles.card,
-        index === deals.length - 1 ? { marginRight: 0 } : null
-      ]}
-      key={index}
+      style={styles.taskItemContainer}
+      key={deal.id || index}
     >
-      <View style={styles.cardHeader}>
-        <MaterialIcons name="local-offer" size={20} color="#34d399" />
-        <Text style={styles.title}>{deal.name}</Text>
-      </View>
-      <Text style={styles.details}>{deal.details}</Text>
-      <View style={styles.expiry}>
-        <MaterialIcons name="schedule" size={14} color="#6366f1" />
-        <Text style={styles.expiryText}>
-          Expires: {new Date(deal.expiration_date).toLocaleDateString()}
-        </Text>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.iconContainer}>
+            <MaterialIcons name="local-offer" size={20} color="#22c55e" />
+          </View>
+          <View style={styles.headerContent}>
+            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+              {deal.name}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.statusRow}>
+          <View style={styles.pricePill}>
+            <Text style={styles.pricePillText}>{deal.details}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.expiry}>
+          <MaterialIcons name="schedule" size={14} color="#6366f1" />
+          <Text style={styles.expiryText}>
+            Expires: {new Date(deal.expiration_date).toLocaleDateString()}
+          </Text>
+        </View>
       </View>
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#22c55e" />
+        <Text style={styles.loadingText}>Loading deals...</Text>
+      </View>
+    );
+  }
+
+  if (deals.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <MaterialIcons name="check-circle" size={48} color="#22c55e" style={styles.icon} />
+        <Text style={styles.emptyTitle}>No Deals Available</Text>
+        <Text style={styles.emptyText}>Check back later for special offers.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#34d399" />
-      ) : deals.length > 0 ? (
-        <View>
-          <View style={styles.scrollContainer}>
-            <ScrollView
-              ref={scrollViewRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              snapToInterval={CARD_WIDTH + 12}
-              snapToAlignment="center"
-              contentContainerStyle={styles.scrollContent}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              contentOffset={{ x: 0, y: 0 }}
-            >
-              {/* Left padding view to center first card */}
-              <View style={{ width: (width - CARD_WIDTH) / 2 }} />
-              
-              {/* Deal cards */}
-              {deals.map((deal, index) => renderDealCard(deal, index))}
-              
-              {/* Right padding view to center last card */}
-              <View style={{ width: (width - CARD_WIDTH) / 2 }} />
-            </ScrollView>
-          </View>
-          
-          {/* Pagination dots */}
-          <View style={styles.pagination}>
-            {deals.map((_, index) => (
-              <TouchableOpacity 
-                key={index}
-                onPress={() => scrollToIndex(index)}
-              >
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor: index === currentIndex ? "#34d399" : "#e2e8f0",
-                      width: index === currentIndex ? 12 : 6,
-                    }
-                  ]}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No special deals available</Text>
-        </View>
-      )}
+    <View>
+      <FlatList
+        data={deals}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item, index) => (item.id || index.toString())}
+        renderItem={({ item, index }) => renderDealCard(item, index)}
+        contentContainerStyle={styles.taskListContent}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH + 12}
+        snapToAlignment="start"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      />
+      <View style={styles.paginationDots}>
+        {deals.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.paginationDot,
+              {
+                backgroundColor:
+                  index === currentIndex ? '#22c55e' : '#e2e8f0',
+                width: index === currentIndex ? 12 : 6,
+              },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    minHeight: 220,
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  scrollContainer: {
-    width: '100%',
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#64748b',
   },
-  scrollContent: {
-    alignItems: 'center', // Align cards vertically centered
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  taskListContent: {
+    paddingHorizontal: 16,
+  },
+  taskItemContainer: {
+    width: CARD_WIDTH,
+    marginRight: 12,
   },
   card: {
-    width: CARD_WIDTH,
     backgroundColor: '#dff1f0',
     borderRadius: 16,
     padding: 16,
@@ -150,24 +164,43 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 2,
-    marginRight: 12, // Space between cards
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  headerContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-    marginLeft: 8,
   },
-  details: {
+  statusRow: {
+    marginBottom: 12,
+  },
+  pricePill: {
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  pricePillText: {
     fontSize: 14,
     color: '#64748b',
-    marginBottom: 12,
-    lineHeight: 20,
   },
   expiry: {
     flexDirection: 'row',
@@ -179,24 +212,19 @@ const styles = StyleSheet.create({
     color: '#6366f1',
     marginLeft: 4,
   },
-  pagination: {
+  paginationDots: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 16,
+    alignItems: 'center',
+    marginTop: 12,
   },
-  dot: {
+  paginationDot: {
     height: 6,
     borderRadius: 3,
     marginHorizontal: 3,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#64748b',
+  icon: {
+    marginRight: 8,
   },
 });
 

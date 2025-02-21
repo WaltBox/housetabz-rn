@@ -40,7 +40,7 @@ const MarketplaceScreen = () => {
     // Fetch deals count for the Special Deals header
     const fetchDealsCount = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/deals?includeExpired=true`);
+        const response = await axios.get(`${API_URL}/api/deals`);
         setSpecialDealsCount(response.data.deals.length);
       } catch (err) {
         console.error("Error fetching deals count:", err);
@@ -144,19 +144,19 @@ const MarketplaceScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Special Deals Section with Header */}
-        <View style={styles.offersContainerWrapper}>
-          <View style={styles.offersContainer}>
-            <View style={styles.offersHeader}>
-              <MaterialIcons name="local-offer" size={24} color="#34d399" />
-              <Text style={styles.offersTitle}>
-                Special Deals ({specialDealsCount})
-              </Text>
+        <View style={styles.chartCard}>
+          <View style={styles.taskHeader}>
+            <View style={styles.taskTitleGroup}>
+              <MaterialIcons name="local-offer" size={20} color="#22c55e" style={styles.icon} />
+              <Text style={styles.chartTitle}>Special Deals</Text>
             </View>
-            {/* Special deals component with no padding from parent */}
-            <View style={styles.specialDealsWrapper}>
-              <SpecialDeals />
-            </View>
+            {specialDealsCount > 0 && (
+              <View style={styles.taskBadge}>
+                <Text style={styles.taskBadgeText}>{specialDealsCount} available</Text>
+              </View>
+            )}
           </View>
+          <SpecialDeals />
         </View>
 
         {/* Featured Services */}
@@ -190,7 +190,7 @@ const MarketplaceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#dff1f0", // Changed to match Dashboard background
   },
   headerContainer: {
     width: "100%",
@@ -230,39 +230,49 @@ const styles = StyleSheet.create({
     paddingTop: 110,
     paddingBottom: 40,
   },
-  // Wrapper to provide horizontal padding for the entire offers section
-  offersContainerWrapper: {
-    paddingHorizontal: CARD_GUTTER,
+  // Chart Card styling to match Dashboard task section
+  chartCard: {
+    backgroundColor: "white",
+    marginHorizontal: 24,
     marginBottom: 24,
-  },
-  // Offers container with compact styling
-  offersContainer: {
-    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
-    overflow: 'hidden', // Ensures children don't overflow rounded corners
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
-    elevation: 2,
   },
-  offersHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  offersTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginLeft: 8,
+  taskTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  // New wrapper to ensure SpecialDeals is not affected by parent padding
-  specialDealsWrapper: {
-    marginHorizontal: -16, // Counteract the parent padding
-    width: width, // Force full width
-    alignSelf: 'center', // Center this component
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  taskBadge: {
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
+  },
+  taskBadgeText: {
+    color: '#22c55e',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  icon: {
+    marginRight: 8,
   },
   partnerGridContainer: {
     marginTop: 8,
