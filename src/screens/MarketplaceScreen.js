@@ -216,11 +216,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#FFFFFF",
+    fontFamily: 'Montserrat-Black',
   },
   headerSubtitle: {
     fontSize: 18,
     color: "#FFFFFF",
     marginTop: 4,
+    fontFamily: 'Montserrat-Medium',
   },
   headerImage: {
     width: 130,

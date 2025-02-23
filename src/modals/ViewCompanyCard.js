@@ -211,7 +211,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
           <MaterialIcons name="close" size={24} color="#64748b" />
         </TouchableOpacity>
         <View style={styles.partnerBadge}>
-          <MaterialIcons name="verified" size={16} color="#22c55e" />
+          <MaterialIcons name="verified" size={16} color="#34d399" />
           <Text style={styles.partnerBadgeText}>Verified Partner</Text>
         </View>
       </View>
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: 'white',
+    backgroundColor: '#dff6f0',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   partnerBadgeText: {
     fontSize: 14,
-    color: '#22c55e',
+    color: '#34d399',
     fontWeight: '500',
   },
   scrollView: {
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#22c55e',
+    color: '#34d399',
   },
   contentSection: {
     paddingHorizontal: 24,
@@ -359,12 +359,12 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     padding: 24,
-    backgroundColor: 'white',
+    backgroundColor: '#dff6f0',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: '#34d399',
   },
   actionButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#34d399',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',

@@ -14,6 +14,7 @@ const STRIPE_PUBLISHABLE_KEY =
 const App = () => {
   const [fontsLoaded] = useFonts({
     'Montserrat-Black': require('./assets/fonts/Montserrat-Black.ttf'),
+    'Montserrat-Medium': require('./assets/fonts/Montserrat-Medium.ttf'),
   });
 
   if (!fontsLoaded) {

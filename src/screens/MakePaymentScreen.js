@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Switch,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const TABS = {
   PAY: 'pay',
@@ -17,217 +17,307 @@ const TABS = {
   HISTORY: 'history',
 };
 
+const FIXED_HEADER_HEIGHT = 240; // Adjust as needed
+
 const BillingScreen = () => {
   const [activeTab, setActiveTab] = useState(TABS.PAY);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [autopayEnabled, setAutopayEnabled] = useState(false);
+  const [charges, setCharges] = useState([]);
+  const [totalCharges, setTotalCharges] = useState(0);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [defaultMethod, setDefaultMethod] = useState(null);
+  const [selectedCharges, setSelectedCharges] = useState([]);
 
   useEffect(() => {
     fetchUserData();
+    fetchCharges();
+    fetchPaymentMethods();
   }, []);
 
   const fetchUserData = async () => {
     try {
       const response = await axios.get('http://localhost:3004/api/users/1');
       setUser(response.data);
-      setAutopayEnabled(response.data.autopayEnabled || false);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching user:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderPayTab = () => (
+  const fetchCharges = async () => {
+    try {
+      const response = await axios.get('http://localhost:3004/api/users/1/charges');
+      const pendingCharges = response.data;
+      setCharges(pendingCharges);
+      const total = pendingCharges.reduce((sum, charge) => sum + parseFloat(charge.amount), 0);
+      setTotalCharges(total);
+    } catch (error) {
+      console.error('Error fetching charges:', error);
+    }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const response = await axios.get('http://localhost:3004/api/payment-methods');
+      const methods = response.data.paymentMethods || [];
+      setPaymentMethods(methods);
+      setDefaultMethod(methods.find(method => method.isDefault));
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+    }
+  };
+
+  const categorizeCharges = (chargesList) => {
+    const today = new Date();
+    return chargesList.reduce((acc, charge) => {
+      if (!charge.dueDate) {
+        acc.other.push(charge);
+        return acc;
+      }
+      const dueDate = new Date(charge.dueDate);
+      const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) {
+        acc.late.push({ ...charge, status: 'late', daysLate: Math.abs(diffDays) });
+      } else if (diffDays <= 7) {
+        acc.upcoming.push({ ...charge, status: 'upcoming', daysUntilDue: diffDays });
+      } else {
+        acc.other.push({ ...charge, status: 'other', daysUntilDue: diffDays });
+      }
+      return acc;
+    }, { late: [], upcoming: [], other: [] });
+  };
+
+  const handleChargeSelectToggle = (charge) => {
+    setSelectedCharges(prev => {
+      if (prev.includes(charge.id)) {
+        return prev.filter(id => id !== charge.id);
+      } else {
+        return [...prev, charge.id];
+      }
+    });
+  };
+
+  const handlePayCharge = async (chargeId) => {
+    try {
+      console.log('Paying charge:', chargeId);
+      // Implement individual charge payment logic here if needed
+    } catch (error) {
+      console.error('Error paying charge:', error);
+    }
+  };
+
+  const handlePayAllCharges = async () => {
+    try {
+      console.log('Paying all charges');
+      // Implement payment for all charges here
+    } catch (error) {
+      console.error('Error paying all charges:', error);
+    }
+  };
+
+  const handlePaySelectedCharges = async () => {
+    try {
+      console.log('Paying selected charges:', selectedCharges);
+      // Implement payment for only selected charges here
+    } catch (error) {
+      console.error('Error paying selected charges:', error);
+    }
+  };
+
+  const renderChargeSection = (title, chargesGroup, color) => {
+    if (chargesGroup.length === 0) return null;
+    return (
+      <View style={styles.section}>
+        <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
+          <Text style={styles.sectionHeaderText}>{title}</Text>
+          <View style={[styles.statusIndicator, { backgroundColor: color }]} />
+        </View>
+        {chargesGroup.map((charge) => (
+          <View key={charge.id} style={[styles.chargeCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
+            <View style={styles.chargeHeader}>
+              <MaterialIcons
+                name={charge.metadata?.icon || 'error-outline'}
+                size={20}
+                color={color}
+                style={styles.icon}
+              />
+              <View style={styles.chargeTextContainer}>
+                <Text style={styles.chargeTitle}>{charge.name}</Text>
+                <Text style={styles.chargeSubtitle}>
+                  {charge.status === 'late'
+                    ? `${charge.daysLate} days overdue`
+                    : `Due in ${charge.daysUntilDue} days`}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.chargeDetails}>
+              <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+              <TouchableOpacity
+                style={[
+                  styles.payButton,
+                  { backgroundColor: selectedCharges.includes(charge.id) ? '#34d399' : color }
+                ]}
+                onPress={() => handleChargeSelectToggle(charge)}
+              >
+                <Text style={styles.payButtonText}>
+                  {selectedCharges.includes(charge.id) ? 'Selected' : 'Select to pay'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderFixedPayHeader = () => {
+    const selectedTotal = charges
+      .filter(charge => selectedCharges.includes(charge.id))
+      .reduce((sum, charge) => sum + parseFloat(charge.amount), 0);
+    const amountStyle = selectedCharges.length > 0 ? styles.balanceAmountSmall : styles.balanceAmount;
+    return (
+      // Wrapper to match the charges' horizontal margins
+      <View style={styles.fixedPayWrapper}>
+        <View style={styles.fixedPayContainer}>
+          {selectedCharges.length === 0 ? (
+            <View style={styles.balanceCard}>
+              <View style={styles.balanceHeader}>
+                <Text style={styles.balanceTitle}>Total Amount Due</Text>
+                <MaterialIcons name="info-outline" size={18} color="#64748b" />
+              </View>
+              <Text style={amountStyle}>${totalCharges.toFixed(2)}</Text>
+              <TouchableOpacity style={styles.payAllButton} onPress={handlePayAllCharges}>
+                <Text style={styles.payAllButtonText}>Pay All Outstanding Balance</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.balanceRow}>
+              <View style={[styles.balanceCard, styles.halfBalanceCard]}>
+                <View style={styles.balanceHeader}>
+                  <Text style={styles.balanceTitle}>Total{'\n'}Due</Text>
+                  <MaterialIcons name="info-outline" size={18} color="#64748b" />
+                </View>
+                <Text style={amountStyle}>${totalCharges.toFixed(2)}</Text>
+                <TouchableOpacity style={styles.payAllButton} onPress={handlePayAllCharges}>
+                  <Text style={styles.payAllButtonText}>Pay All</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.balanceCard, styles.halfBalanceCard]}>
+                <View style={styles.balanceHeader}>
+                  <Text style={styles.balanceTitle}>Selected Charges</Text>
+                  <MaterialIcons name="check-circle-outline" size={18} color="#34d399" />
+                </View>
+                <Text style={amountStyle}>${selectedTotal.toFixed(2)}</Text>
+                <TouchableOpacity
+                  style={[styles.payAllButton, { backgroundColor: '#34d399' }]}
+                  onPress={handlePaySelectedCharges}
+                >
+                  <Text style={styles.payAllButtonText}>Pay Now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderPayTab = () => {
+    const { late, upcoming, other } = categorizeCharges(charges);
+    return (
+      <View style={{ flex: 1 }}>
+        {renderFixedPayHeader()}
+        <ScrollView style={[styles.tabContent, { marginTop: FIXED_HEADER_HEIGHT }]} showsVerticalScrollIndicator={false}>
+          {renderChargeSection('Late Payments', late, '#ef4444')}
+          {renderChargeSection('Upcoming Payments', upcoming, '#eab308')}
+          {renderChargeSection('Other Charges', other, '#34d399')}
+          {charges.length === 0 && (
+            <View style={styles.emptyState}>
+              <MaterialIcons name="check-circle" size={40} color="#34d399" />
+              <Text style={styles.emptyStateTitle}>All payments complete!</Text>
+              <Text style={styles.emptyStateText}>No outstanding charges found</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderMethodsTab = () => (
     <ScrollView style={styles.tabContent}>
-      {/* Balance Overview */}
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Amount Due</Text>
-        <Text style={styles.balanceAmount}>$245.00</Text>
-        <View style={styles.balanceBreakdown}>
-          <View style={styles.breakdownItem}>
-            <Text style={styles.breakdownLabel}>Bills</Text>
-            <Text style={styles.breakdownValue}>$175.00</Text>
-          </View>
-          <View style={styles.breakdownDivider} />
-          <View style={styles.breakdownItem}>
-            <Text style={styles.breakdownLabel}>Pledged</Text>
-            <Text style={styles.breakdownValue}>$70.00</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Active Bills Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Active Bills</Text>
-        
-        <View style={styles.billCard}>
-          <View style={styles.billHeader}>
-            <MaterialIcons name="flash-on" size={20} color="#34d399" style={styles.icon} />
-            <Text style={styles.billTitle}>February Energy Bill</Text>
-          </View>
-          <View style={styles.billDetails}>
-            <View>
-              <Text style={styles.billShare}>Your Share</Text>
-              <Text style={styles.billAmount}>$45.00</Text>
+        <View style={styles.defaultMethodHeader}>
+          <Text style={styles.sectionTitle}>Default Payment Method</Text>
+          <Text style={styles.defaultMethodNote}>Used for pledges & autopay</Text>
+        </View>
+        {defaultMethod ? (
+          <View style={styles.defaultMethodCard}>
+            <MaterialIcons
+              name={defaultMethod.type === 'card' ? 'credit-card' : 'account-balance'}
+              size={20}
+              color="#34d399"
+              style={styles.icon}
+            />
+            <View style={styles.methodInfo}>
+              <Text style={styles.methodTitle}>
+                {defaultMethod.type === 'card'
+                  ? `${defaultMethod.brand} •••• ${defaultMethod.last4}`
+                  : `Bank Account •••• ${defaultMethod.last4}`}
+              </Text>
+              <Text style={styles.methodSubtitle}>Default Payment Method</Text>
             </View>
-            <TouchableOpacity style={styles.payButton}>
-              <Text style={styles.payButtonText}>Pay Now</Text>
+            <TouchableOpacity>
+              <Text style={styles.changeMethodText}>Change</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.billDue}>Due in 5 days</Text>
-        </View>
-
-        <View style={styles.billCard}>
-          <View style={styles.billHeader}>
-            <MaterialIcons name="wifi" size={20} color="#34d399" style={styles.icon} />
-            <Text style={styles.billTitle}>Internet - Xfinity</Text>
+        ) : (
+          <View style={styles.defaultMethodCard}>
+            <Text style={styles.methodSubtitle}>No default payment method set</Text>
           </View>
-          <View style={styles.billDetails}>
-            <View>
-              <Text style={styles.billShare}>Your Share</Text>
-              <Text style={styles.billAmount}>$35.00</Text>
-            </View>
-            <TouchableOpacity style={styles.payButton}>
-              <Text style={styles.payButtonText}>Pay Now</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.billDue}>Due in 8 days</Text>
-        </View>
+        )}
       </View>
-
-      {/* Pledged Payments Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Pledged Payments</Text>
-        
-        <View style={styles.pledgeCard}>
-          <View style={styles.pledgeHeader}>
-            <MaterialIcons name="cleaning-services" size={20} color="#34d399" style={styles.icon} />
-            <Text style={styles.pledgeTitle}>Monthly Cleaning</Text>
-          </View>
-          <View style={styles.pledgeDetails}>
-            <View>
-              <Text style={styles.pledgeShare}>Your Share</Text>
-              <Text style={styles.pledgeAmount}>$70.00</Text>
-            </View>
-            <View style={styles.pledgeStatus}>
-              <MaterialIcons name="schedule" size={20} color="#34d399" style={styles.icon} />
-              <Text style={styles.pledgeStatusText}>Pending Approval</Text>
-            </View>
-          </View>
-          <Text style={styles.pledgeNote}>
-            Payment will be processed when all roommates approve
-          </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Other Payment Methods</Text>
         </View>
+        <TouchableOpacity style={styles.addMethodCard}>
+          <View style={styles.addMethodContent}>
+            <MaterialIcons name="add-circle-outline" size={24} color="#34d399" />
+            <Text style={styles.addMethodText}>Add New Payment Method</Text>
+          </View>
+        </TouchableOpacity>
+        {paymentMethods
+          .filter(method => !method.isDefault)
+          .map(method => (
+            <View key={method.id} style={styles.methodCard}>
+              <MaterialIcons
+                name={method.type === 'card' ? 'credit-card' : 'account-balance'}
+                size={20}
+                color="#34d399"
+                style={styles.icon}
+              />
+              <View style={styles.methodInfo}>
+                <Text style={styles.methodTitle}>
+                  {method.type === 'card'
+                    ? `${method.brand} •••• ${method.last4}`
+                    : `Bank Account •••• ${method.last4}`}
+                </Text>
+                {method.type === 'card' && (
+                  <Text style={styles.methodSubtitle}>
+                    Expires {method.expiryMonth}/{method.expiryYear}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity>
+                <MaterialIcons name="more-vert" size={20} color="#34d399" style={styles.icon} />
+              </TouchableOpacity>
+            </View>
+          ))}
       </View>
     </ScrollView>
   );
-
- // In BillingScreen.js, add a new state for payment methods
-const [paymentMethods, setPaymentMethods] = useState([]);
-const [defaultMethod, setDefaultMethod] = useState(null);
-
-// Add a function to fetch payment methods
-const fetchPaymentMethods = async () => {
-  try {
-    const response = await axios.get('http://localhost:3004/api/payment-methods');
-    const methods = response.data.paymentMethods;
-    setPaymentMethods(methods);
-    setDefaultMethod(methods.find(method => method.isDefault));
-  } catch (error) {
-    console.error('Error fetching payment methods:', error);
-  }
-};
-
-// Update useEffect to also fetch payment methods
-useEffect(() => {
-  fetchUserData();
-  fetchPaymentMethods();
-}, []);
-
-// Update the renderMethodsTab function
-const renderMethodsTab = () => (
-  <ScrollView style={styles.tabContent}>
-    {/* Default Payment Method */}
-    <View style={styles.section}>
-      <View style={styles.defaultMethodHeader}>
-        <Text style={styles.sectionTitle}>Default Payment Method</Text>
-        <Text style={styles.defaultMethodNote}>Used for pledges & autopay</Text>
-      </View>
-      {defaultMethod ? (
-        <View style={styles.defaultMethodCard}>
-          <MaterialIcons 
-            name={defaultMethod.type === 'card' ? 'credit-card' : 'account-balance'} 
-            size={20} 
-            color="#34d399" 
-            style={styles.icon} 
-          />
-          <View style={styles.methodInfo}>
-            <Text style={styles.methodTitle}>
-              {defaultMethod.type === 'card' 
-                ? `${defaultMethod.brand} •••• ${defaultMethod.last4}`
-                : `Bank Account •••• ${defaultMethod.last4}`
-              }
-            </Text>
-            <Text style={styles.methodSubtitle}>Default Payment Method</Text>
-          </View>
-          <TouchableOpacity>
-            <Text style={styles.changeMethodText}>Change</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.defaultMethodCard}>
-          <Text style={styles.methodSubtitle}>No default payment method set</Text>
-        </View>
-      )}
-    </View>
-
-    {/* Other Payment Methods */}
- {/* Other Payment Methods */}
-<View style={styles.section}>
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>Other Payment Methods</Text>
-  </View>
-  
-  {/* Add New Payment Method Card */}
-  <TouchableOpacity style={styles.addMethodCard}>
-    <View style={styles.addMethodContent}>
-      <MaterialIcons name="add-circle-outline" size={24} color="#34d399" />
-      <Text style={styles.addMethodText}>Add New Payment Method</Text>
-    </View>
-  </TouchableOpacity>
-
-  {/* Existing Payment Methods */}
-  {paymentMethods
-    .filter(method => !method.isDefault)
-    .map(method => (
-      <View key={method.id} style={styles.methodCard}>
-        <MaterialIcons 
-          name={method.type === 'card' ? 'credit-card' : 'account-balance'} 
-          size={20} 
-          color="#34d399" 
-          style={styles.icon} 
-        />
-        <View style={styles.methodInfo}>
-          <Text style={styles.methodTitle}>
-            {method.type === 'card' 
-              ? `${method.brand} •••• ${method.last4}`
-              : `Bank Account •••• ${method.last4}`
-            }
-          </Text>
-          <Text style={styles.methodSubtitle}>
-            {method.type === 'card' && `Expires ${method.expiryMonth}/${method.expiryYear}`}
-          </Text>
-        </View>
-        <TouchableOpacity>
-          <MaterialIcons name="more-vert" size={20} color="#34d399" style={styles.icon} />
-        </TouchableOpacity>
-      </View>
-    ))}
-</View>
-  </ScrollView>
-);
 
   const renderHistoryTab = () => (
     <ScrollView style={styles.tabContent}>
@@ -257,7 +347,6 @@ const renderMethodsTab = () => (
 
   return (
     <View style={styles.container}>
-      {/* Tab Navigation */}
       <View style={styles.tabBar}>
         {Object.values(TABS).map((tab) => (
           <TouchableOpacity
@@ -271,8 +360,6 @@ const renderMethodsTab = () => (
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Tab Content */}
       {activeTab === TABS.PAY && renderPayTab()}
       {activeTab === TABS.METHODS && renderMethodsTab()}
       {activeTab === TABS.HISTORY && renderHistoryTab()}
@@ -291,7 +378,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   // Tab Navigation
   tabBar: {
     flexDirection: 'row',
@@ -319,194 +405,169 @@ const styles = StyleSheet.create({
   tabContent: {
     flex: 1,
   },
-
-  // Icon (Unified)
+  // Icon
   icon: {
     marginRight: 8,
   },
-
-  // Balance Card
+  // Balance Cards
   balanceCard: {
-    margin: 16,
-    padding: 20,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    padding: 24,
+    marginVertical: 8, // use vertical margin only, since horizontal will be provided by wrapper
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  balanceLabel: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 16,
-  },
-  balanceBreakdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  breakdownItem: {
-    alignItems: 'center',
-  },
-  breakdownLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  breakdownValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  breakdownDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: 24,
-  },
-
-  // Section Headers & General Section Styling
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  sectionHeader: {
+  balanceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 12,
+  halfBalanceCard: {
+    flex: 1,
+    marginHorizontal: 4,
   },
-
-  // Bill Card
-  billCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  billHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  billTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1e293b',
-  },
-  billDetails: {
+  balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  billShare: {
-    fontSize: 13,
+  balanceTitle: {
     color: '#64748b',
-    marginBottom: 2,
+    fontSize: 16,
+    fontWeight: '500',
   },
-  billAmount: {
+  balanceAmount: {
+    color: '#1e293b',
+    fontSize: 36,
+    fontWeight: '700',
+    marginVertical: 16,
+  },
+  balanceAmountSmall: {
+    color: '#1e293b',
+    fontSize: 24,
+    fontWeight: '700',
+    marginVertical: 16,
+  },
+  payAllButton: {
+    backgroundColor: '#34d399',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  payAllButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Fixed Pay Container Wrapper (to match charges' horizontal margins)
+  fixedPayWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+  },
+  // Fixed Pay Container (the balance container, not altered in width)
+  fixedPayContainer: {
+    backgroundColor: '#dff6f0',
+    paddingVertical: 8,
+  },
+  // Charge Sections
+  section: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingLeft: 8,
+    borderLeftWidth: 4,
+  },
+  sectionHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginRight: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  // Charge Cards
+  chargeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chargeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  chargeTextContainer: {
+    flex: 1,
+  },
+  chargeTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
   },
-  billDue: {
-    fontSize: 13,
+  chargeSubtitle: {
+    fontSize: 12,
     color: '#64748b',
+    marginTop: 4,
+  },
+  chargeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chargeAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   payButton: {
-    backgroundColor: '#34d399',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   payButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
   },
-
-  // Pledge Card
-  pledgeCard: {
+  // Empty State
+  emptyState: {
     backgroundColor: '#fff',
+    padding: 24,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  pledgeHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    margin: 16,
   },
-  pledgeTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1e293b',
-  },
-  pledgeDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  pledgeShare: {
-    fontSize: 13,
-    color: '#64748b',
-    marginBottom: 2,
-  },
-  pledgeAmount: {
-    fontSize: 16,
+  emptyStateTitle: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
+    marginVertical: 8,
   },
-  pledgeStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eef2ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  pledgeStatusText: {
-    fontSize: 12,
-    color: '#34d399',
-    fontWeight: '500',
-  },
-  pledgeNote: {
-    fontSize: 13,
+  emptyStateText: {
     color: '#64748b',
+    fontSize: 14,
+    textAlign: 'center',
   },
-
   // Payment Method Section
   defaultMethodHeader: {
     marginBottom: 12,
@@ -548,28 +609,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-
-  // Autopay
-  autopayHeader: {
+  // Other Payment Methods
+  addMethodCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  addMethodContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    padding: 16,
   },
-  autopaySubtitle: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-
-  // Other Payment Methods (Add Button & Method Card)
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#34d399',
-    fontSize: 14,
+  addMethodText: {
+    fontSize: 15,
     fontWeight: '500',
+    color: '#34d399',
+    marginLeft: 8,
   },
   methodCard: {
     flexDirection: 'row',
@@ -586,7 +650,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-
   // Transaction History
   transactionCard: {
     flexDirection: 'row',
@@ -621,31 +684,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
-  },
-  addMethodCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderStyle: 'dashed',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  addMethodContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  addMethodText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#34d399',
-    marginLeft: 8,
   },
 });
 

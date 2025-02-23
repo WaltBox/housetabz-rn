@@ -73,7 +73,7 @@ const UserFeedbackModal = () => {
               <MaterialCommunityIcons
                 name={cat.icon}
                 size={16}
-                color={category === cat.id ? '#fff' : '#28a745'}
+                color={category === cat.id ? '#fff' : '#34d399'}
               />
               <Text style={[
                 styles.categoryText,
@@ -123,7 +123,7 @@ const UserFeedbackModal = () => {
 
         {/* Peeking Image */}
         <Image
-          source={require('../../assets/feedbacktabz.png')}
+          source={require('../../assets/feedback-guy.png')}
           style={styles.peekingImage}
           resizeMode="contain"
         />
@@ -174,8 +174,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   activeCategoryPill: {
-    backgroundColor: '#28a745',
-    borderColor: '#28a745',
+    backgroundColor: '#34d399',
+    borderColor: '#34d399',
   },
   categoryText: {
     fontSize: 14,
@@ -207,12 +207,12 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
   submitButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#34d399',
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#28a745',
+    shadowColor: '#34d399',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
