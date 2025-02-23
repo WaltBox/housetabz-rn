@@ -18,6 +18,7 @@ import { useAuth } from "../context/AuthContext";
 import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
+import HouseServicesModal from "../modals/HouseServicesModal";
 import BillTakeoverTab from "../components/BillTakeoverTab";
 
 const { width } = Dimensions.get("window");
@@ -34,6 +35,7 @@ const HouseTabzScreen = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
+  const [isServicesVisible, setIsServicesVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
   // State for tab navigation
@@ -302,6 +304,14 @@ const HouseTabzScreen = () => {
               <Text style={styles.actionCardText}>Paid Tabz</Text>
               <MaterialIcons name="chevron-right" size={24} color="#ccc" />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => setIsServicesVisible(true)}
+            >
+              <MaterialIcons name="build" size={28} color="#34d399" />
+              <Text style={styles.actionCardText}>House Services</Text>
+              <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            </TouchableOpacity>
           </View>
         </ScrollView>
       ) : (
@@ -311,7 +321,7 @@ const HouseTabzScreen = () => {
         </View>
       )}
 
-      {/* Modals for the House Info Tab */}
+      {/* Modals */}
       <ModalComponent visible={showInviteModal} onClose={() => setShowInviteModal(false)}>
         <InviteModal />
       </ModalComponent>
@@ -320,6 +330,9 @@ const HouseTabzScreen = () => {
       </ModalComponent>
       <ModalComponent visible={isPaidTabVisible} onClose={() => setIsPaidTabVisible(false)}>
         <PaidHouseTabz house={house} />
+      </ModalComponent>
+      <ModalComponent visible={isServicesVisible} onClose={() => setIsServicesVisible(false)}>
+        <HouseServicesModal house={house} />
       </ModalComponent>
 
       {showTooltip && (
@@ -342,6 +355,8 @@ const HouseTabzScreen = () => {
     </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container: {

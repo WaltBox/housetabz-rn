@@ -17,7 +17,7 @@ const { width } = Dimensions.get('window');
 const NotificationsModal = ({ onClose }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
-  const [filter, setFilter] = useState('unread');
+  const [filter, setFilter] = useState('all');
   const [toastMessage, setToastMessage] = useState(null);
   const [toastOpacity] = useState(new Animated.Value(0));
 
@@ -29,20 +29,14 @@ const NotificationsModal = ({ onClose }) => {
 
   const fetchNotifications = async () => {
     try {
-      if (!user?.id) {
-        console.error('No authenticated user found');
-        return;
-      }
-
+      if (!user?.id) return;
       const response = await axios.get(
         `http://localhost:3004/api/users/${user.id}/notifications`
       );
-      setNotifications(
-        response.data.map((notification) => ({
-          ...notification,
-          justRead: false,
-        }))
-      );
+      setNotifications(response.data.map(notification => ({
+        ...notification,
+        justRead: false,
+      })));
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     }
@@ -67,138 +61,164 @@ const NotificationsModal = ({ onClose }) => {
 
   const markAsRead = async (notificationId) => {
     try {
-      if (!user?.id) {
-        console.error('No authenticated user found');
-        return;
-      }
-
+      if (!user?.id) return;
       await axios.patch(
         `http://localhost:3004/api/users/${user.id}/notifications/${notificationId}`
       );
-      setNotifications((prev) =>
-        prev.map((n) =>
+      setNotifications(prev =>
+        prev.map(n =>
           n.id === notificationId ? { ...n, isRead: true, justRead: true } : n
         )
       );
-      showToast('Notification marked as read');
+      showToast('Marked as read');
     } catch (err) {
       console.error('Error marking notification as read:', err);
     }
   };
 
-  const filteredNotifications = notifications.filter((n) =>
-    filter === 'unread' ? !n.isRead || n.justRead : n.isRead && !n.justRead
-  );
+  const filteredNotifications = notifications.filter(n => {
+    if (filter === 'unread') return !n.isRead;
+    if (filter === 'read') return n.isRead;
+    return true;
+  });
 
   const renderNotification = ({ item }) => (
     <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        !item.isRead && styles.notificationItemUnread
-      ]}
+      style={styles.notificationItem}
       onPress={() => !item.isRead && markAsRead(item.id)}
-      activeOpacity={0.8}
+      activeOpacity={0.6}
     >
-      <View style={styles.notificationStatus}>
-        {!item.isRead && <View style={styles.unreadDot} />}
-      </View>
-      
-      <View style={styles.notificationContent}>
-        <Text style={styles.notificationText}>{item.message}</Text>
-        <View style={styles.notificationMeta}>
-          <MaterialIcons 
-            name="access-time" 
-            size={14} 
-            color="#94a3b8"
-            style={styles.timeIcon}
-          />
-          <Text style={styles.notificationTime}>
-            {new Date(item.createdAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            })}
+      <View style={styles.notificationRow}>
+        {/* Unread indicator */}
+        {!item.isRead && (
+          <View style={styles.unreadIndicator} />
+        )}
+        
+        {/* Content */}
+        <View style={styles.notificationContent}>
+          <Text style={[
+            styles.notificationText,
+            item.isRead && styles.notificationTextRead
+          ]}>
+            {item.message}
           </Text>
+          
+          <View style={styles.metaContainer}>
+            <MaterialIcons 
+              name="access-time" 
+              size={12} 
+              color="#94a3b8"
+              style={styles.timeIcon}
+            />
+            <Text style={styles.timeText}>
+              {new Date(item.createdAt).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })}
+            </Text>
+          </View>
         </View>
+
+        {/* Chevron for unread */}
+        {!item.isRead && (
+          <MaterialIcons 
+            name="chevron-right" 
+            size={20} 
+            color="#94a3b8"
+            style={styles.chevron}
+          />
+        )}
       </View>
-      
-      {!item.isRead && (
-        <MaterialIcons 
-          name="chevron-right" 
-          size={20} 
-          color="#94a3b8"
-          style={styles.chevron}
-        />
-      )}
     </TouchableOpacity>
+  );
+
+  const ListHeader = () => (
+    <View style={styles.listHeader}>
+      <Text style={styles.listHeaderText}>
+        {filter === 'unread' 
+          ? 'New Notifications' 
+          : filter === 'read' 
+            ? 'Past Notifications'
+            : 'All Notifications'
+        }
+      </Text>
+    </View>
+  );
+
+  const ListEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialIcons 
+        name={filter === 'unread' ? "notifications-none" : "history"} 
+        size={48} 
+        color="#e2e8f0"
+      />
+      <Text style={styles.emptyTitle}>
+        {filter === 'unread' ? 'All Caught Up!' : 'No notifications yet'}
+      </Text>
+      <Text style={styles.emptyText}>
+        {filter === 'unread' 
+          ? "You're all up to date" 
+          : "Your past notifications will appear here"}
+      </Text>
+    </View>
   );
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Notifications</Text>
-          
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Inbox</Text>
+          {/* <TouchableOpacity 
+            onPress={onClose}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+          >
+            <MaterialIcons name="close" size={24} color="#64748b" />
+          </TouchableOpacity> */}
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterTabs}>
-          <TouchableOpacity
-            style={[styles.tab, filter === 'unread' && styles.activeTab]}
-            onPress={() => setFilter('unread')}
-          >
-            <Text style={[styles.tabText, filter === 'unread' && styles.activeTabText]}>
-              Unread
-            </Text>
-            {filteredNotifications.length > 0 && filter === 'unread' && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{filteredNotifications.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, filter === 'read' && styles.activeTab]}
-            onPress={() => setFilter('read')}
-          >
-            <Text style={[styles.tabText, filter === 'read' && styles.activeTabText]}>
-              History
-            </Text>
-          </TouchableOpacity>
+        {/* Filters */}
+        <View style={styles.filterContainer}>
+          {['all', 'unread', 'read'].map((f) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setFilter(f)}
+              style={[
+                styles.filterTab,
+                filter === f && styles.filterTabActive
+              ]}
+            >
+              <Text style={[
+                styles.filterText,
+                filter === f && styles.filterTextActive
+              ]}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
       {/* Notifications List */}
       <FlatList
         data={filteredNotifications}
-        keyExtractor={(item) => item.id.toString()}
         renderItem={renderNotification}
-        contentContainerStyle={styles.notificationsList}
+        keyExtractor={item => item.id.toString()}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialIcons 
-              name={filter === 'unread' ? "notifications-none" : "inventory"} 
-              size={48} 
-              color="#e2e8f0"
-            />
-            <Text style={styles.emptyTitle}>
-              {filter === 'unread' ? 'All Caught Up!' : 'No Past Notifications'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {filter === 'unread' 
-                ? 'You\'re up to date with all your notifications' 
-                : 'Previously read notifications will appear here'}
-            </Text>
-          </View>
-        }
       />
 
-      {/* Toast Message */}
+      {/* Toast */}
       {toastMessage && (
-        <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
-          <MaterialIcons name="check-circle" size={20} color="white" />
+        <Animated.View 
+          style={[styles.toast, { opacity: toastOpacity }]}
+        >
+          <MaterialIcons name="check" size={16} color="white" />
           <Text style={styles.toastText}>{toastMessage}</Text>
         </Animated.View>
       )}
@@ -206,132 +226,121 @@ const NotificationsModal = ({ onClose }) => {
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
   },
   header: {
-    paddingTop: 20,
+    paddingTop: 16,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1e293b',
   },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterTabs: {
+  filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 24,
+    paddingHorizontal: 16,
   },
-  tab: {
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  filterTab: {
+    marginRight: 24,
+    paddingVertical: 12,
   },
-  activeTab: {
+  filterTabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#34d399',
+    borderBottomColor: '#10b981',
   },
-  tabText: {
+  filterText: {
     fontSize: 15,
-    fontWeight: '500',
     color: '#64748b',
+    fontWeight: '500',
   },
-  activeTabText: {
+  filterTextActive: {
     color: '#34d399',
-  },
-  badge: {
-    backgroundColor: '#34d399',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
     fontWeight: '600',
   },
-  notificationsList: {
-    padding: 24,
+  listHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f8fafc',
+  },
+  listHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  list: {
+    flexGrow: 1,
   },
   notificationItem: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffffff',
+  },
+  notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
   },
-  notificationItemUnread: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-  },
-  notificationStatus: {
-    width: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#34d399',
+  unreadIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+    marginRight: 12,
   },
   notificationContent: {
     flex: 1,
-    marginLeft: 12,
+    marginRight: 16,
   },
   notificationText: {
     fontSize: 15,
-    lineHeight: 22,
-    color: '#1e293b',
-    marginBottom: 6,
+    color: 'black',
+    lineHeight: 20,
+    marginBottom: 4,
   },
-  notificationMeta: {
+  notificationTextRead: {
+    color: '#64748b',
+  },
+  metaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   timeIcon: {
     marginRight: 4,
   },
-  notificationTime: {
-    fontSize: 13,
+  timeText: {
+    fontSize: 12,
     color: '#94a3b8',
   },
   chevron: {
-    marginLeft: 12,
+    marginLeft: 'auto',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginLeft: 16,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
+    justifyContent: 'center',
+    padding: 24,
+    marginTop: 40,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
     marginTop: 16,
@@ -341,25 +350,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     textAlign: 'center',
-    maxWidth: '80%',
   },
   toast: {
     position: 'absolute',
-    bottom: 32,
-    left: '50%',
-    transform: [{ translateX: -width * 0.4 }],
-    width: width * 0.8,
-    backgroundColor: '#34d399',
-    borderRadius: 12,
-    padding: 16,
+    bottom: 24,
+    left: width * 0.1,
+    right: width * 0.1,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
   },
   toastText: {
     color: 'white',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
@@ -9,7 +10,7 @@ import UserFeedbackModal from '../modals/UserFeedbackModal';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 
 const TopBar = () => {
-  const userId = 1; // Replace with dynamic user ID as needed
+  const { user: authUser } = useAuth();
   
   // Modal visibility states
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
@@ -20,9 +21,14 @@ const TopBar = () => {
 
   // Fetch notifications
   const fetchNotifications = async () => {
+    if (!authUser?.id) {
+      console.error('No authenticated user found');
+      return;
+    }
+
     try {
       const response = await axios.get(
-        `http://localhost:3004/api/users/${userId}/notifications`
+        `http://localhost:3004/api/users/${authUser.id}/notifications`
       );
       const unread = response.data.some((notification) => !notification.isRead);
       setHasUnreadNotifications(unread);
@@ -32,12 +38,14 @@ const TopBar = () => {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    if (authUser?.id) {
+      fetchNotifications();
 
-    // Optional: Polling to check for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval); // Cleanup interval on component unmount
-  }, [userId]);
+      // Optional: Polling to check for new notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval); // Cleanup interval on component unmount
+    }
+  }, [authUser?.id]);
 
   const handlePaymentMethodsOpen = () => {
     setIsSettingsVisible(false); // Close settings modal
@@ -120,8 +128,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerTitle: {
-    fontFamily: 'Montserrat-Black', // Updated font
-    color: '#34d399',               // Updated color
+    fontFamily: 'Montserrat-Black',
+    color: '#34d399',
     fontSize: 20,
     marginLeft: 5,
     marginTop: 32,
