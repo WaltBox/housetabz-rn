@@ -11,65 +11,57 @@ const getDueDateStatus = (dueDate) => {
   const due = new Date(dueDate);
   const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) return { color: '#ef4444', label: 'Late' };
-  if (diffDays <= 3) return { color: '#f59e0b', label: 'Due Soon' };
-  if (diffDays <= 7) return { color: '#3b82f6', label: 'Upcoming' };
-  return { color: '#34d399', label: 'Due Later' };
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'No due date';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric'
-  });
+  if (diffDays < 0) return { color: '#ef4444', label: `${Math.abs(diffDays)}d overdue` };
+  if (diffDays <= 3) return { color: '#f59e0b', label: `Due in ${diffDays}d` };
+  if (diffDays <= 7) return { color: '#3b82f6', label: `Due in ${diffDays}d` };
+  return { color: '#34d399', label: `Due in ${diffDays}d` };
 };
 
 const BillCard = ({ bill }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const { user } = useAuth();
   const charges = bill?.Charges || [];
   const dueDateStatus = getDueDateStatus(bill.dueDate);
-
+  
   const pendingCharges = charges.filter(charge => charge.status === 'pending');
   const unpaidAmount = pendingCharges.reduce((sum, charge) => 
     sum + Number(charge.amount), 0
   );
 
+  const userHasCharge = pendingCharges.some(charge => charge.userId === user?.id);
+
   return (
-    <TouchableOpacity 
-      style={[styles.billCard, { borderLeftColor: dueDateStatus.color, borderLeftWidth: 4 }]}
-      onPress={() => setIsExpanded(!isExpanded)}
-      activeOpacity={0.9}
-    >
+    <View style={styles.billItem}>
       <View style={styles.billHeader}>
-        <View style={styles.billInfo}>
+        <View style={styles.billTitleContainer}>
+          <MaterialIcons
+            name={bill.houseService?.type === 'marketplace_onetime' ? 'shopping-cart' : 'receipt'}
+            size={18}
+            color="#64748b"
+            style={styles.billIcon}
+          />
           <Text style={styles.billName}>{bill.name}</Text>
-          <View style={[styles.dueDateBadge, { backgroundColor: dueDateStatus.color + '20' }]}>
-            <Text style={[styles.dueDateText, { color: dueDateStatus.color }]}>
-              {dueDateStatus.label} • {formatDate(bill.dueDate)}
-            </Text>
-          </View>
         </View>
-        <Text style={styles.unpaidAmount}>${unpaidAmount.toFixed(2)}</Text>
+        <Text style={styles.billAmount}>${unpaidAmount.toFixed(2)}</Text>
       </View>
 
-      <View style={styles.userStatusContainer}>
+      <View style={styles.dueDateContainer}>
+        <Text style={[styles.dueDate, { color: dueDateStatus.color }]}>
+          {dueDateStatus.label}
+        </Text>
+      </View>
+
+      <View style={styles.chargesContainer}>
         {pendingCharges.map((charge) => {
           const isCurrentUser = charge.userId === user?.id;
-          const isLate = new Date(bill.dueDate) < new Date();
-          
           return (
-            <View key={charge.id} style={styles.userChip}>
-           <Text style={[
-  styles.userChipText,
-  isCurrentUser && styles.currentUserText,
-  isLate && styles.lateUserText
-]}>
-  {isCurrentUser ? "You" : charge.User?.username}
-</Text>
-              <Text style={styles.userChipAmount}>
+            <View key={charge.id} style={styles.chargeRow}>
+              <Text style={[
+                styles.chargeName,
+                isCurrentUser && styles.currentUserText
+              ]}>
+                {isCurrentUser ? "You" : charge.User?.username}
+              </Text>
+              <Text style={styles.chargeAmount}>
                 ${Number(charge.amount).toFixed(2)}
               </Text>
             </View>
@@ -77,50 +69,13 @@ const BillCard = ({ bill }) => {
         })}
       </View>
 
-      {pendingCharges.some(charge => charge.userId === user?.id) && (
+      {userHasCharge && (
         <TouchableOpacity style={styles.paymentPrompt}>
           <Text style={styles.paymentPromptText}>Navigate to Pay</Text>
           <MaterialIcons name="chevron-right" size={16} color="#34d399" />
         </TouchableOpacity>
       )}
-
-      {isExpanded && (
-        <View style={styles.expandedContent}>
-          <Text style={styles.expandedTitle}>Payment Status</Text>
-          {charges.map((charge) => {
-            const isCurrentUser = charge.userId === user?.id;
-            return (
-              <View key={charge.id} style={styles.chargeRow}>
-                <View style={styles.chargeUserInfo}>
-                  <MaterialIcons 
-                    name={charge.status === 'paid' ? "check-circle" : "timer"} 
-                    size={16} 
-                    color={charge.status === 'paid' ? "#34d399" : "#f59e0b"} 
-                  />
-                <Text style={[
-  styles.chargeUsername,
-  isCurrentUser && styles.currentUserText
-]}>
-  {isCurrentUser ? "You" : charge.User?.username}
-</Text>
-                </View>
-                <View style={styles.chargeDetails}>
-                  <Text style={[
-                    styles.chargeAmount,
-                    { color: charge.status === 'paid' ? "#34d399" : "#f59e0b" }
-                  ]}>
-                    ${Number(charge.amount).toFixed(2)}
-                  </Text>
-                  <Text style={styles.chargeStatus}>
-                    {charge.status.charAt(0).toUpperCase() + charge.status.slice(1)}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -133,7 +88,6 @@ const CurrentHouseTab = ({ house }) => {
     const fetchBills = async () => {
       try {
         const response = await axios.get(`http://localhost:3004/api/houses/${house.id}/bills`);
-        console.log('Bills response:', response.data);
         setBills(response.data);
         
         const total = response.data.reduce((sum, bill) => {
@@ -166,12 +120,9 @@ const CurrentHouseTab = ({ house }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Current Tab</Text>
-        <View style={styles.totalAmountCard}>
-          <Text style={styles.totalAmountLabel}>Total House Balance</Text>
-          <Text style={styles.totalAmountValue}>${totalUnpaid.toFixed(2)}</Text>
-        </View>
+      <View style={styles.headerCard}>
+        <Text style={styles.headerTitle}>CurrentTab</Text>
+        <Text style={styles.headerAmount}>${totalUnpaid.toFixed(2)}</Text>
       </View>
 
       <FlatList
@@ -181,10 +132,10 @@ const CurrentHouseTab = ({ house }) => {
         contentContainerStyle={styles.billsList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <MaterialIcons name="check-circle" size={48} color="#34d399" />
-            <Text style={styles.emptyTitle}>All Caught Up!</Text>
-            <Text style={styles.emptyText}>No pending payments at the moment.</Text>
+          <View style={styles.emptyState}>
+            <MaterialIcons name="check-circle" size={40} color="#34d399" />
+            <Text style={styles.emptyStateTitle}>All Caught Up!</Text>
+            <Text style={styles.emptyStateText}>No pending payments at the moment.</Text>
           </View>
         )}
       />
@@ -195,107 +146,94 @@ const CurrentHouseTab = ({ house }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#dff6f0",
+    backgroundColor: "#fff",
   },
-  header: {
-    padding: 24,
+  headerCard: {
     backgroundColor: '#fff',
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: 16,
-  },
-  totalAmountCard: {
-    backgroundColor: '#f1f5f9',
-    padding: 16,
-    borderRadius: 12,
-  },
-  totalAmountLabel: {
+  headerTitle: {
     fontSize: 14,
     color: '#64748b',
-    marginBottom: 4,
+    marginBottom: 8,
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
-  totalAmountValue: {
-    fontSize: 28,
-    fontWeight: "700",
+  headerAmount: {
+    fontSize: 32,
+    fontWeight: '700',
     color: '#1e293b',
+    fontVariant: ['tabular-nums'],
   },
   billsList: {
     padding: 16,
   },
-  billCard: {
-    backgroundColor: "#fff",
+  billItem: {
+    marginBottom: 20,
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   billHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  billInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  billName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 4,
-  },
-  dueDateBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  dueDateText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  unpaidAmount: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1e293b",
-  },
-  userStatusContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  userChip: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+  billTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  userChipText: {
+  billIcon: {
+    marginRight: 8,
+  },
+  billName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  billAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    fontVariant: ['tabular-nums'],
+  },
+  dueDateContainer: {
+    marginBottom: 12,
+  },
+  dueDate: {
     fontSize: 13,
+    fontWeight: '500',
+  },
+  chargesContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 12,
+  },
+  chargeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  chargeName: {
+    fontSize: 14,
     color: '#64748b',
-    marginRight: 6,
+    flex: 1,
   },
   currentUserText: {
     color: '#34d399',
     fontWeight: '600',
   },
-  lateUserText: {
-    color: '#ef4444',
-  },
-  userChipAmount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#ef4444',
+  chargeAmount: {
+    fontSize: 14,
+    color: '#1e293b',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   paymentPrompt: {
     flexDirection: 'row',
@@ -312,66 +250,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: 4,
   },
-  expandedContent: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-  },
-  expandedTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: '#1e293b',
-    marginBottom: 12,
-  },
-  chargeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
     alignItems: 'center',
-    paddingVertical: 8,
+    padding: 24,
   },
-  chargeUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chargeUsername: {
-    fontSize: 14,
-    color: '#1e293b',
-    marginLeft: 8,
-  },
-  chargeDetails: {
-    alignItems: 'flex-end',
-  },
-  chargeAmount: {
-    fontSize: 14,
+  emptyStateTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1e293b',
+    marginVertical: 8,
   },
-  chargeStatus: {
-    fontSize: 12,
+  emptyStateText: {
     color: '#64748b',
-    marginTop: 2,
+    fontSize: 14,
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#64748b",
-    marginTop: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

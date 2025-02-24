@@ -293,7 +293,7 @@ const HouseTabzScreen = () => {
               onPress={() => setIsCurrentTabVisible(true)}
             >
               <MaterialIcons name="receipt" size={28} color="#34d399" />
-              <Text style={styles.actionCardText}>Current Tab</Text>
+              <Text style={styles.actionCardText}>CurrentTab</Text>
               <MaterialIcons name="chevron-right" size={24} color="#ccc" />
             </TouchableOpacity>
             <TouchableOpacity
@@ -301,7 +301,7 @@ const HouseTabzScreen = () => {
               onPress={() => setIsPaidTabVisible(true)}
             >
               <MaterialIcons name="history" size={28} color="#34d399" />
-              <Text style={styles.actionCardText}>Paid Tabz</Text>
+              <Text style={styles.actionCardText}>PaidTabz</Text>
               <MaterialIcons name="chevron-right" size={24} color="#ccc" />
             </TouchableOpacity>
             <TouchableOpacity

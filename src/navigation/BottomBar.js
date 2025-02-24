@@ -105,7 +105,7 @@ const TabNavigator = () => (
           return iconName ? <Icon name={iconName} size={typeof size === 'number' ? size : 24} color="#34d399" /> : null;
         },
         headerShown: false,
-        tabBarActiveTintColor: 'green',
+        tabBarActiveTintColor: '#34d399',
         tabBarInactiveTintColor: 'gray',
       })}
     >

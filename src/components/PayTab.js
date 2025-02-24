@@ -1,289 +1,447 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import axios from 'axios';
+import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
 
-const FIXED_HEADER_HEIGHT = 240; // adjust as needed
+const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
+  // Filter out any charges with 'paid' status using useMemo to prevent rerenders
+  const unpaidCharges = useMemo(() => 
+    allCharges.filter(charge => 
+      charge.status !== 'paid' && charge.status !== 'processing'
+    ), 
+    [allCharges]
+  );
+  
+  const [selectedCharges, setSelectedCharges] = useState([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [localUnpaidCharges, setLocalUnpaidCharges] = useState(unpaidCharges);
+  
+  // Update local charges when props change
+  useEffect(() => {
+    setLocalUnpaidCharges(unpaidCharges);
+  }, [unpaidCharges]);
+  
+  // Recalculate selected charges if the unpaidCharges list changes
+  useEffect(() => {
+    // Create a new array of selected charges that still exist in localUnpaidCharges
+    const validSelectedCharges = selectedCharges.filter(selected => 
+      localUnpaidCharges.some(charge => charge.id === selected.id)
+    );
+    
+    // Only update if there's an actual change to avoid infinite loops
+    if (validSelectedCharges.length !== selectedCharges.length) {
+      setSelectedCharges(validSelectedCharges);
+    }
+  }, [localUnpaidCharges, selectedCharges]);
+  
+  // Calculate total unpaid balance (sum of all unpaid charges)
+  const totalBalance = useMemo(() => 
+    localUnpaidCharges.reduce((sum, charge) => sum + Number(charge.amount), 0), 
+    [localUnpaidCharges]
+  );
+  
+  // Calculate total for selected charges
+  const selectedTotal = useMemo(() => 
+    selectedCharges.reduce((sum, charge) => sum + Number(charge.amount), 0), 
+    [selectedCharges]
+  );
 
-const PayTab = ({
-  charges,
-  totalCharges,
-  selectedCharges,
-  handlePayAllCharges,
-  handlePaySelectedCharges,
-  handleChargeSelectToggle,
-  categorizeCharges,
-}) => {
-  const { late, upcoming, other } = categorizeCharges(charges);
+  const categorizeCharges = (charges) => {
+    const now = new Date();
+    return charges.reduce((acc, charge) => {
+      // Handle case where dueDate might be missing
+      if (!charge.dueDate) {
+        acc.other.push({ ...charge, daysUntilDue: 999 }); // Put it in "other" category
+        return acc;
+      }
+      
+      const dueDate = new Date(charge.dueDate);
+      const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        acc.late.push({ ...charge, daysLate: Math.abs(diffDays) });
+      } else if (diffDays <= 3) {
+        acc.upcoming.push({ ...charge, daysUntilDue: diffDays });
+      } else {
+        acc.other.push({ ...charge, daysUntilDue: diffDays });
+      }
+      return acc;
+    }, { late: [], upcoming: [], other: [] });
+  };
+
+  // Memoize the categorized charges to prevent unnecessary recalculations
+  const { late, upcoming, other } = useMemo(() => 
+    categorizeCharges(localUnpaidCharges), 
+    [localUnpaidCharges]
+  );
+
+  const handleChargeSelectToggle = (charge) => {
+    setSelectedCharges(prev => {
+      const isSelected = prev.some(c => c.id === charge.id);
+      if (isSelected) {
+        return prev.filter(c => c.id !== charge.id);
+      } else {
+        return [...prev, charge];
+      }
+    });
+  };
+
+  const handlePayAll = () => {
+    setSelectedCharges(localUnpaidCharges);
+    setShowConfirmation(true);
+  };
+
+  const handlePaySelected = () => {
+    if (selectedCharges.length > 0) {
+      setShowConfirmation(true);
+    }
+  };
+
+  const handleConfirmPayment = async (paymentDetails) => {
+    try {
+      setIsProcessingPayment(true);
+      
+      // Generate unique idempotency key
+      const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+      
+      // Prepare the payment request
+      const paymentRequest = {
+        chargeIds: selectedCharges.map(charge => charge.id),
+        paymentMethodId: paymentDetails.paymentMethodId || 18 // Use selected or default
+      };
+      
+      console.log('Sending payment request with:', {
+        ...paymentRequest,
+        idempotencyKey
+      });
+      
+      // Make the API call to process the payment
+      const response = await axios.post(
+        'http://localhost:3004/api/payments/batch',
+        paymentRequest,
+        {
+          headers: {
+            'idempotency-key': idempotencyKey
+          }
+        }
+      );
+      
+      // Handle successful payment
+      console.log('Payment response:', response.data);
+      
+      // Get the IDs of the charges that were paid
+      const paidChargeIds = selectedCharges.map(charge => charge.id);
+      
+      // Update the local state immediately to remove paid charges
+      setLocalUnpaidCharges(prev => 
+        prev.filter(charge => !paidChargeIds.includes(charge.id))
+      );
+      
+      // Clear selected charges
+      setSelectedCharges([]);
+      
+      // Notify the parent component about the update
+      if (onChargesUpdated && typeof onChargesUpdated === 'function') {
+        onChargesUpdated(paidChargeIds);
+      }
+      
+      // Show success message
+      Alert.alert(
+        "Payment Successful",
+        `Successfully paid ${paidChargeIds.length} charges totaling $${selectedTotal.toFixed(2)}.`,
+        [{ text: "OK" }]
+      );
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      console.error('Payment error details:', error.response?.data);
+      
+      // Show error message
+      Alert.alert(
+        "Payment Failed",
+        error.response?.data?.error || "There was a problem processing your payment. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsProcessingPayment(false);
+      setShowConfirmation(false);
+    }
+  };
 
   const renderChargeSection = (title, chargesGroup, color) => {
     if (chargesGroup.length === 0) return null;
+
     return (
       <View style={styles.section}>
         <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
-          <Text style={styles.sectionHeaderText}>{title}</Text>
-          <View style={[styles.statusIndicator, { backgroundColor: color }]} />
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <View style={[styles.statusDot, { backgroundColor: color }]} />
         </View>
-        {chargesGroup.map((charge) => (
-          <View
+        
+        {chargesGroup.map(charge => (
+          <View 
             key={charge.id}
-            style={[styles.chargeCard, { borderLeftColor: color, borderLeftWidth: 4 }]}
+            style={[styles.chargeItem, { borderLeftColor: color, borderLeftWidth: 4 }]}
           >
             <View style={styles.chargeHeader}>
-              <MaterialIcons
-                name={charge.metadata?.icon || 'error-outline'}
-                size={20}
-                color={color}
-                style={styles.icon}
-              />
-              <View style={styles.chargeTextContainer}>
-                <Text style={styles.chargeTitle}>{charge.name}</Text>
-                <Text style={styles.chargeSubtitle}>
-                  {charge.status === 'late'
-                    ? `${charge.daysLate} days overdue`
-                    : `Due in ${charge.daysUntilDue} days`}
-                </Text>
+              <View style={styles.chargeTitleContainer}>
+                <MaterialIcons
+                  name={charge.metadata?.icon || 'receipt'}
+                  size={18}
+                  color={color}
+                  style={styles.icon}
+                />
+                <View style={styles.chargeTextContent}>
+                  <Text style={styles.chargeTitle}>{charge.name}</Text>
+                  <Text style={[styles.chargeSubtitle, { color }]}>
+                    {charge.daysLate ? `${charge.daysLate}d overdue` : `Due in ${charge.daysUntilDue}d`}
+                  </Text>
+                </View>
               </View>
+              <Text style={styles.chargeAmount}>
+                ${Number(charge.amount).toFixed(2)}
+              </Text>
             </View>
-            <View style={styles.chargeDetails}>
-              <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.payButton,
-                  { backgroundColor: selectedCharges.includes(charge.id) ? '#34d399' : color },
-                ]}
-                onPress={() => handleChargeSelectToggle(charge)}
-              >
-                <Text style={styles.payButtonText}>
-                  {selectedCharges.includes(charge.id) ? 'Selected' : 'Select to pay'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.selectButton,
+                selectedCharges.some(c => c.id === charge.id) && styles.selectedButton
+              ]}
+              onPress={() => handleChargeSelectToggle(charge)}
+              disabled={isProcessingPayment}
+            >
+              <MaterialIcons
+                name={selectedCharges.some(c => c.id === charge.id) ? "check" : "add"}
+                size={18}
+                color={selectedCharges.some(c => c.id === charge.id) ? "#fff" : color}
+              />
+              <Text style={[
+                styles.selectButtonText,
+                selectedCharges.some(c => c.id === charge.id) && styles.selectedButtonText
+              ]}>
+                {selectedCharges.some(c => c.id === charge.id) ? 'Selected' : 'Select to Pay'}
+              </Text>
+            </TouchableOpacity>
           </View>
         ))}
       </View>
     );
   };
 
-  const selectedTotal = charges
-    .filter((charge) => selectedCharges.includes(charge.id))
-    .reduce((sum, charge) => sum + parseFloat(charge.amount), 0);
-  const amountStyle = selectedCharges.length > 0 ? styles.balanceAmountSmall : styles.balanceAmount;
-
-  const renderFixedPayHeader = () => (
-    <View style={styles.fixedPayWrapper}>
-      <View style={styles.fixedPayContainer}>
-        {selectedCharges.length === 0 ? (
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceHeader}>
-              <Text style={styles.balanceTitle}>Total Amount Due</Text>
-              <MaterialIcons name="info-outline" size={18} color="#64748b" />
-            </View>
-            <Text style={amountStyle}>${totalCharges.toFixed(2)}</Text>
-            <TouchableOpacity style={styles.payAllButton} onPress={handlePayAllCharges}>
-              <Text style={styles.payAllButtonText}>Pay All Outstanding Balance</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.balanceRow}>
-            <View style={[styles.balanceCard, styles.halfBalanceCard]}>
-              <View style={styles.balanceHeader}>
-                <Text style={styles.balanceTitle}>Total{'\n'}Due</Text>
-                <MaterialIcons name="info-outline" size={18} color="#64748b" />
-              </View>
-              <Text style={amountStyle}>${totalCharges.toFixed(2)}</Text>
-              <TouchableOpacity style={styles.payAllButton} onPress={handlePayAllCharges}>
-                <Text style={styles.payAllButtonText}>Pay All</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={[styles.balanceCard, styles.halfBalanceCard]}>
-              <View style={styles.balanceHeader}>
-                <Text style={styles.balanceTitle}>Selected Charges</Text>
-                <MaterialIcons name="check-circle-outline" size={18} color="#34d399" />
-              </View>
-              <Text style={amountStyle}>${selectedTotal.toFixed(2)}</Text>
-              <TouchableOpacity
-                style={[styles.payAllButton, { backgroundColor: '#34d399' }]}
-                onPress={handlePaySelectedCharges}
-              >
-                <Text style={styles.payAllButtonText}>Pay Now</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-
   return (
-    <View style={{ flex: 1 }}>
-      {renderFixedPayHeader()}
-      <ScrollView
-        style={[styles.tabContent, { marginTop: FIXED_HEADER_HEIGHT }]}
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerCard}>
+        <View style={styles.headerSplit}>
+          <View style={styles.headerSection}>
+            <Text style={styles.headerLabel}>Total Due</Text>
+            <Text style={styles.headerAmount}>${totalBalance.toFixed(2)}</Text>
+          </View>
+          {selectedCharges.length > 0 && (
+            <View style={styles.headerSection}>
+              <Text style={styles.headerLabel}>Selected</Text>
+              <Text style={[styles.headerAmount, styles.selectedAmount]}>
+                ${selectedTotal.toFixed(2)}
+              </Text>
+            </View>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={[
+            styles.paymentButton,
+            (localUnpaidCharges.length === 0 || isProcessingPayment) && styles.disabledButton
+          ]}
+          onPress={localUnpaidCharges.length === 0 ? null : (selectedCharges.length ? handlePaySelected : handlePayAll)}
+          disabled={localUnpaidCharges.length === 0 || isProcessingPayment}
+        >
+          {isProcessingPayment ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.paymentButtonText}>
+                {selectedCharges.length ? 'Pay Selected' : 'Pay All'}
+              </Text>
+              <MaterialIcons name="chevron-right" size={20} color="#fff" />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {renderChargeSection('Late Payments', late, '#ef4444')}
         {renderChargeSection('Upcoming Payments', upcoming, '#eab308')}
         {renderChargeSection('Other Charges', other, '#34d399')}
-        {charges.length === 0 && (
+        
+        {localUnpaidCharges.length === 0 && (
           <View style={styles.emptyState}>
             <MaterialIcons name="check-circle" size={40} color="#34d399" />
-            <Text style={styles.emptyStateTitle}>All payments complete!</Text>
+            <Text style={styles.emptyStateTitle}>All Caught Up!</Text>
             <Text style={styles.emptyStateText}>No outstanding charges found</Text>
           </View>
         )}
       </ScrollView>
+
+      <PaymentConfirmationModal
+        visible={showConfirmation}
+        onClose={() => !isProcessingPayment && setShowConfirmation(false)}
+        selectedCharges={selectedCharges}
+        totalAmount={selectedTotal}
+        onConfirmPayment={handleConfirmPayment}
+        isProcessing={isProcessingPayment}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tabContent: {
+  container: {
     flex: 1,
-  },
-  fixedPayWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    right: 16,
-    zIndex: 10,
-  },
-  fixedPayContainer: {
-    backgroundColor: '#dff6f0',
-    paddingVertical: 8,
-  },
-  balanceCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+  },
+  headerCard: {
+    backgroundColor: '#fff',
     padding: 24,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  balanceRow: {
+  headerSplit: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  halfBalanceCard: {
+  headerSection: {
     flex: 1,
-    marginHorizontal: 4,
   },
-  balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  balanceTitle: {
+  headerLabel: {
+    fontSize: 14,
     color: '#64748b',
-    fontSize: 16,
+    marginBottom: 4,
     fontWeight: '500',
   },
-  balanceAmount: {
-    color: '#1e293b',
-    fontSize: 36,
+  headerAmount: {
+    fontSize: 28,
     fontWeight: '700',
-    marginVertical: 16,
-  },
-  balanceAmountSmall: {
     color: '#1e293b',
-    fontSize: 24,
-    fontWeight: '700',
-    marginVertical: 16,
+    fontVariant: ['tabular-nums'],
   },
-  payAllButton: {
+  selectedAmount: {
+    color: '#34d399',
+  },
+  paymentButton: {
     backgroundColor: '#34d399',
     padding: 16,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  payAllButtonText: {
+  disabledButton: {
+    backgroundColor: '#94e0c1', // Lighter green for disabled state
+    opacity: 0.7,
+  },
+  paymentButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    marginRight: 4,
+  },
+  content: {
+    flex: 1,
   },
   section: {
-    marginHorizontal: 16,
-    marginBottom: 24,
+    marginTop: 24,
+    marginHorizontal: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    paddingLeft: 8,
+    paddingLeft: 12,
     borderLeftWidth: 4,
   },
-  sectionHeaderText: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
     marginRight: 8,
   },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  chargeCard: {
+  chargeItem: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
   chargeHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  chargeTitleContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    marginRight: 12,
   },
   icon: {
     marginRight: 8,
+    marginTop: 2,
   },
-  chargeTextContainer: {
+  chargeTextContent: {
     flex: 1,
   },
   chargeTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
+    marginBottom: 4,
   },
   chargeSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  chargeDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    fontSize: 13,
+    fontWeight: '500',
   },
   chargeAmount: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#1e293b',
+    fontVariant: ['tabular-nums'],
   },
-  payButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: '#f8fafc',
   },
-  payButtonText: {
-    color: '#fff',
-    fontSize: 14,
+  selectedButton: {
+    backgroundColor: '#34d399',
+  },
+  selectButtonText: {
+    fontSize: 13,
     fontWeight: '500',
+    color: '#64748b',
+    marginLeft: 4,
+  },
+  selectedButtonText: {
+    color: '#fff',
   },
   emptyState: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 12,
     alignItems: 'center',
-    margin: 16,
+    padding: 48,
   },
   emptyStateTitle: {
     fontSize: 18,

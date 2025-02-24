@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -25,18 +26,18 @@ const BillingScreen = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [charges, setCharges] = useState([]);
-  const [totalCharges, setTotalCharges] = useState(0);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [defaultMethod, setDefaultMethod] = useState(null);
-  const [selectedCharges, setSelectedCharges] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Fetch data when user ID changes or when refreshTrigger is updated
   useEffect(() => {
     if (authUser?.id) {
       fetchUserData();
       fetchCharges();
       fetchPaymentMethods();
     }
-  }, [authUser?.id]);
+  }, [authUser?.id, refreshTrigger]);
 
   const fetchUserData = async () => {
     try {
@@ -56,13 +57,36 @@ const BillingScreen = () => {
   const fetchCharges = async () => {
     try {
       if (!authUser?.id) return;
-      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}/charges`);
-      const pendingCharges = response.data;
-      setCharges(pendingCharges);
-      const total = pendingCharges.reduce((sum, charge) => sum + parseFloat(charge.amount), 0);
-      setTotalCharges(total);
+      
+      // Use the new endpoint for unpaid charges
+      console.log('Fetching unpaid charges...');
+      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}/charges/unpaid`);
+      console.log(`Found ${response.data.length} unpaid charges`);
+      setCharges(response.data);
     } catch (error) {
-      console.error('Error fetching charges:', error);
+      console.error('Error fetching unpaid charges:', error);
+      
+      // Fallback to all charges endpoint
+      try {
+        console.log('Trying fallback to all charges...');
+        const fallbackResponse = await axios.get(`http://localhost:3004/api/users/${authUser.id}/charges`);
+        
+        // Filter out paid and processing charges client-side
+        const unpaidCharges = fallbackResponse.data.filter(
+          charge => charge.status !== 'paid' && charge.status !== 'processing'
+        );
+        
+        console.log(`Found ${unpaidCharges.length} unpaid charges via fallback`);
+        setCharges(unpaidCharges);
+      } catch (fallbackError) {
+        console.error('Fallback error fetching charges:', fallbackError);
+        Alert.alert(
+          "Network Error",
+          "Unable to load your charges. Please try again later.",
+          [{ text: "OK" }]
+        );
+        setCharges([]);
+      }
     }
   };
 
@@ -78,59 +102,27 @@ const BillingScreen = () => {
     }
   };
 
-  const categorizeCharges = (chargesList) => {
-    const today = new Date();
-    return chargesList.reduce((acc, charge) => {
-      if (!charge.dueDate) {
-        acc.other.push(charge);
-        return acc;
-      }
-      const dueDate = new Date(charge.dueDate);
-      const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-      if (diffDays < 0) {
-        acc.late.push({ ...charge, status: 'late', daysLate: Math.abs(diffDays) });
-      } else if (diffDays <= 7) {
-        acc.upcoming.push({ ...charge, status: 'upcoming', daysUntilDue: diffDays });
-      } else {
-        acc.other.push({ ...charge, status: 'other', daysUntilDue: diffDays });
-      }
-      return acc;
-    }, { late: [], upcoming: [], other: [] });
-  };
+  // Process when charges are updated by the PayTab component
+  const handleChargesUpdated = useCallback((paidChargeIds) => {
+    console.log('Charges updated in BillingScreen:', paidChargeIds);
+    
+    if (!paidChargeIds || paidChargeIds.length === 0) return;
+    
+    // Remove the paid charges from the state
+    setCharges(currentCharges => {
+      const updatedCharges = currentCharges.filter(
+        charge => !paidChargeIds.includes(charge.id)
+      );
+      
+      console.log(`Removed ${paidChargeIds.length} paid charges, ${updatedCharges.length} remaining`);
+      return updatedCharges;
+    });
+  }, []);
 
-  const handleChargeSelectToggle = (charge) => {
-    setSelectedCharges((prev) =>
-      prev.includes(charge.id)
-        ? prev.filter(id => id !== charge.id)
-        : [...prev, charge.id]
-    );
-  };
-
-  const handlePayCharge = async (chargeId) => {
-    try {
-      console.log('Paying charge:', chargeId);
-      // Implement individual charge payment logic here if needed
-    } catch (error) {
-      console.error('Error paying charge:', error);
-    }
-  };
-
-  const handlePayAllCharges = async () => {
-    try {
-      console.log('Paying all charges');
-      // Implement payment for all charges here
-    } catch (error) {
-      console.error('Error paying all charges:', error);
-    }
-  };
-
-  const handlePaySelectedCharges = async () => {
-    try {
-      console.log('Paying selected charges:', selectedCharges);
-      // Implement payment for only selected charges here
-    } catch (error) {
-      console.error('Error paying selected charges:', error);
-    }
+  // Manual refresh function
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshTrigger(prev => prev + 1);
   };
 
   if (loading || !authUser?.id) {
@@ -158,16 +150,19 @@ const BillingScreen = () => {
         ))}
       </View>
 
+      {/* Refresh Button */}
+      <TouchableOpacity 
+        style={styles.refreshButton} 
+        onPress={refreshData}
+      >
+        <MaterialIcons name="refresh" size={20} color="#64748b" />
+      </TouchableOpacity>
+
       {/* Render Selected Tab */}
       {activeTab === TABS.PAY && (
-        <PayTab
-          charges={charges}
-          totalCharges={totalCharges}
-          selectedCharges={selectedCharges}
-          handlePayAllCharges={handlePayAllCharges}
-          handlePaySelectedCharges={handlePaySelectedCharges}
-          handleChargeSelectToggle={handleChargeSelectToggle}
-          categorizeCharges={categorizeCharges}
+        <PayTab 
+          charges={charges} 
+          onChargesUpdated={handleChargesUpdated} 
         />
       )}
       {activeTab === TABS.METHODS && (
@@ -212,6 +207,21 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: '#34d399',
+  },
+  // Refresh Button
+  refreshButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
 
