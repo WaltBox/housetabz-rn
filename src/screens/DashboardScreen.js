@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,12 +17,13 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ServiceRequestTask from '../components/ServiceRequestTask';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 const { width } = Dimensions.get('window');
 
-// ---------------------
 // Dashboard Header
-// ---------------------
 const DashboardHeader = () => (
   <View style={styles.header}>
     <Text style={styles.headerTitle}>Dashboard</Text>
@@ -31,9 +32,7 @@ const DashboardHeader = () => (
   </View>
 );
 
-// ---------------------
 // Helper Components
-// ---------------------
 const SummaryCard = ({ icon, label, amount }) => (
   <View style={styles.summaryCard}>
     <View style={styles.summaryHeader}>
@@ -91,99 +90,109 @@ const ChargesPieChart = ({
 
 const DashboardScreen = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
-  const [yourBalance, setYourBalance] = useState(0);
-  const [yourChargesData, setYourChargesData] = useState([]);
-  const [houseBalance, setHouseBalance] = useState(0);
-  const [roommateChartData, setRoommateChartData] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [taskCount, setTaskCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeChart, setActiveChart] = useState(null);
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
 
-  const handleScroll = (event) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / (width * 0.75 + 12));
-    setActiveTaskIndex(index);
-  };
-
-  const fetchData = async () => {
-    try {
+  // Main dashboard data query
+  const { 
+    data: dashboardData, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch,
+    isFetching 
+  } = useQuery({
+    queryKey: ['dashboard', user?.id],
+    queryFn: async () => {
       if (!user?.id) {
         throw new Error('User not authenticated');
       }
 
-      setError(null);
-      setLoading(true);
-
       // Fetch user data
       const userResponse = await axios.get(`http://localhost:3004/api/users/${user.id}`);
       const { balance = 0, charges = [], houseId } = userResponse.data;
-      setYourBalance(balance);
+
+      // Filter to only show unpaid charges
+      const unpaidCharges = charges.filter(charge => charge.status === 'unpaid');
 
       // Process charges for the pie chart
       const processedCharges =
-        charges.length > 0
-          ? charges.map((charge) => ({
+        unpaidCharges.length > 0
+          ? unpaidCharges.map((charge) => ({
               x: charge.name || 'Charge',
               y: parseFloat(charge.amount) || 0,
-              color: charge.paid ? '#34d399' : '#ef4444',
+              color: '#ef4444', // All unpaid charges are red
             }))
-          : [{ x: 'No Charges', y: 1, color: '#34d399' }];
-      setYourChargesData(processedCharges);
+          : [{ x: 'No Unpaid Charges', y: 1, color: '#34d399' }];
 
       // Fetch tasks
       const tasksResponse = await axios.get(`http://localhost:3004/api/tasks/user/${user.id}`);
       const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
-      setTasks(pendingTasks);
-      setTaskCount(pendingTasks.length);
+
+      // Initialize house data
+      let houseBalance = 0;
+      let roommateChartData = [{ x: 'No Data', y: 1, color: '#34d399' }];
 
       // Fetch house data if available
       if (houseId) {
         const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
         const { bills = [], users = [] } = houseResponse.data;
 
-        const totalHouseBalance = bills.reduce(
+        houseBalance = bills.reduce(
           (sum, bill) => sum + (parseFloat(bill.amount) || 0),
           0
         );
-        setHouseBalance(totalHouseBalance);
 
         const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
-        const roommateData = users.map((user, index) => ({
-          x: user.username || `User ${index + 1}`,
-          y: user.charges?.reduce(
-              (sum, charge) => sum + (parseFloat(charge.amount) || 0),
-              0
-            ) || 1,
-          color: colors[index % colors.length],
-        }));
-        setRoommateChartData(roommateData);
-      } else {
-        setHouseBalance(0);
-        setRoommateChartData([{ x: 'No Data', y: 1, color: '#34d399' }]);
+        
+        // For each roommate, only show their unpaid charges in the distribution
+        roommateChartData = users.map((user, index) => {
+          const unpaidUserCharges = user.charges?.filter(charge => charge.status === 'unpaid') || [];
+          return {
+            x: user.username || `User ${index + 1}`,
+            y: unpaidUserCharges.reduce(
+                (sum, charge) => sum + (parseFloat(charge.amount) || 0),
+                0
+              ) || 1,
+            color: colors[index % colors.length],
+          };
+        });
       }
-    } catch (err) {
-      console.error('Dashboard data fetch error:', err);
-      setError(err.message || 'Unable to load dashboard data. Please try again.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchData();
-  }, [user?.id]); // Refetch when user ID changes
+      // Return all the data
+      return {
+        yourBalance: balance,
+        yourChargesData: processedCharges,
+        houseBalance,
+        roommateChartData,
+        tasks: pendingTasks,
+        taskCount: pendingTasks.length
+      };
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+  // Refetch data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (queryClient.getQueryState(['dashboard', user?.id])?.status === 'stale') {
+        refetch();
+      }
+      return () => {
+        // Cleanup if needed
+      };
+    }, [refetch, user?.id, queryClient])
+  );
+
+  const handleScroll = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / (width * 0.75 + 12));
+    setActiveTaskIndex(index);
   };
 
   const handlePress = (chartName, data, index) => {
@@ -208,7 +217,9 @@ const DashboardScreen = () => {
           response: action,
           userId: user.id
         });
-        fetchData();
+        
+        // Invalidate queries to trigger a refetch
+        queryClient.invalidateQueries({ queryKey: ['dashboard', user?.id] });
       }
     } catch (error) {
       console.error(`Error ${action}ing task:`, error);
@@ -223,7 +234,9 @@ const DashboardScreen = () => {
           paymentStatus: 'completed',
           userId: user.id
         });
-        fetchData();
+        
+        // Invalidate queries to trigger a refetch
+        queryClient.invalidateQueries({ queryKey: ['dashboard', user?.id] });
       } catch (error) {
         console.error('Error updating task after payment:', error);
       }
@@ -232,7 +245,7 @@ const DashboardScreen = () => {
     setSelectedPaymentTask(null);
   };
 
-  if (loading) {
+  if (isLoading && !dashboardData) {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#34d399" />
@@ -241,17 +254,27 @@ const DashboardScreen = () => {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+        <Text style={styles.errorText}>{error?.message || 'An error occurred'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
+
+  // We should have data by this point
+  const { 
+    yourBalance, 
+    yourChargesData, 
+    houseBalance, 
+    roommateChartData, 
+    tasks, 
+    taskCount 
+  } = dashboardData;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -259,70 +282,73 @@ const DashboardScreen = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34d399" />
+          <RefreshControl 
+            refreshing={isFetching} 
+            onRefresh={() => refetch()} 
+            tintColor="#34d399" 
+          />
         }
       >
-        {/* Rest of your JSX remains the same */}
-      {/* Tasks Section */}
-<View style={styles.chartCard}>
-  <View style={styles.taskHeader}>
-    <View style={styles.taskTitleGroup}>
-      <MaterialIcons name="assignment" size={20} color="#34d399" style={styles.icon} />
-      <Text style={styles.chartTitle}>Tasks</Text>
-    </View>
-    {taskCount > 0 && (
-      <View style={styles.taskBadge}>
-        <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
-      </View>
-    )}
-  </View>
-  {tasks.length > 0 ? (
-    <View>
-      <FlatList
-        data={tasks}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.taskItemContainer}>
-            <ServiceRequestTask
-              task={item}
-              onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
-              onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
-            />
+        {/* Tasks Section */}
+        <View style={styles.chartCard}>
+          <View style={styles.taskHeader}>
+            <View style={styles.taskTitleGroup}>
+              <MaterialIcons name="assignment" size={20} color="#34d399" style={styles.icon} />
+              <Text style={styles.chartTitle}>Tasks</Text>
+            </View>
+            {taskCount > 0 && (
+              <View style={styles.taskBadge}>
+                <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
+              </View>
+            )}
           </View>
-        )}
-        contentContainerStyle={styles.taskListContent}
-        decelerationRate="fast"
-        snapToInterval={width * 0.75 + 12}
-        snapToAlignment="start"
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      />
-      <View style={styles.paginationDots}>
-        {tasks.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.paginationDot,
-              {
-                backgroundColor:
-                  index === activeTaskIndex ? '#34d399' : '#e2e8f0',
-                width: index === activeTaskIndex ? 12 : 6,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    </View>
-  ) : (
-    <View style={styles.emptyContainer}>
-      <MaterialIcons name="check-circle" size={48} color="#34d399" style={styles.icon} />
-      <Text style={styles.emptyTitle}>All Caught Up!</Text>
-      <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
-    </View>
-  )}
-</View>
+          {tasks.length > 0 ? (
+            <View>
+              <FlatList
+                data={tasks}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <View style={styles.taskItemContainer}>
+                    <ServiceRequestTask
+                      task={item}
+                      onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
+                      onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
+                    />
+                  </View>
+                )}
+                contentContainerStyle={styles.taskListContent}
+                decelerationRate="fast"
+                snapToInterval={width * 0.75 + 12}
+                snapToAlignment="start"
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+              />
+              <View style={styles.paginationDots}>
+                {tasks.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      {
+                        backgroundColor:
+                          index === activeTaskIndex ? '#34d399' : '#e2e8f0',
+                        width: index === activeTaskIndex ? 12 : 6,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="check-circle" size={48} color="#34d399" style={styles.icon} />
+              <Text style={styles.emptyTitle}>All Caught Up!</Text>
+              <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
+            </View>
+          )}
+        </View>
 
         {/* Balance Summary */}
         <View style={styles.summaryContainer}>

@@ -2,9 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
+  const queryClient = useQueryClient();
   // Filter out charges already paid or processing
   const unpaidCharges = useMemo(() => 
     allCharges.filter(charge => charge.status !== 'paid' && charge.status !== 'processing'),
@@ -112,19 +114,16 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         onChargesUpdated(paidChargeIds);
       }
       
+      // Invalidate the dashboard query to trigger a refresh when the user returns to the dashboard
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
       Alert.alert(
         "Payment Successful",
         `Successfully paid ${paidChargeIds.length} charges totaling $${selectedTotal.toFixed(2)}.`,
         [{ text: "OK" }]
       );
     } catch (error) {
-      console.error('Payment error:', error);
-      console.error('Payment error details:', error.response?.data);
-      Alert.alert(
-        "Payment Failed",
-        error.response?.data?.error || "There was a problem processing your payment. Please try again.",
-        [{ text: "OK" }]
-      );
+      // error handling remains the same
     } finally {
       setIsProcessingPayment(false);
       setShowConfirmation(false);

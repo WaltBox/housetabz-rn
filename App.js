@@ -6,6 +6,19 @@ import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import Constants from 'expo-constants';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a React Query client with default settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
+      cacheTime: 1000 * 60 * 10, // Cache data for 10 minutes
+      refetchOnWindowFocus: false, // Don't fetch when app regains focus
+      retry: 1, // Only retry failed requests once
+    },
+  },
+});
 
 const STRIPE_PUBLISHABLE_KEY =
   Constants.expoConfig?.extra?.STRIPE_PUBLISHABLE_KEY ||
@@ -22,19 +35,21 @@ const App = () => {
   }
 
   return (
-    <AuthProvider>
-      <StripeProvider
-        publishableKey={STRIPE_PUBLISHABLE_KEY}
-        merchantIdentifier="merchant.com.housetabz"
-        urlScheme="housetabz"
-        threeDSecureParams={{
-          backgroundColor: "#fff",
-          timeout: 5,
-        }}
-      >
-        <AppNavigator />
-      </StripeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <StripeProvider
+          publishableKey={STRIPE_PUBLISHABLE_KEY}
+          merchantIdentifier="merchant.com.housetabz"
+          urlScheme="housetabz"
+          threeDSecureParams={{
+            backgroundColor: "#fff",
+            timeout: 5,
+          }}
+        >
+          <AppNavigator />
+        </StripeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 
