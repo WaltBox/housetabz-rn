@@ -1,239 +1,225 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
+import { MaterialIcons } from "@expo/vector-icons";
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const HistoryTab = () => {
-  // Example data - replace with real data
-  const monthlyTotal = 325.50;
-  const transactions = [
-    {
-      id: '1',
-      title: 'Internet Bill',
-      icon: 'wifi',
-      date: 'Jan 15, 2025',
-      amount: 35.00,
-      status: 'completed',
-      method: 'Visa •••• 4242',
-    },
-    {
-      id: '2',
-      title: 'Electricity',
-      icon: 'bolt',
-      date: 'Jan 12, 2025',
-      amount: 142.50,
-      status: 'completed',
-      method: 'Bank Account •••• 1234',
-    },
-    {
-      id: '3',
-      title: 'Water Bill',
-      icon: 'water-drop',
-      date: 'Jan 8, 2025',
-      amount: 78.00,
-      status: 'pending',
-      method: 'Processing...',
+  const { user } = useAuth();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedPayment, setExpandedPayment] = useState(null);
+  const [animationValues, setAnimationValues] = useState({});
+
+  useEffect(() => {
+    if (user?.id) fetchPaymentHistory();
+  }, [user?.id]);
+
+  const fetchPaymentHistory = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:3004/api/users/${user.id}/payments`
+      );
+
+      // Sort payments by date (most recent first)
+      const sortedPayments = response.data.payments.sort(
+        (a, b) => new Date(b.paymentDate) - new Date(a.paymentDate)
+      );
+
+      setPayments(sortedPayments);
+
+      // Initialize animation values for each payment
+      let newAnimationValues = {};
+      sortedPayments.forEach(payment => {
+        newAnimationValues[payment.id] = new Animated.Value(0);
+      });
+      setAnimationValues(newAnimationValues);
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const togglePayment = (paymentId) => {
+    if (expandedPayment === paymentId) {
+      setExpandedPayment(null);
+      animateItem(paymentId, false);
+    } else {
+      if (expandedPayment !== null) {
+        animateItem(expandedPayment, false);
+      }
+      setExpandedPayment(paymentId);
+      animateItem(paymentId, true);
+    }
+  };
+
+  const animateItem = (paymentId, expand) => {
+    Animated.timing(animationValues[paymentId], {
+      toValue: expand ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const renderPayment = ({ item }) => {
+    const isExpanded = expandedPayment === item.id;
+
+    return (
+      <>
+        {/* Payment Item */}
+        <TouchableOpacity
+          style={[styles.paymentItem, isExpanded && styles.paymentItemActive]}
+          onPress={() => togglePayment(item.id)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.paymentHeader}>
+            <View>
+              <Text style={styles.paymentDate}>
+                {new Date(item.paymentDate).toLocaleDateString()}
+              </Text>
+              <Text style={styles.paymentAmount}>${Number(item.amount).toFixed(2)}</Text>
+            </View>
+
+            <MaterialIcons
+              name={isExpanded ? "expand-less" : "expand-more"}
+              size={24}
+              color={isExpanded ? "#10b981" : "#64748b"}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {/* Charges List (Expands and Pushes Content Down) */}
+        <Animated.View style={[styles.chargesContainer, { height: animationValues[item.id].interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 40 * (item.charges?.length || 0)], 
+        }) }]}>
+          {isExpanded && item.charges?.map((charge) => (
+            <View key={charge.id} style={styles.chargeItem}>
+              <Text style={styles.chargeName}>{charge.name}</Text>
+              <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+            </View>
+          ))}
+        </Animated.View>
+      </>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header with Monthly Summary */}
-      <View style={styles.headerCard}>
-        <Text style={styles.headerTitle}>Transaction History</Text>
-        <View style={styles.headerContent}>
-          <Text style={styles.monthlySpentLabel}>Monthly Spent</Text>
-          <Text style={styles.monthlySpentAmount}>${monthlyTotal.toFixed(2)}</Text>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.title}>Payment History</Text>
       </View>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Recent Transactions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          
-          {transactions.map(transaction => (
-            <View key={transaction.id} style={styles.transactionItem}>
-              <View style={styles.transactionMain}>
-                <View style={styles.transactionIcon}>
-                  <MaterialIcons 
-                    name={transaction.icon} 
-                    size={18} 
-                    color="#64748b" 
-                  />
-                </View>
-                <View style={styles.transactionInfo}>
-                  <View style={styles.transactionHeader}>
-                    <Text style={styles.transactionTitle}>
-                      {transaction.title}
-                    </Text>
-                    <Text style={[
-                      styles.transactionAmount,
-                      { color: transaction.status === 'pending' ? '#eab308' : '#1e293b' }
-                    ]}>
-                      -${transaction.amount.toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={styles.transactionDetails}>
-                    <Text style={styles.transactionDate}>
-                      {transaction.date}
-                    </Text>
-                    <View style={styles.statusContainer}>
-                      <View style={[
-                        styles.statusDot,
-                        { backgroundColor: transaction.status === 'completed' ? '#34d399' : '#eab308' }
-                      ]} />
-                      <Text style={styles.transactionMethod}>
-                        {transaction.method}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
+      {loading ? (
+        <Text style={styles.loadingText}>Loading...</Text>
+      ) : (
+        <FlatList
+          data={payments}
+          renderItem={renderPayment}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <MaterialIcons name="receipt" size={48} color="#e2e8f0" />
+              <Text style={styles.emptyText}>No Transactions Found</Text>
             </View>
-          ))}
-        </View>
-
-        {/* Empty State */}
-        {transactions.length === 0 && (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="receipt-long" size={40} color="#94a3b8" />
-            <Text style={styles.emptyStateTitle}>No Transactions Yet</Text>
-            <Text style={styles.emptyStateText}>
-              Your payment history will appear here
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          }
+        />
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  container: { 
+    flex: 1, 
+    backgroundColor: "#fff", 
+    padding: 16 
   },
-  headerCard: {
-    padding: 24,
+  header: {
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: "#f1f5f9",
   },
-  headerTitle: {
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
-    marginBottom: 12,
+  title: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1e293b",
   },
-  headerContent: {
-    backgroundColor: '#f8fafc',
+  list: {
+    paddingTop: 12,
+  },
+  paymentItem: {
+    backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+    borderRadius: 8,
+    elevation: 2, 
   },
-  monthlySpentLabel: {
+  paymentItemActive: {
+    backgroundColor: "#f8fafc",
+  },
+  paymentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  paymentDate: {
     fontSize: 14,
-    color: '#64748b',
-    marginBottom: 4,
+    color: "#64748b",
   },
-  monthlySpentAmount: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1e293b',
-    fontVariant: ['tabular-nums'],
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    padding: 24,
-  },
-  sectionTitle: {
+  paymentAmount: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 16,
+    fontWeight: "600",
+    color: "#1e293b",
   },
-  transactionItem: {
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    overflow: 'hidden',
+  chargesContainer: {
+    overflow: "hidden",
+    backgroundColor: "#f8fafc",
+    paddingLeft: 8,
+    borderRadius: 8,
+    marginTop: 4,
   },
-  transactionMain: {
-    flexDirection: 'row',
-    padding: 16,
+  chargeItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
-  transactionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+  chargeName: {
+    fontSize: 14,
+    color: "#1e293b",
   },
-  transactionInfo: {
-    flex: 1,
+  chargeAmount: {
+    fontSize: 14,
+    color: "#1e293b",
+    fontWeight: "500",
   },
-  transactionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  transactionTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1e293b',
-  },
-  transactionAmount: {
-    fontSize: 15,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  transactionDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  transactionDate: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  transactionMethod: {
-    fontSize: 13,
-    color: '#64748b',
+  loadingText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    color: "#64748b",
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 40,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
+  emptyText: {
     fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
+    color: "#64748b",
   },
 });
 
