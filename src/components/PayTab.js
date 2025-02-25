@@ -5,11 +5,9 @@ import axios from 'axios';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
-  // Filter out any charges with 'paid' status using useMemo to prevent rerenders
+  // Filter out charges already paid or processing
   const unpaidCharges = useMemo(() => 
-    allCharges.filter(charge => 
-      charge.status !== 'paid' && charge.status !== 'processing'
-    ), 
+    allCharges.filter(charge => charge.status !== 'paid' && charge.status !== 'processing'),
     [allCharges]
   );
   
@@ -23,43 +21,36 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     setLocalUnpaidCharges(unpaidCharges);
   }, [unpaidCharges]);
   
-  // Recalculate selected charges if the unpaidCharges list changes
+  // Ensure selected charges are still valid
   useEffect(() => {
-    // Create a new array of selected charges that still exist in localUnpaidCharges
-    const validSelectedCharges = selectedCharges.filter(selected => 
+    const validSelectedCharges = selectedCharges.filter(selected =>
       localUnpaidCharges.some(charge => charge.id === selected.id)
     );
-    
-    // Only update if there's an actual change to avoid infinite loops
     if (validSelectedCharges.length !== selectedCharges.length) {
       setSelectedCharges(validSelectedCharges);
     }
   }, [localUnpaidCharges, selectedCharges]);
   
-  // Calculate total unpaid balance (sum of all unpaid charges)
-  const totalBalance = useMemo(() => 
-    localUnpaidCharges.reduce((sum, charge) => sum + Number(charge.amount), 0), 
+  // Calculate total amounts
+  const totalBalance = useMemo(() =>
+    localUnpaidCharges.reduce((sum, charge) => sum + Number(charge.amount), 0),
     [localUnpaidCharges]
   );
-  
-  // Calculate total for selected charges
-  const selectedTotal = useMemo(() => 
-    selectedCharges.reduce((sum, charge) => sum + Number(charge.amount), 0), 
+  const selectedTotal = useMemo(() =>
+    selectedCharges.reduce((sum, charge) => sum + Number(charge.amount), 0),
     [selectedCharges]
   );
-
+  
+  // Categorize charges into groups
   const categorizeCharges = (charges) => {
     const now = new Date();
     return charges.reduce((acc, charge) => {
-      // Handle case where dueDate might be missing
       if (!charge.dueDate) {
-        acc.other.push({ ...charge, daysUntilDue: 999 }); // Put it in "other" category
+        acc.other.push({ ...charge, daysUntilDue: 999 });
         return acc;
       }
-      
       const dueDate = new Date(charge.dueDate);
       const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
-
       if (diffDays < 0) {
         acc.late.push({ ...charge, daysLate: Math.abs(diffDays) });
       } else if (diffDays <= 3) {
@@ -71,20 +62,12 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     }, { late: [], upcoming: [], other: [] });
   };
 
-  // Memoize the categorized charges to prevent unnecessary recalculations
-  const { late, upcoming, other } = useMemo(() => 
-    categorizeCharges(localUnpaidCharges), 
-    [localUnpaidCharges]
-  );
-
+  const { late, upcoming, other } = useMemo(() => categorizeCharges(localUnpaidCharges), [localUnpaidCharges]);
+  
   const handleChargeSelectToggle = (charge) => {
     setSelectedCharges(prev => {
       const isSelected = prev.some(c => c.id === charge.id);
-      if (isSelected) {
-        return prev.filter(c => c.id !== charge.id);
-      } else {
-        return [...prev, charge];
-      }
+      return isSelected ? prev.filter(c => c.id !== charge.id) : [...prev, charge];
     });
   };
 
@@ -99,66 +82,44 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     }
   };
 
-  const handleConfirmPayment = async (paymentDetails) => {
+  // Centralized API call
+  const handleConfirmPayment = async () => {
     try {
       setIsProcessingPayment(true);
-      
-      // Generate unique idempotency key
       const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
       
-      // Prepare the payment request
       const paymentRequest = {
         chargeIds: selectedCharges.map(charge => charge.id),
-        paymentMethodId: paymentDetails.paymentMethodId || 18 // Use selected or default
+        paymentMethodId: 18 // Replace with dynamic payment method if needed
       };
       
-      console.log('Sending payment request with:', {
-        ...paymentRequest,
-        idempotencyKey
-      });
+      console.log('Sending payment request with:', { ...paymentRequest, idempotencyKey });
       
-      // Make the API call to process the payment
       const response = await axios.post(
         'http://localhost:3004/api/payments/batch',
         paymentRequest,
-        {
-          headers: {
-            'idempotency-key': idempotencyKey
-          }
-        }
+        { headers: { 'idempotency-key': idempotencyKey } }
       );
       
-      // Handle successful payment
       console.log('Payment response:', response.data);
       
-      // Get the IDs of the charges that were paid
+      // Remove paid charges and update state
       const paidChargeIds = selectedCharges.map(charge => charge.id);
-      
-      // Update the local state immediately to remove paid charges
-      setLocalUnpaidCharges(prev => 
-        prev.filter(charge => !paidChargeIds.includes(charge.id))
-      );
-      
-      // Clear selected charges
+      setLocalUnpaidCharges(prev => prev.filter(charge => !paidChargeIds.includes(charge.id)));
       setSelectedCharges([]);
       
-      // Notify the parent component about the update
-      if (onChargesUpdated && typeof onChargesUpdated === 'function') {
+      if (onChargesUpdated) {
         onChargesUpdated(paidChargeIds);
       }
       
-      // Show success message
       Alert.alert(
         "Payment Successful",
         `Successfully paid ${paidChargeIds.length} charges totaling $${selectedTotal.toFixed(2)}.`,
         [{ text: "OK" }]
       );
-      
     } catch (error) {
       console.error('Payment error:', error);
       console.error('Payment error details:', error.response?.data);
-      
-      // Show error message
       Alert.alert(
         "Payment Failed",
         error.response?.data?.error || "There was a problem processing your payment. Please try again.",
@@ -172,27 +133,17 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 
   const renderChargeSection = (title, chargesGroup, color) => {
     if (chargesGroup.length === 0) return null;
-
     return (
       <View style={styles.section}>
         <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
           <Text style={styles.sectionTitle}>{title}</Text>
           <View style={[styles.statusDot, { backgroundColor: color }]} />
         </View>
-        
         {chargesGroup.map(charge => (
-          <View 
-            key={charge.id}
-            style={[styles.chargeItem, { borderLeftColor: color, borderLeftWidth: 4 }]}
-          >
+          <View key={charge.id} style={[styles.chargeItem, { borderLeftColor: color, borderLeftWidth: 4 }]}>
             <View style={styles.chargeHeader}>
               <View style={styles.chargeTitleContainer}>
-                <MaterialIcons
-                  name={charge.metadata?.icon || 'receipt'}
-                  size={18}
-                  color={color}
-                  style={styles.icon}
-                />
+                <MaterialIcons name={charge.metadata?.icon || 'receipt'} size={18} color={color} style={styles.icon} />
                 <View style={styles.chargeTextContent}>
                   <Text style={styles.chargeTitle}>{charge.name}</Text>
                   <Text style={[styles.chargeSubtitle, { color }]}>
@@ -200,11 +151,8 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.chargeAmount}>
-                ${Number(charge.amount).toFixed(2)}
-              </Text>
+              <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
             </View>
-
             <TouchableOpacity
               style={[
                 styles.selectButton,
@@ -233,7 +181,6 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.headerCard}>
         <View style={styles.headerSplit}>
           <View style={styles.headerSection}>
@@ -270,14 +217,10 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderChargeSection('Late Payments', late, '#ef4444')}
         {renderChargeSection('Upcoming Payments', upcoming, '#eab308')}
         {renderChargeSection('Other Charges', other, '#34d399')}
-        
         {localUnpaidCharges.length === 0 && (
           <View style={styles.emptyState}>
             <MaterialIcons name="check-circle" size={40} color="#34d399" />
@@ -300,160 +243,36 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  headerCard: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  headerSplit: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  headerSection: {
-    flex: 1,
-  },
-  headerLabel: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  headerAmount: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1e293b',
-    fontVariant: ['tabular-nums'],
-  },
-  selectedAmount: {
-    color: '#34d399',
-  },
-  paymentButton: {
-    backgroundColor: '#34d399',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#94e0c1', // Lighter green for disabled state
-    opacity: 0.7,
-  },
-  paymentButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  content: {
-    flex: 1,
-  },
-  section: {
-    marginTop: 24,
-    marginHorizontal: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingLeft: 12,
-    borderLeftWidth: 4,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginRight: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  chargeItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  chargeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  chargeTitleContainer: {
-    flexDirection: 'row',
-    flex: 1,
-    marginRight: 12,
-  },
-  icon: {
-    marginRight: 8,
-    marginTop: 2,
-  },
-  chargeTextContent: {
-    flex: 1,
-  },
-  chargeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  chargeSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chargeAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    fontVariant: ['tabular-nums'],
-  },
-  selectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    backgroundColor: '#f8fafc',
-  },
-  selectedButton: {
-    backgroundColor: '#34d399',
-  },
-  selectButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#64748b',
-    marginLeft: 4,
-  },
-  selectedButtonText: {
-    color: '#fff',
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 48,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginVertical: 8,
-  },
-  emptyStateText: {
-    color: '#64748b',
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  headerCard: { backgroundColor: '#fff', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  headerSplit: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  headerSection: { flex: 1 },
+  headerLabel: { fontSize: 14, color: '#64748b', marginBottom: 4, fontWeight: '500' },
+  headerAmount: { fontSize: 28, fontWeight: '700', color: '#1e293b', fontVariant: ['tabular-nums'] },
+  selectedAmount: { color: '#34d399' },
+  paymentButton: { backgroundColor: '#34d399', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  disabledButton: { backgroundColor: '#94e0c1', opacity: 0.7 },
+  paymentButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', marginRight: 4 },
+  content: { flex: 1 },
+  section: { marginTop: 24, marginHorizontal: 24 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingLeft: 12, borderLeftWidth: 4 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginRight: 8 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  chargeItem: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+  chargeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  chargeTitleContainer: { flexDirection: 'row', flex: 1, marginRight: 12 },
+  icon: { marginRight: 8, marginTop: 2 },
+  chargeTextContent: { flex: 1 },
+  chargeTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 4 },
+  chargeSubtitle: { fontSize: 13, fontWeight: '500' },
+  chargeAmount: { fontSize: 16, fontWeight: '600', color: '#1e293b', fontVariant: ['tabular-nums'] },
+  selectButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: '#f8fafc' },
+  selectedButton: { backgroundColor: '#34d399' },
+  selectButtonText: { fontSize: 13, fontWeight: '500', color: '#64748b', marginLeft: 4 },
+  selectedButtonText: { color: '#fff' },
+  emptyState: { alignItems: 'center', padding: 48 },
+  emptyStateTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginVertical: 8 },
+  emptyStateText: { color: '#64748b', fontSize: 14, textAlign: 'center' },
 });
 
 export default PayTab;

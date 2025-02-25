@@ -12,8 +12,14 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
-const PaymentConfirmationModal = ({ visible, onClose, selectedCharges, totalAmount, onConfirmPayment }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+const PaymentConfirmationModal = ({
+  visible,
+  onClose,
+  selectedCharges,
+  totalAmount,
+  onConfirmPayment,
+  isProcessing,
+}) => {
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
@@ -48,45 +54,11 @@ const PaymentConfirmationModal = ({ visible, onClose, selectedCharges, totalAmou
     return `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
   };
 
-  const handleConfirm = async () => {
-    setIsProcessing(true);
-    try {
-      const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      console.log('Sending payment request with:', {
-        chargeIds: selectedCharges.map(c => c.id),
-        paymentMethodId: selectedMethod,
-        idempotencyKey
-      });
-      
-      const response = await axios.post('http://localhost:3004/api/payments/batch', 
-        {
-          chargeIds: selectedCharges.map(c => c.id),
-          paymentMethodId: selectedMethod,
-        },
-        {
-          headers: {
-            'idempotency-key': idempotencyKey
-          }
-        }
-      );
-      
-      console.log('Payment response:', response.data);
-  
-      if (response.data && response.data.payment && response.data.payment.status === 'completed') {
-        onConfirmPayment(response.data);
-        onClose();
-      } else {
-        setError('Payment processed but status is not completed');
-        console.error('Unexpected payment response:', response.data);
-      }
-    } catch (error) {
-      console.error('Payment error details:', error.response?.data || error.message);
-      setError(error.response?.data?.error || error.response?.data?.message || 'Payment failed');
-    } finally {
-      setIsProcessing(false);
-    }
+  // When the user confirms, simply call the parent's callback
+  const handleConfirm = () => {
+    onConfirmPayment();
   };
+
   if (!visible) return null;
 
   const selectedPaymentMethod = paymentMethods.find(m => m.id === selectedMethod);
@@ -149,11 +121,7 @@ const PaymentConfirmationModal = ({ visible, onClose, selectedCharges, totalAmou
                     onPress={() => setShowPaymentOptions(!showPaymentOptions)}
                   >
                     <View style={styles.paymentMethod}>
-                      <MaterialIcons
-                        name="credit-card"
-                        size={24}
-                        color="#34d399"
-                      />
+                      <MaterialIcons name="credit-card" size={24} color="#34d399" />
                       <Text style={styles.paymentMethodText}>
                         {getDisplayText(selectedPaymentMethod)}
                       </Text>

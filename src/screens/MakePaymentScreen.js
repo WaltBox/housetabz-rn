@@ -151,12 +151,12 @@ const BillingScreen = () => {
       </View>
 
       {/* Refresh Button */}
-      <TouchableOpacity 
+      {/* <TouchableOpacity 
         style={styles.refreshButton} 
         onPress={refreshData}
       >
         <MaterialIcons name="refresh" size={20} color="#64748b" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Render Selected Tab */}
       {activeTab === TABS.PAY && (
