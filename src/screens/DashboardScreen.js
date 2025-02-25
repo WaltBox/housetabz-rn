@@ -73,7 +73,9 @@ const ChargesPieChart = ({
           data: { stroke: '#fff', strokeWidth: 2 },
         }}
         labels={({ datum, index }) =>
-          activeChart && selectedSegment === index ? `${datum.x}\n$${datum.y}` : ''
+          activeChart && selectedSegment === index 
+            ? `${datum.x}\n$${datum.y.toFixed(2)}\n${datum.percentage || ''}`
+            : ''
         }
         events={[
           {
@@ -116,10 +118,10 @@ const DashboardScreen = () => {
       const userResponse = await axios.get(`http://localhost:3004/api/users/${user.id}`);
       const { balance = 0, charges = [], houseId } = userResponse.data;
 
-      // Filter to only show unpaid charges
+      // Filter to only show unpaid charges for the user
       const unpaidCharges = charges.filter(charge => charge.status === 'unpaid');
 
-      // Process charges for the pie chart
+      // Process user's charges for the pie chart
       const processedCharges =
         unpaidCharges.length > 0
           ? unpaidCharges.map((charge) => ({
@@ -135,33 +137,67 @@ const DashboardScreen = () => {
 
       // Initialize house data
       let houseBalance = 0;
-      let roommateChartData = [{ x: 'No Data', y: 1, color: '#34d399' }];
+      let roommateChartData = [{ x: 'No Unpaid Charges', y: 1, color: '#34d399' }];
 
       // Fetch house data if available
-      if (houseId) {
-        const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
-        const { bills = [], users = [] } = houseResponse.data;
-
-        houseBalance = bills.reduce(
-          (sum, bill) => sum + (parseFloat(bill.amount) || 0),
-          0
-        );
-
-        const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
-        
-        // For each roommate, only show their unpaid charges in the distribution
-        roommateChartData = users.map((user, index) => {
-          const unpaidUserCharges = user.charges?.filter(charge => charge.status === 'unpaid') || [];
-          return {
-            x: user.username || `User ${index + 1}`,
-            y: unpaidUserCharges.reduce(
-                (sum, charge) => sum + (parseFloat(charge.amount) || 0),
-                0
-              ) || 1,
-            color: colors[index % colors.length],
-          };
-        });
-      }
+     // Fetch house data if available
+if (houseId) {
+  // Get the house data
+  const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
+  
+  // Get all bills for the house (with charges included)
+  const billsResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}/bills`);
+  const bills = billsResponse.data;
+  
+  // Initialize user totals
+  const userTotals = {};
+  let totalPendingAmount = 0;
+  
+  // Process all bills and their charges
+  bills.forEach(bill => {
+    // Only consider pending bills
+    if (bill.status === 'pending' && bill.Charges) {
+      bill.Charges.forEach(charge => {
+        // Only consider pending charges
+        if (charge.status === 'pending') {
+          const userId = charge.userId;
+          const amount = parseFloat(charge.amount);
+          
+          // Add to user total
+          if (!userTotals[userId]) {
+            userTotals[userId] = {
+              userId,
+              username: charge.User?.username || `User ${userId}`,
+              total: 0
+            };
+          }
+          
+          userTotals[userId].total += amount;
+          totalPendingAmount += amount;
+        }
+      });
+    }
+  });
+  
+  // Set house balance to the calculated total
+  houseBalance = totalPendingAmount;
+  
+  // Generate chart data from user totals
+  const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
+  
+  const userTotalsArray = Object.values(userTotals);
+  
+  if (userTotalsArray.length > 0) {
+    roommateChartData = userTotalsArray.map((user, index) => ({
+      x: user.username,
+      y: user.total,
+      color: colors[index % colors.length],
+      percentage: totalPendingAmount > 0 
+        ? ((user.total / totalPendingAmount) * 100).toFixed(0) + '%' 
+        : '0%'
+    }));
+  }
+}
 
       // Return all the data
       return {
@@ -360,7 +396,7 @@ const DashboardScreen = () => {
           <SummaryCard icon="group" label="House Balance" amount={houseBalance} />
         </View>
 
-        {/* Charts */}
+        {/* User's Charges Chart */}
         <ChargesPieChart
           title="Your Charges"
           amount={yourBalance}
@@ -370,6 +406,7 @@ const DashboardScreen = () => {
           selectedSegment={selectedSegment}
         />
 
+        {/* House Distribution Chart */}
         <ChargesPieChart
           title="House Distribution"
           amount={houseBalance}
