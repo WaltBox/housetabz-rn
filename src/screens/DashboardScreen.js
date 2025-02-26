@@ -159,7 +159,7 @@ if (houseId) {
     if (bill.status === 'pending' && bill.Charges) {
       bill.Charges.forEach(charge => {
         // Only consider pending charges
-        if (charge.status === 'pending') {
+        if (charge.status === 'unpaid') {
           const userId = charge.userId;
           const amount = parseFloat(charge.amount);
           

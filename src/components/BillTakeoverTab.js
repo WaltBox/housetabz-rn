@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -27,6 +26,7 @@ const BillTakeoverScreen = () => {
     monthlyAmount: "",
     dueDate: "",
     requiredUpfrontPayment: "0",
+    isFixedService: true, // Default to fixed service
   });
 
   const steps = [
@@ -80,6 +80,7 @@ const BillTakeoverScreen = () => {
         monthlyAmount: parseFloat(formData.monthlyAmount),
         dueDate: dueDateNum,
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
+        isFixedService: formData.isFixedService,
       };
 
       await axios.post("http://localhost:3004/api/take-over-requests", payload);
@@ -116,6 +117,23 @@ const BillTakeoverScreen = () => {
             onChange={(text) => setFormData(prev => ({ ...prev, [field]: text }))}
           />
         ))}
+        {/* Checkbox for fixed expense on the Service Details page */}
+        {currentStep === 0 && (
+          <View style={styles.checkboxContainer}>
+            <TouchableOpacity 
+              style={styles.checkbox}
+              onPress={() => setFormData(prev => ({ ...prev, isFixedService: !prev.isFixedService }))}
+            >
+              <MaterialIcons 
+                name={formData.isFixedService ? "check-box" : "check-box-outline-blank"} 
+                size={24} 
+                color="#34d399" 
+              />
+            </TouchableOpacity>
+            <Text style={styles.checkboxLabel}>Is this a fixed expense?</Text>
+            <MaterialIcons name="info-outline" size={18} color="#64748b" style={styles.infoIcon} />
+          </View>
+        )}
       </View>
     </View>
   );
@@ -153,6 +171,11 @@ const BillTakeoverScreen = () => {
               label="Due Date" 
               value={`Day ${submittedData.dueDate}`} 
             />
+            <DetailItem 
+              icon="repeat" 
+              label="Type" 
+              value={submittedData.isFixedService ? "Fixed Amount" : "Variable Amount"} 
+            />
             {parseFloat(submittedData.requiredUpfrontPayment) > 0 && (
               <DetailItem 
                 icon="security" 
@@ -174,7 +197,7 @@ const BillTakeoverScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Clearly styled button trigger */}
+      {/* Info Button */}
       <TouchableOpacity style={styles.infoButton} onPress={() => setModalVisible(true)}>
         <Text style={styles.infoButtonText}>What's Bill Takeover?</Text>
         <MaterialIcons name="keyboard-arrow-right" size={20} color="#fff" style={styles.infoButtonIcon} />
@@ -196,16 +219,13 @@ const BillTakeoverScreen = () => {
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              {/* First bullet with red icon */}
               <View style={styles.modalBullet}>
                 <MaterialIcons name="cancel" size={20} color="#e53e3e" />
                 <Text style={styles.modalBulletText}>
                   No single person pays the entire shared bill.
                 </Text>
               </View>
-              {/* Red divider */}
               <View style={styles.redDivider} />
-              {/* Subsequent bullets */}
               <View style={styles.modalBullet}>
                 <MaterialIcons name="group" size={20} color="#34d399" />
                 <Text style={styles.modalBulletText}>
@@ -271,13 +291,10 @@ const BillTakeoverScreen = () => {
         </Text>
       </View>
 
-      {/* Form Steps */}
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Form Steps (no scrolling now) */}
+      <View style={styles.formContainer}>
         {renderStepContent()}
-      </ScrollView>
+      </View>
 
       {/* Footer Navigation */}
       <View style={styles.footer}>
@@ -400,14 +417,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#dff6f0",
   },
-  linkText: {
-    color: "#34d399",
-    textDecorationLine: "underline",
-    fontWeight: "600",
-    fontSize: 16,
-    textAlign: "center",
-    marginVertical: 16,
-  },
   infoButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -485,7 +494,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: "#dff6f0",
     elevation: 2,
-
   },
   progressBar: {
     flexDirection: "row",
@@ -532,9 +540,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  scrollContent: {
+  formContainer: {
+    flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 10,
+    justifyContent: "center",
   },
   stepContainer: {
     backgroundColor: "#fff",
@@ -740,6 +750,29 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
     fontWeight: "500",
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  checkbox: {
+    marginRight: 8,
+  },
+  checkboxLabel: {
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '500',
+    flex: 1,
+  },
+  infoIcon: {
+    marginLeft: 6,
   },
 });
 
