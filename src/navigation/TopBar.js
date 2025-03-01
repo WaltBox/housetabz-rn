@@ -20,22 +20,39 @@ const TopBar = () => {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   // Fetch notifications
-  const fetchNotifications = async () => {
-    if (!authUser?.id) {
-      console.error('No authenticated user found');
-      return;
-    }
+ // Fetch notifications
+// Fetch notifications
+const fetchNotifications = async () => {
+  if (!authUser?.id) {
+    console.log('No authenticated user found for notifications');
+    return;
+  }
 
-    try {
-      const response = await axios.get(
-        `http://localhost:3004/api/users/${authUser.id}/notifications`
-      );
-      const unread = response.data.some((notification) => !notification.isRead);
-      setHasUnreadNotifications(unread);
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+  try {
+    const response = await axios.get(
+      `http://localhost:3004/api/users/${authUser.id}/notifications`
+    );
+    const unread = Array.isArray(response.data) ? 
+      response.data.some(notification => !notification.isRead) : 
+      false;
+    setHasUnreadNotifications(unread);
+  } catch (err) {
+    // Check if this is the specific "no notifications" error
+    if (err.response && 
+        err.response.status === 404 && 
+        err.response.data && 
+        err.response.data.message === "No notifications found for this user.") {
+      console.log('User has no notifications');
+      // This is normal behavior, not an error
+    } else {
+      // This is an actual error with the API
+      console.log(`Notifications error: ${err.message}`);
     }
-  };
+    
+    // Either way, ensure we're not showing a notification badge
+    setHasUnreadNotifications(false);
+  }
+};
 
   useEffect(() => {
     if (authUser?.id) {

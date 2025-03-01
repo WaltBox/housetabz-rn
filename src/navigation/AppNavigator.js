@@ -22,6 +22,11 @@ import InAppBrowser from '../screens/InAppBrowser';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 import TabNavigator from './BottomBar';
 
+// New House Setup Screens
+import HouseOptionsScreen from '../screens/HouseOptionsScreen';
+import CreateHouseScreen from '../screens/CreateHouseScreen';
+import JoinHouseScreen from '../screens/JoinHouseScreen';
+
 const Stack = createStackNavigator();
 
 const AuthStack = () => (
@@ -65,16 +70,12 @@ const MainStack = () => (
       <Stack.Screen 
         name="ViewCompanyCard" 
         component={ViewCompanyCard}
-        options={{ 
-          title: 'Company Details',
-        }}
+        options={{ title: 'Company Details' }}
       />
       <Stack.Screen 
         name="ViewPlansCard" 
         component={ViewPlansCard}
-        options={{ 
-          title: 'Company Details',
-        }}
+        options={{ title: 'Company Details' }}
       />
       <Stack.Screen 
         name="PaymentMethods" 
@@ -88,6 +89,24 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
+// New stack for house setup (for users who have no houseId)
+const HouseStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen 
+      name="HouseOptionsScreen" 
+      component={HouseOptionsScreen} 
+    />
+    <Stack.Screen 
+      name="CreateHouse" 
+      component={CreateHouseScreen} 
+    />
+    <Stack.Screen 
+      name="JoinHouse" 
+      component={JoinHouseScreen} 
+    />
+  </Stack.Navigator>
+);
+
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
@@ -97,7 +116,13 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      {user ? <MainStack /> : <AuthStack />}
+      {user ? (
+        // If the user exists, check if they've joined/created a house.
+        // If not, show the HouseStack so they can choose an option.
+        user.houseId ? <MainStack /> : <HouseStack />
+      ) : (
+        <AuthStack />
+      )}
     </NavigationContainer>
   );
 };

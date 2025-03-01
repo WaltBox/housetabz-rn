@@ -30,15 +30,29 @@ const NotificationsModal = ({ onClose }) => {
   const fetchNotifications = async () => {
     try {
       if (!user?.id) return;
+      
       const response = await axios.get(
         `http://localhost:3004/api/users/${user.id}/notifications`
       );
+      
       setNotifications(response.data.map(notification => ({
         ...notification,
         justRead: false,
       })));
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      // Check if this is the specific "no notifications" error
+      if (err.response && 
+          err.response.status === 404 && 
+          err.response.data && 
+          err.response.data.message === "No notifications found for this user.") {
+        console.log('User has no notifications');
+        // Set empty notifications array
+        setNotifications([]);
+      } else {
+        // This is an actual error with the API
+        console.error('Failed to fetch notifications:', err);
+        setNotifications([]);
+      }
     }
   };
 

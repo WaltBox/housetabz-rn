@@ -14,17 +14,17 @@ import { useAuth } from '../context/AuthContext';
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
+    username: '', // Using username to match backend validation
     email: '',
     password: '',
     confirmPassword: '',
-    name: '',
   });
   const [loading, setLoading] = useState(false);
   
-  const { register, error } = useAuth();
+  const { register } = useAuth();
 
   const handleRegister = async () => {
-    if (!formData.email || !formData.password || !formData.name) {
+    if (!formData.email || !formData.password || !formData.username) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -35,28 +35,39 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     setLoading(true);
-    const success = await register({
-      email: formData.email,
-      password: formData.password,
-      name: formData.name,
-    });
-    setLoading(false);
-
-    if (!success && error) {
-      Alert.alert('Error', error);
+    try {
+      // Call register function from AuthContext.
+      await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      });
+      // The AuthContext will update and trigger the navigator to show the house setup if user.houseId is not set.
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || error.message || 'Registration error'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.formContainer}>
+        {/* Back Button */}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+
         <Text style={styles.title}>Create Account</Text>
         
         <TextInput
           style={styles.input}
-          placeholder="Name"
-          value={formData.name}
-          onChangeText={(text) => setFormData({ ...formData, name: text })}
+          placeholder="Username"
+          value={formData.username}
+          onChangeText={(text) => setFormData({ ...formData, username: text })}
         />
 
         <TextInput
@@ -80,7 +91,9 @@ const RegisterScreen = ({ navigation }) => {
           style={styles.input}
           placeholder="Confirm Password"
           value={formData.confirmPassword}
-          onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+          onChangeText={(text) =>
+            setFormData({ ...formData, confirmPassword: text })
+          }
           secureTextEntry
         />
 
@@ -101,7 +114,7 @@ const RegisterScreen = ({ navigation }) => {
           onPress={() => navigation.navigate('Login')}
         >
           <Text style={styles.linkText}>
-            Already have an account? Log in
+            I already have an account. Log in
           </Text>
         </TouchableOpacity>
       </View>
@@ -119,6 +132,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     minHeight: 600,
+  },
+  backButton: {
+    marginBottom: 20,
+  },
+  backButtonText: {
+    color: '#34d399',
+    fontSize: 16,
   },
   title: {
     fontSize: 24,

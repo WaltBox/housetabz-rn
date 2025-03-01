@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
-  StyleSheet,
   Text,
   ScrollView,
   Dimensions,
@@ -10,6 +9,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   SafeAreaView,
+  StyleSheet,
 } from 'react-native';
 import { VictoryPie } from 'victory-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,7 +19,6 @@ import ServiceRequestTask from '../components/ServiceRequestTask';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
 
 const { width } = Dimensions.get('window');
 
@@ -99,6 +98,33 @@ const DashboardScreen = () => {
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
 
+  // Helper function for safer API requests
+ // Replace your existing safeApiCall function with this one
+const safeApiCall = async (url, defaultValue) => {
+  try {
+    console.log(`Fetching: ${url}`);
+    const response = await axios.get(url);
+    console.log(`Success for ${url}: ${response.status}`);
+    return response.data;
+  } catch (error) {
+    // Special case: If it's a 404 from the tasks endpoint, don't log as error
+    if (error.response?.status === 404 && url.includes('/api/tasks/user/')) {
+      console.log(`No tasks found at ${url} (returning empty list)`);
+      // Return the empty array structure that matches your expected format
+      return { 
+        message: "No tasks found for this user",
+        tasks: [] 
+      };
+    }
+    
+    // For other errors, log them as usual
+    console.error(`Error fetching ${url}: ${JSON.stringify({
+      status: error.response?.status,
+      message: error.message
+    })}`);
+    return defaultValue;
+  }
+};
   // Main dashboard data query
   const { 
     data: dashboardData, 
@@ -115,8 +141,8 @@ const DashboardScreen = () => {
       }
 
       // Fetch user data
-      const userResponse = await axios.get(`http://localhost:3004/api/users/${user.id}`);
-      const { balance = 0, charges = [], houseId } = userResponse.data;
+      const userData = await safeApiCall(`http://localhost:3004/api/users/${user.id}`, {});
+      const { balance = 0, charges = [], houseId } = userData;
 
       // Filter to only show unpaid charges for the user
       const unpaidCharges = charges.filter(charge => charge.status === 'unpaid');
@@ -131,73 +157,73 @@ const DashboardScreen = () => {
             }))
           : [{ x: 'No Unpaid Charges', y: 1, color: '#34d399' }];
 
-      // Fetch tasks
-      const tasksResponse = await axios.get(`http://localhost:3004/api/tasks/user/${user.id}`);
-      const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
+      // Fetch tasks - handle 404 responses by using empty array as default
+      const tasksData = await safeApiCall(`http://localhost:3004/api/tasks/user/${user.id}`, { tasks: [] });
+      const pendingTasks = tasksData.tasks ? tasksData.tasks.filter((task) => task.status === false) : [];
 
       // Initialize house data
       let houseBalance = 0;
       let roommateChartData = [{ x: 'No Unpaid Charges', y: 1, color: '#34d399' }];
 
       // Fetch house data if available
-     // Fetch house data if available
-if (houseId) {
-  // Get the house data
-  const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
-  
-  // Get all bills for the house (with charges included)
-  const billsResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}/bills`);
-  const bills = billsResponse.data;
-  
-  // Initialize user totals
-  const userTotals = {};
-  let totalPendingAmount = 0;
-  
-  // Process all bills and their charges
-  bills.forEach(bill => {
-    // Only consider pending bills
-    if (bill.status === 'pending' && bill.Charges) {
-      bill.Charges.forEach(charge => {
-        // Only consider pending charges
-        if (charge.status === 'unpaid') {
-          const userId = charge.userId;
-          const amount = parseFloat(charge.amount);
-          
-          // Add to user total
-          if (!userTotals[userId]) {
-            userTotals[userId] = {
-              userId,
-              username: charge.User?.username || `User ${userId}`,
-              total: 0
-            };
-          }
-          
-          userTotals[userId].total += amount;
-          totalPendingAmount += amount;
+      if (houseId) {
+        // Get the house data - use empty object as default
+        const houseData = await safeApiCall(`http://localhost:3004/api/houses/${houseId}`, {});
+        
+        // Get all bills for the house - use empty array as default
+        const bills = await safeApiCall(`http://localhost:3004/api/houses/${houseId}/bills`, []);
+        
+        // Initialize user totals
+        const userTotals = {};
+        let totalPendingAmount = 0;
+        
+        // Process all bills and their charges
+        if (Array.isArray(bills)) {
+          bills.forEach(bill => {
+            // Only consider pending bills
+            if (bill && bill.status === 'pending' && bill.Charges) {
+              bill.Charges.forEach(charge => {
+                // Only consider pending charges
+                if (charge && charge.status === 'unpaid') {
+                  const userId = charge.userId;
+                  const amount = parseFloat(charge.amount) || 0;
+                  
+                  // Add to user total
+                  if (!userTotals[userId]) {
+                    userTotals[userId] = {
+                      userId,
+                      username: charge.User?.username || `User ${userId}`,
+                      total: 0
+                    };
+                  }
+                  
+                  userTotals[userId].total += amount;
+                  totalPendingAmount += amount;
+                }
+              });
+            }
+          });
         }
-      });
-    }
-  });
-  
-  // Set house balance to the calculated total
-  houseBalance = totalPendingAmount;
-  
-  // Generate chart data from user totals
-  const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
-  
-  const userTotalsArray = Object.values(userTotals);
-  
-  if (userTotalsArray.length > 0) {
-    roommateChartData = userTotalsArray.map((user, index) => ({
-      x: user.username,
-      y: user.total,
-      color: colors[index % colors.length],
-      percentage: totalPendingAmount > 0 
-        ? ((user.total / totalPendingAmount) * 100).toFixed(0) + '%' 
-        : '0%'
-    }));
-  }
-}
+        
+        // Set house balance to the calculated total
+        houseBalance = totalPendingAmount;
+        
+        // Generate chart data from user totals
+        const colors = ['#34d399', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
+        
+        const userTotalsArray = Object.values(userTotals);
+        
+        if (userTotalsArray.length > 0) {
+          roommateChartData = userTotalsArray.map((user, index) => ({
+            x: user.username,
+            y: user.total,
+            color: colors[index % colors.length],
+            percentage: totalPendingAmount > 0 
+              ? ((user.total / totalPendingAmount) * 100).toFixed(0) + '%' 
+              : '0%'
+          }));
+        }
+      }
 
       // Return all the data
       return {
@@ -211,18 +237,18 @@ if (houseId) {
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 2, // Try up to 3 times total (initial + 2 retries)
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Refetch data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (queryClient.getQueryState(['dashboard', user?.id])?.status === 'stale') {
-        refetch();
-      }
+      refetch(); // Always refetch when the screen comes into focus
       return () => {
         // Cleanup if needed
       };
-    }, [refetch, user?.id, queryClient])
+    }, [refetch])
   );
 
   const handleScroll = (event) => {
@@ -304,13 +330,13 @@ if (houseId) {
 
   // We should have data by this point
   const { 
-    yourBalance, 
-    yourChargesData, 
-    houseBalance, 
-    roommateChartData, 
-    tasks, 
-    taskCount 
-  } = dashboardData;
+    yourBalance = 0, 
+    yourChargesData = [{ x: 'No Charges', y: 1, color: '#34d399' }], 
+    houseBalance = 0, 
+    roommateChartData = [{ x: 'No Charges', y: 1, color: '#34d399' }], 
+    tasks = [], 
+    taskCount = 0 
+  } = dashboardData || {};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -338,7 +364,7 @@ if (houseId) {
               </View>
             )}
           </View>
-          {tasks.length > 0 ? (
+          {tasks && tasks.length > 0 ? (
             <View>
               <FlatList
                 data={tasks}
@@ -391,16 +417,16 @@ if (houseId) {
           <SummaryCard
             icon="account-balance-wallet"
             label="Your Balance"
-            amount={yourBalance}
+            amount={yourBalance || 0}
           />
-          <SummaryCard icon="group" label="House Balance" amount={houseBalance} />
+          <SummaryCard icon="group" label="House Balance" amount={houseBalance || 0} />
         </View>
 
         {/* User's Charges Chart */}
         <ChargesPieChart
           title="Your Charges"
-          amount={yourBalance}
-          data={yourChargesData}
+          amount={yourBalance || 0}
+          data={yourChargesData || [{ x: 'No Charges', y: 1, color: '#34d399' }]}
           onSegmentPress={(props) => handlePress('YourTab', yourChargesData, props.index)}
           activeChart={activeChart === 'YourTab'}
           selectedSegment={selectedSegment}
@@ -409,8 +435,8 @@ if (houseId) {
         {/* House Distribution Chart */}
         <ChargesPieChart
           title="House Distribution"
-          amount={houseBalance}
-          data={roommateChartData}
+          amount={houseBalance || 0}
+          data={roommateChartData || [{ x: 'No Charges', y: 1, color: '#34d399' }]}
           onSegmentPress={(props) => handlePress('HouseTab', roommateChartData, props.index)}
           activeChart={activeChart === 'HouseTab'}
           selectedSegment={selectedSegment}
@@ -428,6 +454,7 @@ if (houseId) {
   );
 };
 
+// Define your styles here
 const styles = StyleSheet.create({
   // General Layout
   container: {

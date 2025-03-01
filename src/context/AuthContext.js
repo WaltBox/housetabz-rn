@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const storedUser = await AsyncStorage.getItem('userData');
-
       if (token && storedUser) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(JSON.parse(storedUser));
@@ -34,32 +33,22 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login...', { email });
       console.log('Using API URL:', API_URL);
-  
       const response = await axios.post(`${API_URL}${API_ENDPOINTS.login}`, {
         email,
-        password
+        password,
       });
-  
       console.log('Login response:', response.data);
-  
-      // Adjusted parsing:
       const { token, data } = response.data;
       if (!token || !data?.user) {
         throw new Error('Invalid response structure from server');
       }
       const user = data.user;
-  
       // Store auth data
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userData', JSON.stringify(user));
-  
-      // Set axios default header
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  
-      // Update state
       setUser(user);
       console.log('Login successful:', user);
-  
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -67,7 +56,6 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
-  
 
   const logout = async () => {
     try {
@@ -83,6 +71,17 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await axios.post(`${API_URL}${API_ENDPOINTS.register}`, userData);
+      // Our backend returns: { success, message, data: { user, token } }
+      const { data } = response.data; // data contains { user, token }
+      const { token, user } = data;
+      if (!token || !user) {
+        throw new Error('Invalid registration response');
+      }
+      // Store auth data so the user is "logged in"
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
@@ -90,15 +89,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUserHouse = async (houseId) => {
+    try {
+      // Update the endpoint URL to include /api
+      const response = await axios.put(`${API_URL}/api/users/${user.id}/house`, { houseId });
+      const updatedUser = response.data.user;
+      
+      // Update local state and storage with the new user data
+      setUser(updatedUser);
+      await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+      return true;
+    } catch (error) {
+      console.error('Error updating user house:', error);
+      throw error;
+    }
+  };
+  
   return (
     <AuthContext.Provider
       value={{
         user,
+        setUser, // <-- Add this
         loading,
         login,
         logout,
         register,
-        isAuthenticated: !!user
+        updateUserHouse,
+        isAuthenticated: !!user,
       }}
     >
       {children}

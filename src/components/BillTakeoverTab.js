@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -12,7 +11,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-
+import { StyleSheet } from "react-native";
 const BillTakeoverScreen = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -29,7 +28,11 @@ const BillTakeoverScreen = () => {
     isFixedService: true, // Default to fixed service
   });
 
-  const steps = [
+  // Add a computed variable to check if this is a variable service
+  const isVariableService = !formData.isFixedService;
+
+  // Define the base steps
+  const baseSteps = [
     {
       title: "Service Details",
       description: "Tell us about the bill you want to split",
@@ -39,7 +42,7 @@ const BillTakeoverScreen = () => {
     {
       title: "Payment Info",
       description: "Enter the payment details",
-      fields: ["monthlyAmount", "dueDate"],
+      fields: ["dueDate"], // We'll add monthlyAmount dynamically if it's a fixed service
       icon: "payments",
     },
     {
@@ -50,21 +53,37 @@ const BillTakeoverScreen = () => {
     },
   ];
 
+  // Get the current fields based on the service type
+  const getStepFields = (step) => {
+    if (step === 1 && formData.isFixedService) {
+      return ["monthlyAmount", "dueDate"];
+    }
+    return baseSteps[step].fields;
+  };
+
   const handleNext = () => {
-    const currentFields = steps[currentStep].fields;
-    if (currentFields.some((field) => !formData[field])) {
-      Alert.alert("Missing Information", "Please fill all fields before continuing");
+    // Get the fields that should be validated for the current step
+    const fieldsToValidate = getStepFields(currentStep);
+    
+    if (fieldsToValidate.some((field) => !formData[field])) {
+      Alert.alert("Missing Information", "Please fill all required fields");
       return;
     }
-    currentStep < steps.length - 1
+    
+    currentStep < baseSteps.length - 1
       ? setCurrentStep(currentStep + 1)
       : handleSubmit();
   };
 
   const handleSubmit = async () => {
-    if (!formData.serviceName || !formData.accountNumber || 
-        !formData.monthlyAmount || !formData.dueDate) {
+    // Basic validation for all service types
+    if (!formData.serviceName || !formData.accountNumber || !formData.dueDate) {
       return Alert.alert("Error", "Please fill all required fields");
+    }
+
+    // Additional validation for fixed services
+    if (formData.isFixedService && !formData.monthlyAmount) {
+      return Alert.alert("Error", "Please enter the monthly amount");
     }
 
     const dueDateNum = parseInt(formData.dueDate, 10);
@@ -77,7 +96,8 @@ const BillTakeoverScreen = () => {
       const payload = {
         ...formData,
         userId: user.id,
-        monthlyAmount: parseFloat(formData.monthlyAmount),
+        // For variable services, don't send a monthlyAmount
+        monthlyAmount: formData.isFixedService ? parseFloat(formData.monthlyAmount) : null,
         dueDate: dueDateNum,
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
         isFixedService: formData.isFixedService,
@@ -98,18 +118,19 @@ const BillTakeoverScreen = () => {
       <View style={styles.stepHeader}>
         <View style={styles.iconContainer}>
           <MaterialIcons 
-            name={steps[currentStep].icon} 
+            name={baseSteps[currentStep].icon} 
             size={24} 
             color="#ffffff" 
           />
         </View>
-        <Text style={styles.stepTitle}>{steps[currentStep].title}</Text>
+        <Text style={styles.stepTitle}>{baseSteps[currentStep].title}</Text>
         <Text style={styles.stepDescription}>
-          {steps[currentStep].description}
+          {baseSteps[currentStep].description}
         </Text>
       </View>
       <View style={styles.stepContent}>
-        {steps[currentStep].fields.map((field) => (
+        {/* Form fields specific to the current step and expense type */}
+        {getStepFields(currentStep).map((field) => (
           <StepField
             key={field}
             field={field}
@@ -117,6 +138,7 @@ const BillTakeoverScreen = () => {
             onChange={(text) => setFormData(prev => ({ ...prev, [field]: text }))}
           />
         ))}
+        
         {/* Checkbox for fixed expense on the Service Details page */}
         {currentStep === 0 && (
           <View style={styles.checkboxContainer}>
@@ -134,11 +156,22 @@ const BillTakeoverScreen = () => {
             <MaterialIcons name="info-outline" size={18} color="#64748b" style={styles.infoIcon} />
           </View>
         )}
+        
+        {/* Add variable expense info on the Payment Info page */}
+        {currentStep === 1 && isVariableService && (
+          <View style={styles.variableInfoContainer}>
+            <MaterialIcons name="info" size={22} color="#3b82f6" />
+            <Text style={styles.variableInfoText}>
+              For variable expenses, you'll enter the bill amount each month when it arrives.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
 
   const formatCurrency = (value) => {
+    if (value === null || value === undefined) return 'Variable';
     return `$${parseFloat(value).toFixed(2)}`;
   };
 
@@ -164,7 +197,7 @@ const BillTakeoverScreen = () => {
             <DetailItem 
               icon="attach-money" 
               label="Monthly" 
-              value={formatCurrency(submittedData.monthlyAmount)} 
+              value={submittedData.isFixedService ? formatCurrency(submittedData.monthlyAmount) : "Variable Amount"} 
             />
             <DetailItem 
               icon="calendar-today" 
@@ -255,7 +288,7 @@ const BillTakeoverScreen = () => {
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
-          {steps.map((step, index) => (
+          {baseSteps.map((step, index) => (
             <TouchableOpacity 
               key={index}
               onPress={() => index < currentStep ? setCurrentStep(index) : null}
@@ -277,7 +310,7 @@ const BillTakeoverScreen = () => {
                   </Text>
                 )}
               </View>
-              {index < steps.length - 1 && (
+              {index < baseSteps.length - 1 && (
                 <View style={[
                   styles.progressLine,
                   index < currentStep && styles.progressLineActive
@@ -287,7 +320,7 @@ const BillTakeoverScreen = () => {
           ))}
         </View>
         <Text style={styles.progressText}>
-          Step {currentStep + 1} of {steps.length}
+          Step {currentStep + 1} of {baseSteps.length}
         </Text>
       </View>
 
@@ -320,10 +353,10 @@ const BillTakeoverScreen = () => {
           ) : (
             <>
               <Text style={styles.buttonText}>
-                {currentStep === steps.length - 1 ? "Submit Request" : "Continue"}
+                {currentStep === baseSteps.length - 1 ? "Submit Request" : "Continue"}
               </Text>
               <MaterialIcons
-                name={currentStep === steps.length - 1 ? "check" : "arrow-forward"}
+                name={currentStep === baseSteps.length - 1 ? "check" : "arrow-forward"}
                 size={18}
                 color="#FFF"
               />
@@ -335,6 +368,7 @@ const BillTakeoverScreen = () => {
   );
 };
 
+// Add the DetailItem component that was in your original code
 const DetailItem = ({ icon, label, value }) => (
   <View style={styles.detailItem}>
     <View style={styles.detailIconContainer}>
@@ -347,6 +381,7 @@ const DetailItem = ({ icon, label, value }) => (
   </View>
 );
 
+// Add the StepField component that was in your original code
 const StepField = ({ field, value, onChange }) => {
   const fieldConfig = {
     serviceName: {
@@ -411,6 +446,7 @@ const StepField = ({ field, value, onChange }) => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
