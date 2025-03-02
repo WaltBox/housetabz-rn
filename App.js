@@ -28,6 +28,10 @@ const App = () => {
   const [fontsLoaded] = useFonts({
     'Montserrat-Black': require('./assets/fonts/Montserrat-Black.ttf'),
     'Montserrat-Medium': require('./assets/fonts/Montserrat-Medium.ttf'),
+    'Quicksand-Bold': require('./assets/fonts/Quicksand-Bold.ttf'),
+    'Sigmar-Regular': require('./assets/fonts/Sigmar-Regular.ttf'),
+    // 'Quicksand-Medium': require('./assets/fonts/Quicksand-Medium.ttf')
+
   });
 
   if (!fontsLoaded) {

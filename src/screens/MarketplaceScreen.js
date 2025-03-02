@@ -17,6 +17,7 @@ import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SpecialDeals from "../components/SpecialDeals";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width, height } = Dimensions.get("window");
 const CARD_GUTTER = 16;
@@ -83,7 +84,12 @@ const MarketplaceScreen = () => {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <View style={styles.solidHeader}>
+      <LinearGradient
+        colors={['#34d399', '#10b981']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
         <View style={styles.headerContent}>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>HouseTabz</Text>
@@ -95,7 +101,7 @@ const MarketplaceScreen = () => {
             resizeMode="contain"
           />
         </View>
-      </View>
+      </LinearGradient>
     </View>
   );
 
@@ -143,16 +149,16 @@ const MarketplaceScreen = () => {
         contentContainerStyle={styles.scrollContainer} 
         showsVerticalScrollIndicator={false}
       >
-        {/* Special Deals Section with Header */}
-        <View style={styles.chartCard}>
-          <View style={styles.taskHeader}>
-            <View style={styles.taskTitleGroup}>
-              <MaterialIcons name="local-offer" size={20} color="#34d399" style={styles.icon} />
-              <Text style={styles.chartTitle}>Special Deals</Text>
+        {/* Special Deals Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.titleGroup}>
+              <MaterialIcons name="auto-awesome" size={24} color="#22c55e" />
+              <Text style={styles.sectionTitle}>Special Deals</Text>
             </View>
             {specialDealsCount > 0 && (
-              <View style={styles.taskBadge}>
-                <Text style={styles.taskBadgeText}>{specialDealsCount} available</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{specialDealsCount} available</Text>
               </View>
             )}
           </View>
@@ -160,8 +166,8 @@ const MarketplaceScreen = () => {
         </View>
 
         {/* Featured Services */}
-        <View style={styles.partnerGridContainer}>
-          <Text style={styles.sectionTitle}>Featured Services</Text>
+        <View style={styles.featuredSection}>
+          <Text style={styles.featuredTitle}>Featured Services</Text>
           {renderPartnerGrid()}
         </View>
       </ScrollView>
@@ -190,19 +196,17 @@ const MarketplaceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#dff1f0", // Changed to match Dashboard background
+    backgroundColor: "#dff1f0",
   },
   headerContainer: {
     width: "100%",
-    zIndex: 10,
-    marginBottom: -height * 0.07,
+    overflow: "hidden",
   },
-  solidHeader: {
-    backgroundColor: "#34d399",
-    height: 110,
+  gradient: {
+    paddingTop: 50,
+    paddingBottom: 20,
     paddingHorizontal: 24,
-    borderBottomRightRadius: 50,
-    justifyContent: "center",
+    borderBottomRightRadius: 40,
   },
   headerContent: {
     flexDirection: "row",
@@ -213,54 +217,51 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: "900",
     color: "#FFFFFF",
     fontFamily: 'Montserrat-Black',
   },
   headerSubtitle: {
-    fontSize: 18,
+    fontSize: 20,
     color: "#FFFFFF",
     marginTop: 4,
     fontFamily: 'Montserrat-Medium',
+    opacity: 0.9,
   },
   headerImage: {
     width: 130,
     height: 80,
   },
   scrollContainer: {
-    paddingTop: 110,
+    paddingTop: 20,
     paddingBottom: 40,
   },
-  // Chart Card styling to match Dashboard task section
-  chartCard: {
-    backgroundColor: "white",
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+  section: {
+    marginBottom: 32,
+    paddingHorizontal: 0,
   },
-  taskHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    paddingHorizontal: 24,
   },
-  taskTitleGroup: {
+  titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    
   },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#1e293b',
+    letterSpacing: -0.5,
+    fontFamily: 'Sigmar-Regular',
   },
-  taskBadge: {
+  countBadge: {
     backgroundColor: '#f0fdf4',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -268,23 +269,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#dcfce7',
   },
-  taskBadgeText: {
-    color: '#34d399',
+  countBadgeText: {
+    color: '#22c55e',
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  icon: {
-    marginRight: 8,
-  },
-  partnerGridContainer: {
+  featuredSection: {
     marginTop: 8,
     paddingHorizontal: CARD_GUTTER,
   },
-  sectionTitle: {
+  featuredTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1e293b",
     marginBottom: 16,
+    letterSpacing: -0.5,
+    fontFamily: 'Sigmar-Regular',
   },
   cardGrid: {
     flexDirection: "row",

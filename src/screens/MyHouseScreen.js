@@ -1,3 +1,4 @@
+// HouseTabzScreen.jsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -11,17 +12,29 @@ import {
   Share,
   Clipboard,
 } from "react-native";
-import Svg, { Path, Defs, LinearGradient, Stop } from "react-native-svg";
-import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+
+// Existing modals/components
 import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
 import HouseServicesModal from "../modals/HouseServicesModal";
-import BillTakeoverTab from "../components/BillTakeoverTab";
+
+
+// New components
+import HouseHeader from "../components/myhouse/HouseHeader";
+import HSIComponent from "../components/myhouse/HSIComponent";
+import StatsSection from "../components/myhouse/StatsSection";
+import Scoreboard from "../components/myhouse/Scoreboard";
+import ActionCards from "../components/myhouse/ActionCards";
+import InviteModalContent from "../components/myhouse/InviteModalContent";
 
 const { width } = Dimensions.get("window");
+
+// TabNavigation component that was missing
+
 
 const HouseTabzScreen = () => {
   const { user } = useAuth();
@@ -31,14 +44,14 @@ const HouseTabzScreen = () => {
   const [loading, setLoading] = useState(true);
   const [inviteCopied, setInviteCopied] = useState(false);
 
-  // Modal states for house info tab
+  // Modal states
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
   const [isServicesVisible, setIsServicesVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // State for tab navigation
+  // Tab navigation state
   const [selectedTab, setSelectedTab] = useState("house"); // "house" or "billTakeover"
 
   const getInviteLink = () => `https://housetabz.com/join/${user?.houseId}`;
@@ -92,48 +105,6 @@ const HouseTabzScreen = () => {
     fetchHouseData();
   };
 
-  const generateSemiCircle = (progress) => {
-    const startAngle = 180;
-    const endAngle = 180 + 180 * progress;
-    const start = polarToCartesian(50, 50, 40, startAngle);
-    const end = polarToCartesian(50, 50, 40, endAngle);
-    const largeArcFlag = progress > 0.5 ? 1 : 0;
-    return `M ${start.x} ${start.y} A 40 40 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-  };
-
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians),
-    };
-  };
-
-  const InviteModal = () => (
-    <View style={styles.inviteModalContent}>
-      <Text style={styles.inviteTitle}>Invite Roommates</Text>
-      <Text style={styles.inviteDescription}>
-        Share this link with your roommates to join your house
-      </Text>
-      <View style={styles.linkContainer}>
-        <Text style={styles.linkText} numberOfLines={1}>
-          {getInviteLink()}
-        </Text>
-        <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
-          <MaterialIcons
-            name={inviteCopied ? "check" : "content-copy"}
-            size={20}
-            color={inviteCopied ? "#34d399" : "#64748b"}
-          />
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <MaterialIcons name="share" size={20} color="white" />
-        <Text style={styles.shareButtonText}>Share Invite Link</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   if (loading)
     return (
       <View style={styles.centerContainer}>
@@ -161,27 +132,9 @@ const HouseTabzScreen = () => {
       </View>
     );
 
-  const hsiProgress = house ? house.hsi / 100 : 0;
-
   return (
     <View style={styles.container}>
-      {/* Tab Navigation */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={styles.tabButton}
-          onPress={() => setSelectedTab("house")}
-        >
-          <Text style={styles.tabText}>My House</Text>
-          {selectedTab === "house" && <View style={styles.tabUnderline} />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabButton}
-          onPress={() => setSelectedTab("billTakeover")}
-        >
-          <Text style={styles.tabText}>Bill Takeover</Text>
-          {selectedTab === "billTakeover" && <View style={styles.tabUnderline} />}
-        </TouchableOpacity>
-      </View>
+     
 
       {selectedTab === "house" ? (
         <ScrollView
@@ -195,143 +148,61 @@ const HouseTabzScreen = () => {
             />
           }
         >
-          {/* House Info Header */}
-          <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <Text style={styles.houseName} numberOfLines={1}>
-                {house?.name || "Loading..."}
-              </Text>
-              <TouchableOpacity
-                style={styles.inviteButton}
-                onPress={() => setShowInviteModal(true)}
-              >
-                <MaterialIcons name="link" size={18} color="white" />
-                <Text style={styles.inviteButtonText}>Invite</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.underline} />
-          </View>
+          <HouseHeader
+            houseName={house?.name}
+            onInvitePress={() => setShowInviteModal(true)}
+          />
 
-          {/* HSI Card */}
-          <View style={styles.hsiCard}>
-            <View style={styles.progressContainer}>
-              <Svg height="140" width="140" viewBox="0 0 100 100">
-                <Defs>
-                  <LinearGradient id="semiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <Stop offset="0%" stopColor="#34d399" stopOpacity="1" />
-                    <Stop offset="100%" stopColor="#4ade80" stopOpacity="1" />
-                  </LinearGradient>
-                </Defs>
-                <Path
-                  d={generateSemiCircle(1)}
-                  stroke="#e2e8f0"
-                  strokeWidth="10"
-                  fill="none"
-                />
-                <Path
-                  d={generateSemiCircle(hsiProgress)}
-                  stroke="url(#semiGradient)"
-                  strokeWidth="10"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </Svg>
-              <View style={styles.hsiContainer}>
-                <Text style={styles.hsiText}>{house?.hsi || "0"}</Text>
-                <TouchableOpacity
-                  onPress={() => setShowTooltip(true)}
-                  style={styles.infoButton}
-                >
-                  <MaterialIcons name="info-outline" size={20} color="#34d399" />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.hsiLabel}>House Status Index</Text>
-            </View>
-          </View>
+          <HSIComponent house={house} onInfoPress={() => setShowTooltip(true)} />
 
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {house?.hsi >= 75 ? "Great" : "Needs Work"}
-              </Text>
-              <Text style={styles.statLabel}>House Status</Text>
-              <MaterialIcons
-                name={house?.hsi >= 75 ? "check-circle" : "warning"}
-                size={24}
-                color={house?.hsi >= 75 ? "#34d399" : "#f59e0b"}
-                style={styles.statIcon}
-              />
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{house?.users?.length || 0}</Text>
-              <Text style={styles.statLabel}>Members</Text>
-              <MaterialIcons name="group" size={24} color="#34d399" style={styles.statIcon} />
-            </View>
-          </View>
+          {/* <StatsSection house={house} /> */}
 
-          {/* Scoreboard */}
-          <View style={styles.scoreboardCard}>
-            <Text style={styles.cardTitle}>Score Board</Text>
-            {house?.users
-              ?.sort((a, b) => b.points - a.points)
-              .map((user) => (
-                <View key={user.id} style={styles.userRow}>
-                  <View style={styles.userInfo}>
-                    <MaterialIcons name="person" size={20} color="#64748b" />
-                    <Text style={styles.username}>{user.username}</Text>
-                  </View>
-                  <Text style={styles.points}>{user.points} pts</Text>
-                </View>
-              ))}
-          </View>
+          <Scoreboard house={house} />
 
-          {/* Action Cards */}
-          <View style={styles.actionCards}>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => setIsCurrentTabVisible(true)}
-            >
-              <MaterialIcons name="receipt" size={28} color="#34d399" />
-              <Text style={styles.actionCardText}>CurrentTab</Text>
-              <MaterialIcons name="chevron-right" size={24} color="#ccc" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => setIsPaidTabVisible(true)}
-            >
-              <MaterialIcons name="history" size={28} color="#34d399" />
-              <Text style={styles.actionCardText}>PaidTabz</Text>
-              <MaterialIcons name="chevron-right" size={24} color="#ccc" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => setIsServicesVisible(true)}
-            >
-              <MaterialIcons name="build" size={28} color="#34d399" />
-              <Text style={styles.actionCardText}>House Services</Text>
-              <MaterialIcons name="chevron-right" size={24} color="#ccc" />
-            </TouchableOpacity>
-          </View>
+          <ActionCards
+            onCurrentTabPress={() => setIsCurrentTabVisible(true)}
+            onPaidTabPress={() => setIsPaidTabVisible(true)}
+            onServicesPress={() => setIsServicesVisible(true)}
+          />
         </ScrollView>
       ) : (
-        // BillTakeoverTab view (not a modal)
         <View style={styles.billTakeoverContainer}>
-          <BillTakeoverTab />
+          <Text style={{ fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 20 }}>
+            Bill Takeover Feature
+          </Text>
+          <Text style={{ fontSize: 14, color: '#64748b' }}>
+            This feature is coming soon! You'll be able to take over bills from your roommates.
+          </Text>
         </View>
       )}
 
-      {/* Modals */}
-      <ModalComponent visible={showInviteModal} onClose={() => setShowInviteModal(false)}>
-        <InviteModal />
+      <ModalComponent
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+      >
+        <InviteModalContent
+          inviteLink={getInviteLink()}
+          inviteCopied={inviteCopied}
+          onCopy={copyToClipboard}
+          onShare={handleShare}
+        />
       </ModalComponent>
-      <ModalComponent visible={isCurrentTabVisible} onClose={() => setIsCurrentTabVisible(false)}>
+      <ModalComponent
+        visible={isCurrentTabVisible}
+        onClose={() => setIsCurrentTabVisible(false)}
+      >
         <CurrentHouseTab house={house} />
       </ModalComponent>
-      <ModalComponent visible={isPaidTabVisible} onClose={() => setIsPaidTabVisible(false)}>
+      <ModalComponent
+        visible={isPaidTabVisible}
+        onClose={() => setIsPaidTabVisible(false)}
+      >
         <PaidHouseTabz house={house} />
       </ModalComponent>
-      <ModalComponent visible={isServicesVisible} onClose={() => setIsServicesVisible(false)}>
+      <ModalComponent
+        visible={isServicesVisible}
+        onClose={() => setIsServicesVisible(false)}
+      >
         <HouseServicesModal house={house} />
       </ModalComponent>
 
@@ -346,7 +217,10 @@ const HouseTabzScreen = () => {
             <Text style={styles.tooltipText}>
               The HSI represents the health and activity of your house. Higher numbers indicate a more active and responsible house.
             </Text>
-            <TouchableOpacity style={styles.tooltipButton} onPress={() => setShowTooltip(false)}>
+            <TouchableOpacity
+              style={styles.tooltipButton}
+              onPress={() => setShowTooltip(false)}
+            >
               <Text style={styles.tooltipButtonText}>Got it</Text>
             </TouchableOpacity>
           </View>
@@ -356,7 +230,33 @@ const HouseTabzScreen = () => {
   );
 };
 
-
+const tabStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: '#f0fdfa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedTab: {
+    borderBottomWidth: 3,
+    borderBottomColor: '#34d399',
+  },
+  tabText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  selectedTabText: {
+    color: '#34d399',
+    fontWeight: '600',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -369,209 +269,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#dff6f0",
   },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  tabUnderline: {
-    marginTop: 4,
-    height: 3,
-    width: "100%",
-    backgroundColor: "#34d399",
-  },
   scrollContent: {
     paddingTop: 24,
     paddingBottom: 40,
   },
-  header: {
-    marginBottom: 32,
-    paddingHorizontal: 24,
-  },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  houseName: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1e293b",
-    flex: 1,
-    marginRight: 16,
-  },
-  underline: {
-    height: 2,
-    width: "100%",
-    backgroundColor: "#34d399",
-    borderRadius: 1.5,
-    opacity: 0.2,
-  },
-  inviteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#34d399",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  inviteButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  hsiCard: {
-    backgroundColor: "white",
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    alignItems: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
-  progressContainer: {
-    alignItems: "center",
-  },
-  hsiContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: -50,
-  },
-  hsiText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#34d399",
-    marginRight: 8,
-  },
-  hsiLabel: {
+  errorText: {
     fontSize: 16,
+    color: "#dc2626",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: "#34d399",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  subErrorText: {
+    fontSize: 14,
     color: "#64748b",
+    textAlign: "center",
     marginTop: 8,
   },
-  infoButton: {
-    padding: 4,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  statCard: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 20,
-    width: width * 0.42,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    position: "relative",
-  },
-  statValue: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#64748b",
-  },
-  statIcon: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-  },
-  scoreboardCard: {
-    backgroundColor: "white",
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 16,
-  },
-  userRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  username: {
-    fontSize: 16,
-    color: "#1e293b",
-    marginLeft: 12,
-    fontWeight: "500",
-  },
-  points: {
-    fontSize: 16,
-    color: "#34d399",
-    fontWeight: "600",
-  },
-  actionCards: {
-    paddingHorizontal: 24,
-  },
-  actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-  },
-  actionCardText: {
+  billTakeoverContainer: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1e293b",
-    marginLeft: 16,
+    padding: 24,
+    backgroundColor: "#dff6f0",
   },
   tooltipOverlay: {
     position: "absolute",
@@ -613,82 +341,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#dc2626",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: "#34d399",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  inviteModalContent: {
-    padding: 24,
-  },
-  inviteTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: 8,
-  },
-  inviteDescription: {
-    fontSize: 14,
-    color: "#64748b",
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  linkContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#dff6f0",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    padding: 12,
-    marginBottom: 16,
-  },
-  linkText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#64748b",
-    marginRight: 12,
-  },
-  copyButton: {
-    padding: 8,
-  },
-  shareButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#34d399",
-    borderRadius: 8,
-    padding: 16,
-    gap: 8,
-  },
-  shareButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  subErrorText: {
-    fontSize: 14,
-    color: "#64748b",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  billTakeoverContainer: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: "#dff6f0",
   },
 });
 

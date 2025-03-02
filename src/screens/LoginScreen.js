@@ -9,8 +9,12 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -47,133 +51,209 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo.png' }}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-
-      {/* Login Card */}
-      <View style={styles.card}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Access your HouseTabz dashboard</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#9ca3af"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <LinearGradient
+        colors={['#dff6f0', '#b2ece5', '#8ae4db']}
+        style={styles.background}
+      >
+        <Image
+          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
+          style={styles.logo}
+          resizeMode="contain"
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#9ca3af"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.card}>
+          <Text style={styles.title}>Welcome Back! 👋</Text>
+          <Text style={styles.subtitle}>Access your HouseTabz dashboard</Text>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Log In</Text>
-          )}
-        </TouchableOpacity>
+          <View style={styles.inputContainer}>
+            <Icon name="email-outline" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email address"
+              placeholderTextColor="#9ca3af"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={styles.linkText}>
-            Don't have an account? Sign Up
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View style={styles.inputContainer}>
+            <Icon name="lock-outline" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#9ca3af"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <LinearGradient
+                colors={['#34d399', '#10b981']}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>Log In</Text>
+                <Icon name="arrow-right" size={20} color="white" />
+              </LinearGradient>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={styles.smallLinkText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Register')}
+          >
+            <Text style={styles.secondaryButtonText}>
+              Create New Account
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dff6f0', // Light brand background
+  },
+  background: {
+    flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 40,
+    width: 150,
+    height: 150,
+    marginBottom: 20,
   },
   card: {
     width: '100%',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 25,
     padding: 30,
-    // iOS shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
-    shadowRadius: 10,
-    // Android elevation
-    elevation: 5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#1e293b',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#4b5563',
+    fontFamily: 'Inter-Medium',
+    color: '#64748b',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
-    paddingVertical: 10,
+    flex: 1,
+    height: 50,
     fontSize: 16,
     color: '#374151',
-    marginBottom: 20,
+    fontFamily: 'Inter-Regular',
   },
   button: {
-    backgroundColor: '#34d399',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 10,
+    height: 56,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 15,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  buttonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+    marginRight: 10,
   },
-  linkButton: {
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  smallLinkText: {
+    color: '#64748b',
+    textAlign: 'center',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
     marginTop: 15,
   },
-  linkText: {
-    color: '#34d399',
-    textAlign: 'center',
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 25,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    color: '#94a3b8',
+    fontFamily: 'Inter-Medium',
+    marginHorizontal: 10,
+    fontSize: 14,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#1e293b',
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

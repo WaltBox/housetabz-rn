@@ -135,7 +135,7 @@ const UserFeedbackModal = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dff6f0',
+    // backgroundColor: '#dff6f0',
   },
   content: {
     flex: 1,
@@ -150,11 +150,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
     marginBottom: 8,
+    fontFamily: 'Quicksand-Bold',
+    
   },
   subtitle: {
     fontSize: 16,
     color: '#64748b',
     lineHeight: 24,
+    
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -181,6 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#28a745',
     fontWeight: '500',
+    
   },
   activeCategoryText: {
     color: '#fff',

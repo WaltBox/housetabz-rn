@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#1e293b',
+    fontFamily: 'Quicksand-Bold',
   },
   filterContainer: {
     flexDirection: 'row',

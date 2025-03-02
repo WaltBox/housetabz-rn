@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.75;
+const CARD_WIDTH = width * 0.85;
 
 const getServiceIcon = (serviceType) => {
   switch (serviceType?.toLowerCase()) {
@@ -15,9 +16,8 @@ const getServiceIcon = (serviceType) => {
   }
 };
 
-const ServiceRequestTask = ({ task, onAccept, onReject }) => {
+const ServiceRequestTask = ({ task, onAccept }) => {
   const { stagedRequest, takeOverRequest } = task.serviceRequestBundle || {};
-  const isTakeOver = !!takeOverRequest && !stagedRequest;
   
   if (!task.serviceRequestBundle) return null;
   
@@ -25,174 +25,167 @@ const ServiceRequestTask = ({ task, onAccept, onReject }) => {
   if (!request) return null;
   
   const iconName = getServiceIcon(request.serviceType);
-  const amount = isTakeOver ? request.monthlyAmount : task.paymentAmount;
-  const formattedPrice = `$${Number(amount).toFixed(2)}${isTakeOver ? '/mo' : ''}`;
+  const amount = takeOverRequest ? request.monthlyAmount : task.paymentAmount;
+  const formattedPrice = `${Number(amount).toFixed(2)}${takeOverRequest ? '/mo' : ''}`;
   const subtitle = request.partnerName || request.accountNumber ? 
     (request.partnerName ? request.partnerName : `Account: ${request.accountNumber}`) : '';
-    
-  const showPledgePending = task.paymentRequired || isTakeOver;
-    
-  const handleConfirmPress = () => onAccept(task);
+
+  const handleViewMore = () => onAccept(task);
 
   return (
-    <View style={styles.taskCard}>
+    <TouchableOpacity 
+      style={styles.taskCard} 
+      onPress={handleViewMore}
+      activeOpacity={0.7}
+    >
+      {/* Header with Icon and Service Type/Name */}
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <MaterialIcons 
-            name={iconName}
-            size={20} 
-            color="#34d399" 
-          />
+        <View style={styles.iconOuterContainer}>
+          <LinearGradient
+            colors={['#dcfce7', '#f0fdf4']}
+            style={styles.iconContainer}
+          >
+            <MaterialIcons 
+              name={iconName}
+              size={24} 
+              color="#22c55e" 
+            />
+          </LinearGradient>
         </View>
         <View style={styles.headerContent}>
+          {subtitle !== '' && <Text style={styles.providerName}>{subtitle}</Text>}
           <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
             {request.serviceName}
           </Text>
-          {subtitle !== '' && <Text style={styles.subtitle}>{subtitle}</Text>}
+          <Text style={styles.serviceType}>
+            {request.serviceType || "Service"}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.statusRow}>
-        <View style={styles.pricePill}>
-          <Text style={styles.pricePillText}>Price: {formattedPrice}</Text>
-        </View>
-        {showPledgePending && (
-          <View style={styles.paymentBadge}>
-            <MaterialIcons name="schedule" size={12} color="#6366f1" />
-            <Text style={styles.paymentBadgeText}>Pledge Pending</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.actions}>
-        <TouchableOpacity 
-          onPress={() => onReject(task.id)} 
-          style={[styles.button, styles.rejectButton]}
+      {/* Price and View More on the same row */}
+      <View style={styles.footerRow}>
+        <LinearGradient
+          colors={['#22c55e', '#34d399']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.pricePill}
         >
-          <MaterialIcons name="close" size={16} color="#dc2626" />
-          <Text style={styles.rejectText}>Decline</Text>
-        </TouchableOpacity>
+          <Text style={styles.priceCurrency}>$</Text>
+          <Text style={styles.pricePillText}>{formattedPrice}</Text>
+        </LinearGradient>
         
         <TouchableOpacity 
-          onPress={handleConfirmPress} 
-          style={[styles.button, styles.acceptButton]}
+          style={styles.viewMoreContainer}
+          onPress={handleViewMore}
         >
-          <MaterialIcons name="check" size={16} color="#34d399" />
-          <Text style={styles.acceptText}>Confirm Pledge</Text>
+          <Text style={styles.viewMoreText}>View more</Text>
+          <MaterialIcons name="arrow-forward-ios" size={14} color="#4f46e5" style={styles.arrowIcon} />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   taskCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#dff1f0', // updated barely tan background
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#34d399',
+    backgroundColor: 'white',
+    borderRadius: 22,
+    padding: 18,
+    shadowColor: 'rgba(0,0,0,0.1)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 18,
+  },
+  iconOuterContainer: {
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+    borderRadius: 28,
+    marginRight: 16,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0fdf4',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   headerContent: {
     flex: 1,
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 16,
+  providerName: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
+    color: '#22c55e',
+    marginBottom: 3,
   },
-  subtitle: {
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 3,
+  },
+  serviceType: {
     fontSize: 14,
     color: '#64748b',
-    marginTop: 4,
+    textTransform: 'capitalize',
   },
-  statusRow: {
+  footerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginTop: 18,
   },
   pricePill: {
-    backgroundColor: '#f0fdf4',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  priceCurrency: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+    marginRight: 1,
   },
   pricePillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#34d399',
+    fontSize: 18,
+    fontWeight: '800',
+    color: 'white',
   },
-  paymentBadge: {
+  viewMoreContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eef2ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#f5f3ff',
   },
-  paymentBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6366f1',
+  viewMoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4f46e5',
+  },
+  arrowIcon: {
     marginLeft: 4,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  acceptButton: {
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#dcfce7',
-  },
-  rejectButton: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fee2e2',
-  },
-  acceptText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#34d399',
-  },
-  rejectText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#dc2626',
-  },
+  }
 });
 
 export default ServiceRequestTask;

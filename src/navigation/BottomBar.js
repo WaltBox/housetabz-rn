@@ -16,17 +16,15 @@ import DashboardScreen from '../screens/DashboardScreen';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import MakePaymentScreen from '../screens/MakePaymentScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import TakeOverScreen from '../screens/TakeOverScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
-import ViewPlansScreen from '../screens/ViewPlansScreen';
-import ViewPlansCard from '../screens/ViewPlansCard';
-import ViewForm from '../screens/ViewForm';
+
 
 const Tab = createBottomTabNavigator();
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
 const Market = createStackNavigator();
-const Profile = createStackNavigator();
+const TakeOver = createStackNavigator();
 const Payment = createStackNavigator();
 
 const DashboardStack = () => (
@@ -45,16 +43,14 @@ const MarketplaceStack = () => (
   <Market.Navigator screenOptions={{ headerShown: false }}>
     <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
     <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
-    <Market.Screen name="ViewPlans" component={ViewPlansScreen} />
-    <Market.Screen name="ViewPlansCard" component={ViewPlansCard} options={{ title: 'Company Details' }} />
-    <Market.Screen name="ViewForm" component={ViewForm} />
+ 
   </Market.Navigator>
 );
 
-const ProfileStack = () => (
-  <Profile.Navigator screenOptions={{ headerShown: false }}>
-    <Profile.Screen name="ProfileScreen" component={ProfileScreen} />
-  </Profile.Navigator>
+const TakeOverStack = () => (
+  <TakeOver.Navigator screenOptions={{ headerShown: false }}>
+    <TakeOver.Screen name="TakeOverScreen" component={TakeOverScreen} />
+  </TakeOver.Navigator>
 );
 
 const PaymentStack = () => (
@@ -99,8 +95,8 @@ const TabNavigator = () => (
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Marketplace') {
             iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'TakeOver') {
+            iconName = focused ? 'flash' : 'flash-outline';
           }
           return iconName ? <Icon name={iconName} size={typeof size === 'number' ? size : 24} color="#34d399" /> : null;
         },
@@ -113,7 +109,7 @@ const TabNavigator = () => (
       <Tab.Screen name="My House" component={MyHouseStack} />
       <Tab.Screen name="Make Payment" component={PaymentStack} />
       <Tab.Screen name="Marketplace" component={MarketplaceStack} />
-      <Tab.Screen name="Profile" component={ProfileStack} />
+      <Tab.Screen name="TakeOver" component={TakeOverStack} />
     </Tab.Navigator>
 
     <FloatingButton />

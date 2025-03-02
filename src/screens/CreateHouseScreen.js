@@ -1,4 +1,3 @@
-// src/screens/CreateHouseScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -8,9 +7,15 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  Image,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const CreateHouseScreen = ({ navigation }) => {
   const [houseData, setHouseData] = useState({
@@ -23,27 +28,20 @@ const CreateHouseScreen = ({ navigation }) => {
   const { user, updateUserHouse } = useAuth();
 
   const handleCreateHouse = async () => {
-    // Basic validation for required fields
     if (!houseData.name || !houseData.city || !houseData.state || !houseData.zip_code) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
     try {
       setLoading(true);
-      // Prepare payload with the new fields plus creator_id from the current user
       const payload = { ...houseData, creator_id: user.id };
-
-      // Post new house to your API on localhost:3004
       const response = await axios.post('http://localhost:3004/api/houses', payload);
-      // Assuming the response returns the created house in response.data.house
       const createdHouse = response.data.house;
       
-      // Update the user's houseId using your AuthContext function
       await updateUserHouse(createdHouse.id);
       
-      Alert.alert('Success', 'House created and joined successfully!');
-      // Force a navigation reset so the AppNavigator rechecks the user state
+      Alert.alert('Success', 'House created successfully! 🎉');
       navigation.reset({
         index: 0,
         routes: [{ name: 'TabNavigator' }],
@@ -51,8 +49,8 @@ const CreateHouseScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error creating house:', error);
       Alert.alert(
-        'Error',
-        error.response?.data?.message || 'An error occurred'
+        'Creation Error',
+        error.response?.data?.message || 'Something went wrong. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -60,97 +58,172 @@ const CreateHouseScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>Back</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.title}>Create a House</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="House Name"
-        value={houseData.name}
-        onChangeText={(text) => setHouseData({ ...houseData, name: text })}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="City"
-        value={houseData.city}
-        onChangeText={(text) => setHouseData({ ...houseData, city: text })}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="State (e.g., TX)"
-        value={houseData.state}
-        onChangeText={(text) => setHouseData({ ...houseData, state: text.toUpperCase() })}
-        maxLength={2}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Zip Code"
-        value={houseData.zip_code}
-        onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
-      />
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleCreateHouse}
-        disabled={loading}
+    <LinearGradient
+      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
+      style={styles.background}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Create House</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+        <View style={styles.card}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.backButton}
+          >
+            <Icon name="chevron-left" size={28} color="#1e293b" />
+          </TouchableOpacity>
+
+          <Text style={styles.title}>Create New House</Text>
+          <Text style={styles.subtitle}>Set up your household headquarters</Text>
+
+          <View style={styles.inputContainer}>
+            <Icon name="home-outline" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="House Name"
+              placeholderTextColor="#9ca3af"
+              value={houseData.name}
+              onChangeText={(text) => setHouseData({ ...houseData, name: text })}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Icon name="city-variant-outline" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="City"
+              placeholderTextColor="#9ca3af"
+              value={houseData.city}
+              onChangeText={(text) => setHouseData({ ...houseData, city: text })}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Icon name="map-marker-radius" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="State (e.g., TX)"
+              placeholderTextColor="#9ca3af"
+              value={houseData.state}
+              onChangeText={(text) => setHouseData({ ...houseData, state: text.toUpperCase() })}
+              maxLength={2}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Icon name="numeric" size={20} color="#4b5563" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Zip Code"
+              placeholderTextColor="#9ca3af"
+              value={houseData.zip_code}
+              onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
+              keyboardType="number-pad"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleCreateHouse}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <LinearGradient
+                colors={['#34d399', '#10b981']}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>Create House</Text>
+                <Icon name="home-plus" size={24} color="white" />
+              </LinearGradient>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#dff6f0',
     justifyContent: 'center',
     padding: 20,
   },
-  backButton: {
-    marginBottom: 20,
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    padding: 30,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  backButtonText: {
-    color: '#34d399',
-    fontSize: 16,
+  backButton: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#1e293b',
-    marginBottom: 24,
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    flex: 1,
+    height: 50,
     fontSize: 16,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
   },
   button: {
-    backgroundColor: '#34d399',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
+    height: 56,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 15,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  buttonGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 12,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });
 

@@ -1,83 +1,121 @@
-// src/screens/HouseOptionsScreen.js
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const HouseOptionsScreen = ({ navigation }) => {
-  const handleClearToken = async () => {
-    try {
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('userData');
-      Alert.alert('Token cleared!', 'The token has been removed.');
-    } catch (error) {
-      console.error('Error clearing token:', error);
-      Alert.alert('Error', 'Failed to clear token.');
-    }
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Choose an Option</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('CreateHouse')}
-      >
-        <Text style={styles.buttonText}>Create a House</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('JoinHouse')}
-      >
-        <Text style={styles.buttonText}>Join a House</Text>
-      </TouchableOpacity>
-      {/* Temporary Clear Token Button */}
-      <TouchableOpacity style={styles.clearButton} onPress={handleClearToken}>
-        <Text style={styles.clearButtonText}>Clear Token</Text>
-      </TouchableOpacity>
-    </View>
+    <LinearGradient
+      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
+      style={styles.background}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Image
+          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        <View style={styles.card}>
+          <Text style={styles.title}>Start Your HouseTabz Journey</Text>
+          <Text style={styles.subtitle}>Choose how you want to begin</Text>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('CreateHouse')}
+          >
+            <LinearGradient
+              colors={['#34d399', '#10b981']}
+              style={styles.buttonGradient}
+            >
+              <Icon name="home-plus" size={24} color="white" />
+              <Text style={styles.buttonText}>Create New House</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('JoinHouse')}
+          >
+            <LinearGradient
+              colors={['#34d399', '#10b981']}
+              style={styles.buttonGradient}
+            >
+              <Icon name="account-group" size={24} color="white" />
+              <Text style={styles.buttonText}>Join Existing House</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    backgroundColor: '#dff6f0', // match login background
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
   },
+  logo: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    alignSelf: 'center',
+    marginBottom: 30,
+    backgroundColor: 'white',
+    padding: 10,
+    borderWidth: 4,
+    borderColor: '#b2ece5',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 25,
+    padding: 30,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#1e293b',
-    marginBottom: 40,
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 40,
   },
   button: {
-    backgroundColor: '#34d399',
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
+    borderRadius: 14,
+    overflow: 'hidden',
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 12,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  clearButton: {
-    backgroundColor: '#ef4444',
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  clearButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: 'white',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

@@ -10,13 +10,17 @@ import {
   Alert 
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from '@react-navigation/native';
+import ProfileModal from './ProfileModal'; // Import the ProfileModal
 
-const SettingsModal = ({ onNavigateToPaymentMethods }) => {
-  const {user, logout} = useAuth();
+const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
+  const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [autopay, setAutopay] = useState(false);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false); // Add state for ProfileModal visibility
 
   const SettingsSection = ({ title, children }) => (
     <View style={styles.section}>
@@ -60,6 +64,19 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
     </TouchableOpacity>
   );
 
+  // Updated to open the ProfileModal instead of navigating
+  const handleOpenProfileModal = () => {
+    // Close the settings modal
+    if (onClose && typeof onClose === 'function') {
+      onClose();
+    }
+    
+    // Open the profile modal after a small delay
+    setTimeout(() => {
+      setIsProfileModalVisible(true);
+    }, 300);
+  };
+
   const handleSignOut = async () => {
     Alert.alert(
       'Sign Out',
@@ -81,118 +98,127 @@ const SettingsModal = ({ onNavigateToPaymentMethods }) => {
       ]
     );
   };
+  
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Account Section */}
-        <SettingsSection title="Account Settings">
-          <SettingsRow
-            icon="person-outline"
-            title="Profile Information"
-            subtitle="Update personal details"
-            onPress={() => Alert.alert('Navigate to Profile')}
-          />
-          <SettingsRow
-            icon="credit-card"
-            title="Payment Methods"
-            subtitle="Manage connected accounts"
-            onPress={onNavigateToPaymentMethods}
-          />
-          <SettingsRow
-            icon="autorenew"
-            title="AutoPay Configuration"
-            subtitle={autopay ? "Active - Manage schedule" : "Set up recurring payments"}
-            type="switch"
-            value={autopay}
-            onPress={setAutopay}
-          />
-        </SettingsSection>
+    <>
+      <View style={styles.container}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Account Section */}
+          <SettingsSection title="Account Settings">
+            <SettingsRow
+              icon="person-outline"
+              title="Profile Information"
+              subtitle="Update personal details"
+              onPress={handleOpenProfileModal}
+            />
+            <SettingsRow
+              icon="credit-card"
+              title="Payment Methods"
+              subtitle="Manage connected accounts"
+              onPress={onNavigateToPaymentMethods}
+            />
+            <SettingsRow
+              icon="autorenew"
+              title="AutoPay Configuration"
+              subtitle={autopay ? "Active - Manage schedule" : "Set up recurring payments"}
+              type="switch"
+              value={autopay}
+              onPress={setAutopay}
+            />
+          </SettingsSection>
 
-        {/* Preferences Section */}
-        <SettingsSection title="Preferences">
-          <SettingsRow
-            icon="notifications-none"
-            title="Push Notifications"
-            subtitle="App alerts and reminders"
-            type="switch"
-            value={notifications}
-            onPress={setNotifications}
-          />
-          <SettingsRow
-            icon="mail-outline"
-            title="Email Communications"
-            subtitle="Newsletters and updates"
-            type="switch"
-            value={emailUpdates}
-            onPress={setEmailUpdates}
-          />
-          <SettingsRow
-            icon="dark-mode"
-            title="Dark Theme"
-            subtitle="Enable night mode"
-            type="switch"
-            value={darkMode}
-            onPress={setDarkMode}
-          />
-        </SettingsSection>
+          {/* Preferences Section */}
+          <SettingsSection title="Preferences">
+            <SettingsRow
+              icon="notifications-none"
+              title="Push Notifications"
+              subtitle="App alerts and reminders"
+              type="switch"
+              value={notifications}
+              onPress={setNotifications}
+            />
+            <SettingsRow
+              icon="mail-outline"
+              title="Email Communications"
+              subtitle="Newsletters and updates"
+              type="switch"
+              value={emailUpdates}
+              onPress={setEmailUpdates}
+            />
+            <SettingsRow
+              icon="dark-mode"
+              title="Dark Theme"
+              subtitle="Enable night mode"
+              type="switch"
+              value={darkMode}
+              onPress={setDarkMode}
+            />
+          </SettingsSection>
 
-        {/* Support Section */}
-        <SettingsSection title="Support & Legal">
-          <SettingsRow
-            icon="help-outline"
-            title="Help Center"
-            subtitle="Guides and FAQs"
-            onPress={() => Alert.alert('Navigate to Help Center')}
-          />
-          <SettingsRow
-            icon="chat-bubble-outline"
-            title="Contact Support"
-            subtitle="24/7 customer service"
-            onPress={() => Alert.alert('Navigate to Contact Support')}
-          />
-          <SettingsRow
-            icon="description"
-            title="Terms of Service"
-            onPress={() => Alert.alert('Navigate to Terms')}
-          />
-          <SettingsRow
-            icon="security"
-            title="Privacy Policy"
-            subtitle="Data usage information"
-            onPress={() => Alert.alert('Navigate to Privacy Policy')}
-          />
-        </SettingsSection>
+          {/* Support Section */}
+          <SettingsSection title="Support & Legal">
+            <SettingsRow
+              icon="help-outline"
+              title="Help Center"
+              subtitle="Guides and FAQs"
+              onPress={() => Alert.alert('Navigate to Help Center')}
+            />
+            <SettingsRow
+              icon="chat-bubble-outline"
+              title="Contact Support"
+              subtitle="24/7 customer service"
+              onPress={() => Alert.alert('Navigate to Contact Support')}
+            />
+            <SettingsRow
+              icon="description"
+              title="Terms of Service"
+              onPress={() => Alert.alert('Navigate to Terms')}
+            />
+            <SettingsRow
+              icon="security"
+              title="Privacy Policy"
+              subtitle="Data usage information"
+              onPress={() => Alert.alert('Navigate to Privacy Policy')}
+            />
+          </SettingsSection>
 
-        {/* App Section */}
-        <SettingsSection title="Application">
-          <SettingsRow
-            icon="info-outline"
-            title="About HouseTabz"
-            subtitle="Version 1.0.0 (Build 123)"
-          />
-          <SettingsRow
-            icon="update"
-            title="Check for Updates"
-            subtitle="Latest version available"
-          />
-        </SettingsSection>
+          {/* App Section */}
+          <SettingsSection title="Application">
+            <SettingsRow
+              icon="info-outline"
+              title="About HouseTabz"
+              subtitle="Version 1.0.0 (Build 123)"
+            />
+            <SettingsRow
+              icon="update"
+              title="Check for Updates"
+              subtitle="Latest version available"
+            />
+          </SettingsSection>
 
-        {/* Sign Out */}
-        <View style={styles.signOutContainer}>
-        <TouchableOpacity 
-    style={styles.signOutButton}
-    onPress={handleSignOut}
-  >
-            <MaterialIcons name="exit-to-app" size={20} color="#ef4444" />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+          {/* Sign Out */}
+          <View style={styles.signOutContainer}>
+            <TouchableOpacity 
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+            >
+              <MaterialIcons name="exit-to-app" size={20} color="#ef4444" />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        visible={isProfileModalVisible}
+        onClose={() => setIsProfileModalVisible(false)}
+      />
+    </>
   );
 };
 

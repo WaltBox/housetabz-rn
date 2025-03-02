@@ -1,4 +1,3 @@
-// src/screens/RegisterScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -8,13 +7,17 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
-    username: '', // Using username to match backend validation
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -25,28 +28,26 @@ const RegisterScreen = ({ navigation }) => {
 
   const handleRegister = async () => {
     if (!formData.email || !formData.password || !formData.username) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert('Validation Error', 'Your passwords do not match');
       return;
     }
 
     setLoading(true);
     try {
-      // Call register function from AuthContext.
       await register({
         username: formData.username,
         email: formData.email,
         password: formData.password,
       });
-      // The AuthContext will update and trigger the navigator to show the house setup if user.houseId is not set.
     } catch (error) {
       Alert.alert(
-        'Error',
-        error.response?.data?.message || error.message || 'Registration error'
+        'Registration Error',
+        error.response?.data?.message || error.message || 'Something went wrong. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -54,129 +55,235 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.formContainer}>
-        {/* Back Button */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <LinearGradient
+        colors={['#dff6f0', '#b2ece5', '#8ae4db']}
+        style={styles.background}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <View style={styles.card}>
+            {/* Header Section */}
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()} 
+              style={styles.backButton}
+            >
+              <Icon name="chevron-left" size={28} color="#1e293b" />
+            </TouchableOpacity>
 
-        <Text style={styles.title}>Create Account</Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          value={formData.username}
-          onChangeText={(text) => setFormData({ ...formData, username: text })}
-        />
+            <Text style={styles.title}>Create Your Account</Text>
+            <Text style={styles.subtitle}>Join HouseTabz to manage your household</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={formData.email}
-          onChangeText={(text) => setFormData({ ...formData, email: text })}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+            {/* Username Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="account-outline" size={20} color="#4b5563" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Username"
+                placeholderTextColor="#9ca3af"
+                value={formData.username}
+                onChangeText={(text) => setFormData({ ...formData, username: text })}
+                autoCapitalize="none"
+              />
+            </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={formData.password}
-          onChangeText={(text) => setFormData({ ...formData, password: text })}
-          secureTextEntry
-        />
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="email-outline" size={20} color="#4b5563" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Email address"
+                placeholderTextColor="#9ca3af"
+                value={formData.email}
+                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={formData.confirmPassword}
-          onChangeText={(text) =>
-            setFormData({ ...formData, confirmPassword: text })
-          }
-          secureTextEntry
-        />
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="lock-outline" size={20} color="#4b5563" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#9ca3af"
+                value={formData.password}
+                onChangeText={(text) => setFormData({ ...formData, password: text })}
+                secureTextEntry
+              />
+            </View>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Create Account</Text>
-          )}
-        </TouchableOpacity>
+            {/* Confirm Password Input */}
+            <View style={styles.inputContainer}>
+              <Icon name="lock-check-outline" size={20} color="#4b5563" style={styles.icon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor="#9ca3af"
+                value={formData.confirmPassword}
+                onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+                secureTextEntry
+              />
+            </View>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.linkText}>
-            I already have an account. Log in
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            {/* Register Button */}
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <LinearGradient
+                  colors={['#34d399', '#10b981']}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonText}>Create Account</Text>
+                  <Icon name="account-plus" size={20} color="white" />
+                </LinearGradient>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>Already registered?</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Login CTA */}
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.secondaryButtonText}>Sign In Instead</Text>
+              <Icon name="login" size={18} color="#1e293b" />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
-  formContainer: {
-    padding: 20,
+  background: {
     flex: 1,
+    width: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
-    minHeight: 600,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    marginHorizontal: 30,
+    padding: 30,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   backButton: {
-    marginBottom: 20,
-  },
-  backButtonText: {
-    color: '#34d399',
-    fontSize: 16,
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#1e293b',
-    marginBottom: 24,
     textAlign: 'center',
+    marginBottom: 8,
+    marginTop: 20,
+  },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  icon: {
+    marginRight: 10,
   },
   input: {
-    backgroundColor: '#dff6f0',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    flex: 1,
+    height: 50,
     fontSize: 16,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
   },
   button: {
-    backgroundColor: '#34d399',
-    padding: 16,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 15,
+  },
+  buttonGradient: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    marginRight: 10,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 16,
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 25,
   },
-  linkText: {
-    color: '#34d399',
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    color: '#94a3b8',
+    fontFamily: 'Inter-Medium',
+    marginHorizontal: 10,
     fontSize: 14,
-    fontWeight: '500',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  secondaryButtonText: {
+    color: '#1e293b',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

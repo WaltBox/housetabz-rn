@@ -1,4 +1,3 @@
-// src/navigation/AppNavigator.js
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -14,13 +13,15 @@ import HomeScreen from '../screens/HomeScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
 import ProfileScreen from '../screens/ProfileScreen';
-import ViewPlansScreen from '../screens/ViewPlansScreen';
-import ViewForm from '../screens/ViewForm';
-import ViewPlansCard from '../screens/ViewPlansCard';
+
+
 import DashboardScreen from '../screens/DashboardScreen';
 import InAppBrowser from '../screens/InAppBrowser';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 import TabNavigator from './BottomBar';
+
+// Bill Takeover Screens
+import BillTakeoverScreen from '../screens/BillTakeOverScreen';
 
 // New House Setup Screens
 import HouseOptionsScreen from '../screens/HouseOptionsScreen';
@@ -58,8 +59,10 @@ const MainStack = () => (
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
       <Stack.Screen name="InAppBrowser" component={InAppBrowser} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
-      <Stack.Screen name="ViewPlans" component={ViewPlansScreen} />
-      <Stack.Screen name="ViewForm" component={ViewForm} />
+     
+      
+      {/* Add Bill Takeover Screen */}
+      <Stack.Screen name="BillTakeover" component={BillTakeoverScreen} />
     </Stack.Group>
 
     {/* Modal Screens */}
@@ -72,11 +75,7 @@ const MainStack = () => (
         component={ViewCompanyCard}
         options={{ title: 'Company Details' }}
       />
-      <Stack.Screen 
-        name="ViewPlansCard" 
-        component={ViewPlansCard}
-        options={{ title: 'Company Details' }}
-      />
+    
       <Stack.Screen 
         name="PaymentMethods" 
         component={PaymentMethodsSettings}

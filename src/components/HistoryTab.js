@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "#1e293b",
+    fontFamily: 'Quicksand-Bold'
   },
   list: {
     paddingTop: 12,
