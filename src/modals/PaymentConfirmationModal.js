@@ -10,7 +10,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const PaymentConfirmationModal = ({
   visible,
@@ -36,7 +37,8 @@ const PaymentConfirmationModal = ({
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get('http://localhost:3004/api/payment-methods');
+      // Use apiClient with relative path
+      const response = await apiClient.get('/api/payment-methods');
       const methods = response.data?.paymentMethods || [];
       const defaultMethod = methods.find(m => m.isDefault);
       setPaymentMethods(methods);

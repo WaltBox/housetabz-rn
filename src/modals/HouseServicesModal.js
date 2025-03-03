@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const HouseServicesModal = ({ house }) => {
   const [services, setServices] = useState([]);
@@ -17,7 +18,8 @@ const HouseServicesModal = ({ house }) => {
 
   const fetchHouseServices = async () => {
     try {
-      const response = await axios.get(`http://localhost:3004/api/houseServices/house/${house.id}`);
+      // Use apiClient with relative path
+      const response = await apiClient.get(`/api/houseServices/house/${house.id}`);
       const houseServices = response.data?.houseServices || [];
       setServices(houseServices);
       setError(null);

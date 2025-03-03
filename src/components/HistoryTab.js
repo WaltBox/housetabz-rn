@@ -8,8 +8,9 @@ import {
   Animated,
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+// Import the API client instead of axios directly
+import apiClient from '../config/api';
 
 const HistoryTab = () => {
   const { user } = useAuth();
@@ -24,8 +25,10 @@ const HistoryTab = () => {
 
   const fetchPaymentHistory = async () => {
     try {
-      const response = await axios.get(
-        `http://localhost:3004/api/users/${user.id}/payments`
+      // Use the apiClient instead of axios directly
+      // Notice we're removing the hardcoded API URL
+      const response = await apiClient.get(
+        `/api/users/${user.id}/payments`
       );
 
       // Sort payments by date (most recent first)

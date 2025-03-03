@@ -2,20 +2,21 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Image,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   RefreshControl,
-  Dimensions
+  StyleSheet,
+  Dimensions,
+  Platform
 } from 'react-native';
-import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import UserTabModal from '../modals/UserTabModal';
 import UserTransactionsModal from '../modals/UserTransactionsModal';
+import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -45,7 +46,7 @@ const ProfileModal = ({ visible, onClose }) => {
     }
 
     try {
-      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}`);
+      const response = await apiClient.get(`/api/users/${authUser.id}`);
       setUserData({
         ...DEFAULT_USER,
         ...response.data,
@@ -80,7 +81,7 @@ const ProfileModal = ({ visible, onClose }) => {
   const renderContent = () => {
     if (loading) {
       return (
-        <View style={styles.centerContainer}>
+        <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#34d399" />
         </View>
       );
@@ -88,7 +89,7 @@ const ProfileModal = ({ visible, onClose }) => {
 
     if (error) {
       return (
-        <View style={styles.centerContainer}>
+        <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchUserData}>
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -107,108 +108,105 @@ const ProfileModal = ({ visible, onClose }) => {
             tintColor="#34d399"
           />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Close button */}
-        <TouchableOpacity 
-          style={styles.closeButton} 
-          onPress={onClose}
-        >
-          <MaterialIcons name="close" size={24} color="#64748b" />
-        </TouchableOpacity>
-
-        {/* Profile Header Section */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
+        {/* Profile Info */}
+        <View style={styles.profileInfoContainer}>
+          <View style={styles.avatarSection}>
             <Image
               source={require('../../assets/default-profile.jpg')}
-              style={styles.profileImage}
+              style={styles.avatar}
             />
-            <TouchableOpacity
-              style={styles.editIcon}
-              onPress={handleEditProfile}
-            >
-              <MaterialIcons name="edit" size={20} color="white" />
+            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+              <MaterialIcons name="edit" size={16} color="white" />
             </TouchableOpacity>
           </View>
-          
-          <Text style={styles.nameText}>{userData.username}</Text>
-          <Text style={styles.houseBadge}>{userData.house.name}</Text>
+          <View style={styles.userInfoSection}>
+            <Text style={styles.username}>{userData.username}</Text>
+            <View style={styles.houseNameContainer}>
+              <MaterialIcons name="home" size={14} color="#64748b" style={styles.houseIcon} />
+              <Text style={styles.houseName}>{userData.house.name}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Stats Cards Container */}
+        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>${userData.credit?.toFixed(2) || '0.00'}</Text>
-            <Text style={styles.statLabel}>Available Credit</Text>
-            <MaterialIcons 
-              name="attach-money" 
-              size={24} 
-              color="#34d399" 
-              style={styles.statIcon} 
-            />
+            <View style={styles.statIconContainer}>
+              <MaterialIcons name="attach-money" size={20} color="#34d399" />
+            </View>
+            <View style={styles.statTextContainer}>
+              <Text style={styles.statValue}>${userData.credit?.toFixed(2) || '0.00'}</Text>
+              <Text style={styles.statLabel}>Available Credit</Text>
+            </View>
           </View>
           
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{userData.points || 0}</Text>
-            <Text style={styles.statLabel}>Loyalty Points</Text>
-            <MaterialIcons 
-              name="star" 
-              size={24} 
-              color="#f59e0b" 
-              style={styles.statIcon} 
-            />
+            <View style={styles.statIconContainer}>
+              <MaterialIcons name="star" size={20} color="#f59e0b" />
+            </View>
+            <View style={styles.statTextContainer}>
+              <Text style={styles.statValue}>{userData.points || 0}</Text>
+              <Text style={styles.statLabel}>Loyalty Points</Text>
+            </View>
           </View>
         </View>
 
         {/* Progress Section */}
-        <View style={styles.progressContainer}>
+        <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Next Level Progress</Text>
-            <Text style={styles.progressSubtitle}>
-              {Math.max(100 - (userData.points || 0), 0)} points to go
-            </Text>
+            <Text style={styles.progressValue}>{Math.max(100 - (userData.points || 0), 0)} points to go</Text>
           </View>
-          <View style={styles.progressBarBackground}>
-            <View
+          <View style={styles.progressBarContainer}>
+            <View 
               style={[
-                styles.progressBarFill,
-                { 
-                  width: `${Math.min((userData.points || 0), 100)}%`,
-                  backgroundColor: userData.points >= 100 ? '#f59e0b' : '#34d399'
-                }
-              ]}
+                styles.progressBar, 
+                { width: `${Math.min(userData.points || 0, 100)}%` }
+              ]} 
             />
           </View>
         </View>
 
-        {/* Action Menu Items */}
-        <View style={styles.actionCards}>
-          <TouchableOpacity
-            style={styles.actionCard}
+        {/* Menu Items */}
+        <View style={styles.menuContainer}>
+          <TouchableOpacity 
+            style={styles.menuItem}
             onPress={() => setIsUserTabVisible(true)}
           >
-            <MaterialIcons name="person" size={28} color="#34d399" />
-            <Text style={styles.actionCardText}>Your Tab</Text>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <View style={styles.menuIconContainer}>
+              <MaterialIcons name="person" size={24} color="#34d399" />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuText}>Your Tab</Text>
+              <Text style={styles.menuSubtext}>View your active tab details</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#e2e8f0" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
+          <TouchableOpacity 
+            style={styles.menuItem}
             onPress={() => setIsTransactionsModalVisible(true)}
           >
-            <MaterialIcons name="receipt" size={28} color="#34d399" />
-            <Text style={styles.actionCardText}>Transaction History</Text>
-            <MaterialIcons name="chevron-right" size={24} color="#ccc" />
+            <View style={styles.menuIconContainer}>
+              <MaterialIcons name="receipt" size={24} color="#34d399" />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuText}>Transaction History</Text>
+              <Text style={styles.menuSubtext}>View past transactions</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#e2e8f0" />
           </TouchableOpacity>
         </View>
 
-        {/* Footer Section */}
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             By using this app, I agree to HouseTabz{' '}
             <Text style={styles.footerLink}>Terms of Service</Text>
           </Text>
-          <Text style={styles.footerCopyright}>
+          <Text style={styles.copyright}>
             Copyright © 2024 HouseTabz, Inc • 🏠✨
           </Text>
         </View>
@@ -217,231 +215,245 @@ const ProfileModal = ({ visible, onClose }) => {
   };
 
   return (
-    <ModalComponent visible={visible} onClose={onClose} fullScreen={true}>
-      <View style={styles.container}>
-        <View style={styles.gradientHeader} />
-        {renderContent()}
+    <ModalComponent 
+      visible={visible} 
+      onClose={onClose} 
+      fullScreen={true}
+      title="Profile"
+      backgroundColor="#ffffff"
+    >
+      {renderContent()}
 
-        {/* Nested Modals */}
-        <ModalComponent
-          visible={isUserTabVisible}
-          onClose={() => setIsUserTabVisible(false)}
-        >
-          <UserTabModal user={userData} />
-        </ModalComponent>
+      {/* Nested Modals */}
+      <ModalComponent
+        visible={isUserTabVisible}
+        onClose={() => setIsUserTabVisible(false)}
+        title="Your Tab"
+      >
+        <UserTabModal user={userData} />
+      </ModalComponent>
 
-        <ModalComponent
-          visible={isTransactionsModalVisible}
-          onClose={() => setIsTransactionsModalVisible(false)}
-        >
-          <UserTransactionsModal user={userData} />
-        </ModalComponent>
-      </View>
+      <ModalComponent
+        visible={isTransactionsModalVisible}
+        onClose={() => setIsTransactionsModalVisible(false)}
+        title="Transaction History"
+      >
+        <UserTransactionsModal user={userData} />
+      </ModalComponent>
     </ModalComponent>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
+  scrollContent: {
+    flexGrow: 1,
   },
-  gradientHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 150,
-    backgroundColor: '#34d399',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    opacity: 0.8,
-  },
-  centerContainer: {
+  loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  scrollContent: {
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  profileHeader: {
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    marginTop: 60,
-    marginBottom: 32,
+    padding: 20,
   },
-  avatarContainer: {
-    position: 'relative',
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
     marginBottom: 16,
+    textAlign: 'center',
   },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: 'white',
-    backgroundColor: '#e5e7eb',
-  },
-  editIcon: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
+  retryButton: {
     backgroundColor: '#34d399',
-    borderRadius: 15,
-    padding: 6,
-    elevation: 2,
-  },
-  nameText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  houseBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    color: '#64748b',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
     fontWeight: '600',
   },
-  statsContainer: {
+  profileInfoContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    marginBottom: 32,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    width: width * 0.42,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+  avatarSection: {
     position: 'relative',
+    marginRight: 16,
   },
-  statValue: {
-    fontSize: 24,
+  avatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  editButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#34d399',
+    borderRadius: 12,
+    padding: 4,
+  },
+  userInfoSection: {
+    flex: 1,
+  },
+  username: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#1e293b',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
   },
-  statLabel: {
+  houseNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  houseIcon: {
+    marginRight: 4,
+  },
+  houseName: {
     fontSize: 14,
     color: '#64748b',
   },
-  statIcon: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  progressContainer: {
+  statCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'white',
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statTextContainer: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 2,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Sigmar-Regular',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  progressSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   progressTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1e293b',
   },
-  progressSubtitle: {
-    fontSize: 14,
+  progressValue: {
+    fontSize: 12,
     color: '#64748b',
   },
-  progressBarBackground: {
-    height: 10,
+  progressBarContainer: {
+    height: 6,
     backgroundColor: '#e2e8f0',
-    borderRadius: 5,
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  progressBar: {
     height: '100%',
-    borderRadius: 5,
+    backgroundColor: '#34d399',
+    borderRadius: 3,
   },
-  actionCards: {
-    paddingHorizontal: 24,
+  menuContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
-  actionCard: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
     elevation: 2,
   },
-  actionCardText: {
+  menuIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f8fafc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  menuTextContainer: {
     flex: 1,
+  },
+  menuText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1e293b',
-    marginLeft: 16,
+    marginBottom: 4,
+  },
+  menuSubtext: {
+    fontSize: 14,
+    color: '#64748b',
   },
   footer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#64748b',
     textAlign: 'center',
-    lineHeight: 18,
+    marginBottom: 8,
   },
   footerLink: {
     color: '#34d399',
-    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
-  footerCopyright: {
+  copyright: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#34d399',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+    color: '#94a3b8',
+  }
 });
 
 export default ProfileModal;

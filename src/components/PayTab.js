@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const queryClient = useQueryClient();
@@ -97,8 +98,9 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       
       console.log('Sending payment request with:', { ...paymentRequest, idempotencyKey });
       
-      const response = await axios.post(
-        'http://localhost:3004/api/payments/batch',
+      // Use apiClient instead of axios
+      const response = await apiClient.post(
+        '/api/payments/batch',
         paymentRequest,
         { headers: { 'idempotency-key': idempotencyKey } }
       );
@@ -123,7 +125,18 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         [{ text: "OK" }]
       );
     } catch (error) {
-      // error handling remains the same
+      console.error('Payment processing error:', error);
+      
+      let errorMessage = 'An error occurred while processing your payment.';
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      Alert.alert(
+        "Payment Failed",
+        errorMessage,
+        [{ text: "OK" }]
+      );
     } finally {
       setIsProcessingPayment(false);
       setShowConfirmation(false);

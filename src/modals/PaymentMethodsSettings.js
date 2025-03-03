@@ -7,26 +7,49 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
+  BackHandler
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useAuth } from '../context/AuthContext';
+import ModalComponent from '../components/ModalComponent';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3004';
 
-const PaymentMethodsSettings = ({ onClose }) => {
+const PaymentMethodsSettings = ({ visible, onClose }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { user } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [localVisible, setLocalVisible] = useState(visible);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (visible) {
+        console.log('Hardware back button pressed - closing modal');
+        handleClose();
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [visible]);
+
+  // Sync local visible state with prop
+  useEffect(() => {
+    setLocalVisible(visible);
+  }, [visible]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && visible) {
       fetchPaymentMethods();
     }
-  }, [user?.id]);
+  }, [user?.id, visible]);
 
   const fetchPaymentMethods = async () => {
     try {
@@ -35,12 +58,29 @@ const PaymentMethodsSettings = ({ onClose }) => {
         return;
       }
 
+      setLoading(true);
       const response = await axios.get(`${API_URL}/api/payment-methods`);
       setPaymentMethods(response.data.paymentMethods || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       Alert.alert('Error', 'Failed to fetch payment methods');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    console.log('handleClose called - attempting to close modal');
+    // First set our local state
+    setLocalVisible(false);
+    
+    // Add a small delay
+    setTimeout(() => {
+      // Then call the parent's onClose
+      if (typeof onClose === 'function') {
+        onClose();
+      }
+    }, 50);
   };
 
   const handleAddPaymentMethod = async () => {
@@ -138,22 +178,16 @@ const PaymentMethodsSettings = ({ onClose }) => {
     );
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>Payment Methods</Text>
- 
-    </View>
-  );
-
   const renderPaymentMethod = (method) => (
     <View key={method.id} style={styles.methodCard}>
       <View style={styles.methodLeft}>
-        <MaterialIcons 
-          name={method.type === 'bank' ? 'account-balance' : 'credit-card'} 
-          size={20} 
-          color="#34d399" 
-          style={styles.icon}
-        />
+        <View style={styles.iconContainer}>
+          <MaterialIcons 
+            name={method.type === 'bank' ? 'account-balance' : 'credit-card'} 
+            size={20} 
+            color="#34d399" 
+          />
+        </View>
         <View>
           <Text style={styles.methodTitle}>
             {method.type === 'bank'
@@ -193,10 +227,8 @@ const PaymentMethodsSettings = ({ onClose }) => {
     </View>
   );
 
-  return (
+  const content = (
     <View style={styles.container}>
-      {renderHeader()}
-      
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -209,7 +241,12 @@ const PaymentMethodsSettings = ({ onClose }) => {
           </View>
           
           {paymentMethods.length > 0 ? (
-            paymentMethods.map(method => method.isDefault && renderPaymentMethod(method))
+            paymentMethods.some(method => method.isDefault) ? 
+              paymentMethods.map(method => method.isDefault && renderPaymentMethod(method)) :
+              <View style={styles.emptyState}>
+                <MaterialIcons name="payment" size={40} color="#e2e8f0" />
+                <Text style={styles.emptyText}>No default method set</Text>
+              </View>
           ) : (
             <View style={styles.emptyState}>
               <MaterialIcons name="payment" size={40} color="#e2e8f0" />
@@ -232,9 +269,17 @@ const PaymentMethodsSettings = ({ onClose }) => {
               <Text style={styles.emptySubtext}>Add a payment method to get started</Text>
             </View>
           ) : (
-            paymentMethods.map(method => !method.isDefault && renderPaymentMethod(method))
+            paymentMethods.filter(method => !method.isDefault).length > 0 ? 
+              paymentMethods.map(method => !method.isDefault && renderPaymentMethod(method)) :
+              <View style={styles.emptyState}>
+                <MaterialIcons name="credit-card-off" size={40} color="#e2e8f0" />
+                <Text style={styles.emptyText}>No additional methods</Text>
+              </View>
           )}
         </View>
+        
+        {/* Footer space for floating button */}
+        <View style={styles.footerSpace} />
       </ScrollView>
 
       {/* Add Button */}
@@ -242,8 +287,9 @@ const PaymentMethodsSettings = ({ onClose }) => {
         style={[styles.addButton, (loading || processing) && styles.addButtonDisabled]}
         onPress={handleAddPaymentMethod}
         disabled={loading || processing}
+        activeOpacity={0.8}
       >
-        {loading ? (
+        {processing ? (
           <ActivityIndicator color="white" />
         ) : (
           <>
@@ -254,49 +300,52 @@ const PaymentMethodsSettings = ({ onClose }) => {
       </TouchableOpacity>
     </View>
   );
+
+  return (
+    <ModalComponent 
+      visible={localVisible} 
+      onClose={handleClose}
+      title="Payment Methods"
+      backgroundColor="#dff6f0"
+      fullScreen={true}
+      useBackArrow={true}
+    >
+      {content}
+    </ModalComponent>
+  );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#dff6f0",
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: "#dff6f0",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
- 
   scrollContainer: {
     paddingHorizontal: 16,
+    paddingTop: 30, // Added extra padding to push content down
     paddingBottom: 100,
+    backgroundColor: "#dff6f0",
   },
   section: {
-    marginTop: 24,
-    marginBottom: 16,
+    marginBottom: 24,
+    backgroundColor: "#dff6f0",
   },
   sectionHeader: {
     marginBottom: 16,
+    backgroundColor: "#dff6f0",
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
     marginBottom: 4,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
   },
   sectionSubtitle: {
     fontSize: 13,
@@ -323,18 +372,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f8fafc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   methodRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  icon: {
-    marginRight: 12,
-  },
   methodTitle: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1e293b',
+    marginBottom: 4,
   },
   methodSubtitle: {
     fontSize: 13,
@@ -373,11 +429,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
     color: '#64748b',
-    marginTop: 8,
+    marginTop: 12,
+    fontWeight: '500',
   },
   emptySubtext: {
     fontSize: 13,
@@ -392,26 +450,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     padding: 16,
     backgroundColor: '#34d399',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
     position: 'absolute',
     bottom: 16,
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
   },
   addButtonText: {
     color: 'white',
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
   },
   addButtonDisabled: {
     opacity: 0.7,
-    backgroundColor: '#86efac',
   },
+  footerSpace: {
+    height: 80,
+  }
 });
 
 export default PaymentMethodsSettings;

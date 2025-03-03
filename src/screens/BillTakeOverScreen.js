@@ -14,10 +14,11 @@ import {
   TextInput
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import FormField from '../components/billTakeOver/FormField';
 import TakeoverSuccess from '../components/billTakeOver/TakeoverSuccess';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -165,7 +166,8 @@ const BillTakeoverScreen = ({ navigation }) => {
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
       };
 
-      const response = await axios.post("http://localhost:3004/api/take-over-requests", payload);
+      // Use apiClient with relative path
+      const response = await apiClient.post("/api/take-over-requests", payload);
       setSubmittedData(response.data);
       setShowSuccess(true);
     } catch (error) {

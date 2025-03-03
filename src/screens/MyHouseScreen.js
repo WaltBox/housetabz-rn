@@ -13,8 +13,9 @@ import {
   Clipboard,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+// Import apiClient instead of axios
+import apiClient from "../config/api";
 
 // Existing modals/components
 import ModalComponent from "../components/ModalComponent";
@@ -82,9 +83,8 @@ const HouseTabzScreen = () => {
         setLoading(false);
         return;
       }
-      const response = await axios.get(
-        `http://localhost:3004/api/houses/${user.houseId}`
-      );
+      // Use apiClient with relative path
+      const response = await apiClient.get(`/api/houses/${user.houseId}`);
       setHouse(response.data);
       setError(null);
     } catch (err) {
@@ -344,4 +344,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HouseTabzScreen;
+export default HouseTabzScreen

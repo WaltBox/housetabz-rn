@@ -83,7 +83,7 @@ const FloatingButton = () => {
 };
 
 const TabNavigator = () => (
-  <View style={{ flex: 1 }}>
+  <View style={{ flex: 1, backgroundColor: '#dff6f0' }}>
     <TopBar />
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -103,6 +103,13 @@ const TabNavigator = () => (
         headerShown: false,
         tabBarActiveTintColor: '#34d399',
         tabBarInactiveTintColor: 'gray',
+        tabBarStyle: { 
+          backgroundColor: '#dff6f0',
+          elevation: 0,
+          shadowOpacity: 0,
+          borderTopWidth: 2,
+          borderTopColor: 'white',
+        },
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardStack} />

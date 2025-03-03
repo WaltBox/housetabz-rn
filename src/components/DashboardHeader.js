@@ -19,10 +19,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    elevation: 3,
+    backgroundColor: '#dff6f0',
+    borderBottomWidth: 0, // Removed the border
+    elevation: 0, // Removed elevation shadow
   },
   headerTitle: {
     fontSize: 22,

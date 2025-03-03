@@ -7,12 +7,13 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import PayTab from '../components/PayTab';
 import MethodsTab from '../components/MethodsTab';
 import HistoryTab from '../components/HistoryTab';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const TABS = {
   PAY: 'pay',
@@ -45,7 +46,8 @@ const BillingScreen = () => {
         console.error('No authenticated user found');
         return;
       }
-      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}`);
+      // Use apiClient with relative path
+      const response = await apiClient.get(`/api/users/${authUser.id}`);
       setUser(response.data);
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -60,7 +62,8 @@ const BillingScreen = () => {
       
       // Use the new endpoint for unpaid charges
       console.log('Fetching unpaid charges...');
-      const response = await axios.get(`http://localhost:3004/api/users/${authUser.id}/charges/unpaid`);
+      // Use apiClient with relative path
+      const response = await apiClient.get(`/api/users/${authUser.id}/charges/unpaid`);
       console.log(`Found ${response.data.length} unpaid charges`);
       setCharges(response.data);
     } catch (error) {
@@ -69,7 +72,8 @@ const BillingScreen = () => {
       // Fallback to all charges endpoint
       try {
         console.log('Trying fallback to all charges...');
-        const fallbackResponse = await axios.get(`http://localhost:3004/api/users/${authUser.id}/charges`);
+        // Use apiClient with relative path
+        const fallbackResponse = await apiClient.get(`/api/users/${authUser.id}/charges`);
         
         // Filter out paid and processing charges client-side
         const unpaidCharges = fallbackResponse.data.filter(
@@ -93,7 +97,8 @@ const BillingScreen = () => {
   const fetchPaymentMethods = async () => {
     try {
       if (!authUser?.id) return;
-      const response = await axios.get(`http://localhost:3004/api/payment-methods`);
+      // Use apiClient with relative path
+      const response = await apiClient.get(`/api/payment-methods`);
       const methods = response.data.paymentMethods || [];
       setPaymentMethods(methods);
       setDefaultMethod(methods.find(method => method.isDefault));

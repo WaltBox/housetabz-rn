@@ -7,20 +7,24 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Switch,
-  Alert 
+  Alert,
+  SafeAreaView,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
-import ProfileModal from './ProfileModal'; // Import the ProfileModal
+import ProfileModal from './ProfileModal';
+import PaymentMethodsSettings from './PaymentMethodsSettings';
 
 const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [autopay, setAutopay] = useState(false);
-  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false); // Add state for ProfileModal visibility
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
 
   const SettingsSection = ({ title, children }) => (
     <View style={styles.section}>
@@ -64,16 +68,21 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
     </TouchableOpacity>
   );
 
-  // Updated to open the ProfileModal instead of navigating
+  // Close the settings modal and open the ProfileModal after a delay
   const handleOpenProfileModal = () => {
-    // Close the settings modal
-    if (onClose && typeof onClose === 'function') {
-      onClose();
-    }
-    
-    // Open the profile modal after a small delay
+    onClose();
     setTimeout(() => {
       setIsProfileModalVisible(true);
+    }, 300);
+  };
+
+  // Close settings modal and navigate to Payment Methods modal
+  const handleOpenPaymentMethodsModal = () => {
+    onClose();
+    setTimeout(() => {
+      if (onNavigateToPaymentMethods && typeof onNavigateToPaymentMethods === 'function') {
+        onNavigateToPaymentMethods();
+      }
     }, 300);
   };
 
@@ -101,7 +110,22 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
   
   return (
     <>
-      <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={onClose}
+              hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
+            >
+              <MaterialIcons name="close" size={28} color="#64748b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Settings</Text>
+            <View style={styles.headerPlaceholder} />
+          </View>
+        </View>
+        
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -119,7 +143,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
               icon="credit-card"
               title="Payment Methods"
               subtitle="Manage connected accounts"
-              onPress={onNavigateToPaymentMethods}
+              onPress={handleOpenPaymentMethodsModal}
             />
             <SettingsRow
               icon="autorenew"
@@ -210,8 +234,10 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.footerSpace} />
         </ScrollView>
-      </View>
+      </SafeAreaView>
 
       {/* Profile Modal */}
       <ProfileModal 
@@ -227,15 +253,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
+  headerContainer: {
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  headerPlaceholder: {
+    width: 38,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingVertical: 16,
+    paddingTop: 40,
+    paddingBottom: 40,
     paddingHorizontal: 20,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 35,
   },
   sectionTitle: {
     fontSize: 13,
@@ -313,6 +367,9 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     letterSpacing: -0.2,
   },
+  footerSpace: {
+    height: 60,
+  }
 });
 
 export default SettingsModal;

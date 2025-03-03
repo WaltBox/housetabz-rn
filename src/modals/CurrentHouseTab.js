@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from 'axios';
 import { useAuth } from "../context/AuthContext";
+// Import apiClient instead of axios
+import apiClient from "../config/api";
 
 const getDueDateStatus = (dueDate) => {
   if (!dueDate) return { color: '#64748b', label: 'No due date' };
@@ -87,7 +88,8 @@ const CurrentHouseTab = ({ house }) => {
   useEffect(() => {
     const fetchBills = async () => {
       try {
-        const response = await axios.get(`http://localhost:3004/api/houses/${house.id}/bills`);
+        // Use apiClient with relative path
+        const response = await apiClient.get(`/api/houses/${house.id}/bills`);
         setBills(response.data);
         
         const total = response.data.reduce((sum, bill) => {

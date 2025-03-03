@@ -8,7 +8,8 @@ import {
   Animated,
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from 'axios';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const UserTransactionsModal = ({ user }) => {
   const [payments, setPayments] = useState([]);
@@ -22,8 +23,9 @@ const UserTransactionsModal = ({ user }) => {
 
   const fetchPaymentHistory = async () => {
     try {
-      const response = await axios.get(
-        `http://localhost:3004/api/users/${user.id}/payments`
+      // Use apiClient with relative path
+      const response = await apiClient.get(
+        `/api/users/${user.id}/payments`
       );
 
       // Sort payments by date (most recent first)

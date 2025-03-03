@@ -12,7 +12,7 @@ import LoadingScreen from '../screens/LoadingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
-import ProfileScreen from '../screens/ProfileScreen';
+
 
 
 import DashboardScreen from '../screens/DashboardScreen';
@@ -58,7 +58,7 @@ const MainStack = () => (
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
       <Stack.Screen name="InAppBrowser" component={InAppBrowser} />
-      <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+    
      
       
       {/* Add Bill Takeover Screen */}

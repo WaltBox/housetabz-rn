@@ -10,10 +10,11 @@ import {
   Animated
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import UberStyleFormField from './FormField';
 import ServiceTypeSelector from './ServiceTypeSelector';
+// Import apiClient instead of axios
+import apiClient from '../../config/api';
 
 const TakeoverFlow = ({ onSuccess, onCancel }) => {
   const { user } = useAuth();
@@ -146,7 +147,8 @@ const TakeoverFlow = ({ onSuccess, onCancel }) => {
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
       };
 
-      const response = await axios.post("http://localhost:3004/api/take-over-requests", payload);
+      // Use apiClient instead of axios with the relative path
+      const response = await apiClient.post("/api/take-over-requests", payload);
       
       if (onSuccess) {
         onSuccess(response.data);

@@ -1,9 +1,10 @@
 // SpecialDeals.js
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
-import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85; // Use the same width as TaskSection
@@ -17,7 +18,8 @@ const SpecialDeals = () => {
   useEffect(() => {
     const fetchDeals = async () => {
       try {
-        const response = await axios.get('http://localhost:3004/api/deals');
+        // Use apiClient with relative path instead of axios with absolute URL
+        const response = await apiClient.get('/api/deals');
         setDeals(response.data.deals || []);
       } catch (error) {
         console.error('Error fetching deals:', error);

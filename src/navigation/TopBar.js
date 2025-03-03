@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
 import UserFeedbackModal from '../modals/UserFeedbackModal';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const TopBar = () => {
   const { user: authUser } = useAuth();
@@ -20,39 +21,38 @@ const TopBar = () => {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   // Fetch notifications
- // Fetch notifications
-// Fetch notifications
-const fetchNotifications = async () => {
-  if (!authUser?.id) {
-    console.log('No authenticated user found for notifications');
-    return;
-  }
-
-  try {
-    const response = await axios.get(
-      `http://localhost:3004/api/users/${authUser.id}/notifications`
-    );
-    const unread = Array.isArray(response.data) ? 
-      response.data.some(notification => !notification.isRead) : 
-      false;
-    setHasUnreadNotifications(unread);
-  } catch (err) {
-    // Check if this is the specific "no notifications" error
-    if (err.response && 
-        err.response.status === 404 && 
-        err.response.data && 
-        err.response.data.message === "No notifications found for this user.") {
-      console.log('User has no notifications');
-      // This is normal behavior, not an error
-    } else {
-      // This is an actual error with the API
-      console.log(`Notifications error: ${err.message}`);
+  const fetchNotifications = async () => {
+    if (!authUser?.id) {
+      console.log('No authenticated user found for notifications');
+      return;
     }
-    
-    // Either way, ensure we're not showing a notification badge
-    setHasUnreadNotifications(false);
-  }
-};
+
+    try {
+      // Use apiClient with relative path
+      const response = await apiClient.get(
+        `/api/users/${authUser.id}/notifications`
+      );
+      const unread = Array.isArray(response.data) ? 
+        response.data.some(notification => !notification.isRead) : 
+        false;
+      setHasUnreadNotifications(unread);
+    } catch (err) {
+      // Check if this is the specific "no notifications" error
+      if (err.response && 
+          err.response.status === 404 && 
+          err.response.data && 
+          err.response.data.message === "No notifications found for this user.") {
+        console.log('User has no notifications');
+        // This is normal behavior, not an error
+      } else {
+        // This is an actual error with the API
+        console.log(`Notifications error: ${err.message}`);
+      }
+      
+      // Either way, ensure we're not showing a notification badge
+      setHasUnreadNotifications(false);
+    }
+  };
 
   useEffect(() => {
     if (authUser?.id) {
@@ -109,11 +109,15 @@ const fetchNotifications = async () => {
 
       {/* Settings Modal */}
       <ModalComponent
-        visible={isSettingsVisible}
-        onClose={() => setIsSettingsVisible(false)}
-      >
-        <SettingsModal onNavigateToPaymentMethods={handlePaymentMethodsOpen} />
-      </ModalComponent>
+  visible={isSettingsVisible}
+  onClose={() => setIsSettingsVisible(false)}
+>
+  <SettingsModal 
+    onClose={() => setIsSettingsVisible(false)}
+    onNavigateToPaymentMethods={handlePaymentMethodsOpen}
+  />
+</ModalComponent>
+
 
       {/* Payment Methods Modal */}
       <ModalComponent
@@ -141,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: 95,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#dff6f0',
     elevation: 4,
   },
   headerTitle: {

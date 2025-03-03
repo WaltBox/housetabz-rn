@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import axios from "axios";
 import { useAuth } from "../../context/AuthContext"; // Adjust path as needed
+// Import apiClient instead of axios
+import apiClient from "../../config/api";
 
 const InviteModalContent = ({ houseId, onCopy, onShare }) => {
   const [house, setHouse] = useState(null);
@@ -26,7 +27,8 @@ const InviteModalContent = ({ houseId, onCopy, onShare }) => {
           throw new Error("No house ID available");
         }
         
-        const response = await axios.get(`http://localhost:3004/api/houses/${id}`);
+        // Use apiClient with relative path
+        const response = await apiClient.get(`/api/houses/${id}`);
         setHouse(response.data);
       } catch (err) {
         console.error("Error fetching house data:", err);

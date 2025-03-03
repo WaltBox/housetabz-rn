@@ -9,8 +9,9 @@ import {
   Dimensions,
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +32,9 @@ const NotificationsModal = ({ onClose }) => {
     try {
       if (!user?.id) return;
       
-      const response = await axios.get(
-        `http://localhost:3004/api/users/${user.id}/notifications`
+      // Use apiClient with relative path
+      const response = await apiClient.get(
+        `/api/users/${user.id}/notifications`
       );
       
       setNotifications(response.data.map(notification => ({
@@ -76,8 +78,9 @@ const NotificationsModal = ({ onClose }) => {
   const markAsRead = async (notificationId) => {
     try {
       if (!user?.id) return;
-      await axios.patch(
-        `http://localhost:3004/api/users/${user.id}/notifications/${notificationId}`
+      // Use apiClient with relative path
+      await apiClient.patch(
+        `/api/users/${user.id}/notifications/${notificationId}`
       );
       setNotifications(prev =>
         prev.map(n =>

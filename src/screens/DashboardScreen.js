@@ -9,12 +9,12 @@ import {
   RefreshControl,
   StyleSheet,
 } from 'react-native';
-import axios from 'axios';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 import DashboardHeader from '../components/DashboardHeader';
-
 import ChargesPieChart from '../components/ChargesPieChart';
 import TaskSection from '../components/TaskSection';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
@@ -51,8 +51,8 @@ const DashboardScreen = () => {
       setError(null);
       setLoading(true);
 
-      // Fetch user data
-      const userResponse = await axios.get(`http://localhost:3004/api/users/${user.id}`);
+      // Fetch user data - Using apiClient with relative path
+      const userResponse = await apiClient.get(`/api/users/${user.id}`);
       const { balance = 0, charges = [], houseId } = userResponse.data;
       setYourBalance(balance);
 
@@ -67,15 +67,15 @@ const DashboardScreen = () => {
           : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
       setYourChargesData(processedCharges);
 
-      // Fetch tasks
-      const tasksResponse = await axios.get(`http://localhost:3004/api/tasks/user/${user.id}`);
+      // Fetch tasks - Using apiClient with relative path
+      const tasksResponse = await apiClient.get(`/api/tasks/user/${user.id}`);
       const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
       setTasks(pendingTasks);
       setTaskCount(pendingTasks.length);
 
-      // Fetch house data if available
+      // Fetch house data if available - Using apiClient with relative path
       if (houseId) {
-        const houseResponse = await axios.get(`http://localhost:3004/api/houses/${houseId}`);
+        const houseResponse = await apiClient.get(`/api/houses/${houseId}`);
         const { bills = [], users = [] } = houseResponse.data;
 
         const totalHouseBalance = bills.reduce(
@@ -134,7 +134,8 @@ const DashboardScreen = () => {
         setSelectedPaymentTask(data);
         setIsPaymentModalVisible(true);
       } else {
-        await axios.patch(`http://localhost:3004/api/tasks/${taskId}`, {
+        // Using apiClient with relative path
+        await apiClient.patch(`/api/tasks/${taskId}`, {
           response: action,
           userId: user.id,
         });
@@ -148,7 +149,8 @@ const DashboardScreen = () => {
   const handlePaymentSuccess = async () => {
     if (selectedPaymentTask) {
       try {
-        await axios.patch(`http://localhost:3004/api/tasks/${selectedPaymentTask.taskId}`, {
+        // Using apiClient with relative path
+        await apiClient.patch(`/api/tasks/${selectedPaymentTask.taskId}`, {
           response: 'accepted',
           paymentStatus: 'completed',
           userId: user.id,
@@ -192,8 +194,6 @@ const DashboardScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
         }
       >
-
-
         {/* Task Section */}
         <TaskSection
           tasks={tasks}
@@ -202,9 +202,6 @@ const DashboardScreen = () => {
           handleTaskAction={handleTaskAction}
           handleScroll={handleScroll}
         />
-
-        
-   
 
         {/* Charts */}
         <ChargesPieChart
@@ -240,10 +237,12 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dff1f0',
+    backgroundColor: '#dff6f0',
+    borderWidth: 0,
   },
   scrollContent: {
     paddingVertical: 24,
+    borderWidth: 0,
   },
   centerContainer: {
     flex: 1,
@@ -251,6 +250,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#dff6f0',
     paddingHorizontal: 24,
+    borderWidth: 0,
   },
   loadingText: {
     marginTop: 12,
@@ -280,7 +280,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 24,
     justifyContent: 'space-between',
+    borderWidth: 0,
   },
 });
 
-export default DashboardScreen;
+export default DashboardScreen

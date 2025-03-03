@@ -12,10 +12,11 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const CreateHouseScreen = ({ navigation }) => {
   const [houseData, setHouseData] = useState({
@@ -36,7 +37,8 @@ const CreateHouseScreen = ({ navigation }) => {
     try {
       setLoading(true);
       const payload = { ...houseData, creator_id: user.id };
-      const response = await axios.post('http://localhost:3004/api/houses', payload);
+      // Use apiClient with relative path
+      const response = await apiClient.post('/api/houses', payload);
       const createdHouse = response.data.house;
       
       await updateUserHouse(createdHouse.id);

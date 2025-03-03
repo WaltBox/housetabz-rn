@@ -10,7 +10,8 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import axios from 'axios';
+// Import apiClient instead of axios
+import apiClient from '../config/api';
 
 const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,9 +51,10 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess }) => {
           throw new Error('Missing service request data');
         }
 
+        // Use apiClient with Promise.all for parallel requests
         const [methodsResponse, bundleResponse] = await Promise.all([
-          axios.get('http://localhost:3004/api/payment-methods'),
-          axios.get(`http://localhost:3004/api/service-request-bundle/${serviceRequestBundleId}`)
+          apiClient.get('/api/payment-methods'),
+          apiClient.get(`/api/service-request-bundle/${serviceRequestBundleId}`)
         ]);
 
         const methods = methodsResponse.data?.paymentMethods || [];
@@ -350,6 +352,7 @@ const ErrorModal = ({ visible, error, onClose }) => (
     </View>
   </Modal>
 );
+
 
 
 // [Styles remain exactly the same as provided in your snippet]
