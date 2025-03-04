@@ -7,7 +7,6 @@ import SettingsModal from '../modals/SettingsModal';
 import NotificationsModal from '../modals/NotificationsModal';
 import UserFeedbackModal from '../modals/UserFeedbackModal';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
-// Import apiClient instead of axios
 import apiClient from '../config/api';
 
 const TopBar = () => {
@@ -28,28 +27,22 @@ const TopBar = () => {
     }
 
     try {
-      // Use apiClient with relative path
-      const response = await apiClient.get(
-        `/api/users/${authUser.id}/notifications`
-      );
-      const unread = Array.isArray(response.data) ? 
-        response.data.some(notification => !notification.isRead) : 
-        false;
+      const response = await apiClient.get(`/api/users/${authUser.id}/notifications`);
+      const unread = Array.isArray(response.data)
+        ? response.data.some(notification => !notification.isRead)
+        : false;
       setHasUnreadNotifications(unread);
     } catch (err) {
-      // Check if this is the specific "no notifications" error
-      if (err.response && 
-          err.response.status === 404 && 
-          err.response.data && 
-          err.response.data.message === "No notifications found for this user.") {
+      if (
+        err.response &&
+        err.response.status === 404 &&
+        err.response.data &&
+        err.response.data.message === "No notifications found for this user."
+      ) {
         console.log('User has no notifications');
-        // This is normal behavior, not an error
       } else {
-        // This is an actual error with the API
         console.log(`Notifications error: ${err.message}`);
       }
-      
-      // Either way, ensure we're not showing a notification badge
       setHasUnreadNotifications(false);
     }
   };
@@ -57,16 +50,14 @@ const TopBar = () => {
   useEffect(() => {
     if (authUser?.id) {
       fetchNotifications();
-
-      // Optional: Polling to check for new notifications every 30 seconds
       const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval); // Cleanup interval on component unmount
+      return () => clearInterval(interval);
     }
   }, [authUser?.id]);
 
   const handlePaymentMethodsOpen = () => {
-    setIsSettingsVisible(false); // Close settings modal
-    setIsPaymentMethodsVisible(true); // Open payment methods modal
+    setIsSettingsVisible(false);
+    setIsPaymentMethodsVisible(true);
   };
 
   return (
@@ -80,15 +71,8 @@ const TopBar = () => {
       <View style={styles.iconContainer}>
         <TouchableOpacity onPress={() => setIsNotificationsVisible(true)}>
           <View style={styles.notificationIconContainer}>
-            <Icon
-              name="notifications-outline"
-              size={24}
-              color="#34d399"
-              style={styles.icon}
-            />
-            {hasUnreadNotifications && (
-              <View style={styles.notificationBadge} />
-            )}
+            <Icon name="notifications-outline" size={24} color="#34d399" style={styles.icon} />
+            {hasUnreadNotifications && <View style={styles.notificationBadge} />}
           </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setIsFeedbackVisible(true)}>
@@ -103,36 +87,39 @@ const TopBar = () => {
       <ModalComponent
         visible={isNotificationsVisible}
         onClose={() => setIsNotificationsVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <NotificationsModal onMarkAsRead={fetchNotifications} />
+        <NotificationsModal 
+          onClose={() => setIsNotificationsVisible(false)} 
+          onMarkAsRead={fetchNotifications} 
+        />
       </ModalComponent>
 
       {/* Settings Modal */}
       <ModalComponent
-  visible={isSettingsVisible}
-  onClose={() => setIsSettingsVisible(false)}
->
-  <SettingsModal 
-    onClose={() => setIsSettingsVisible(false)}
-    onNavigateToPaymentMethods={handlePaymentMethodsOpen}
-  />
-</ModalComponent>
-
+        visible={isSettingsVisible}
+        onClose={() => setIsSettingsVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
+      >
+        <SettingsModal onClose={() => setIsSettingsVisible(false)} />
+      </ModalComponent>
 
       {/* Payment Methods Modal */}
-      <ModalComponent
+      <PaymentMethodsSettings 
         visible={isPaymentMethodsVisible}
         onClose={() => setIsPaymentMethodsVisible(false)}
-      >
-        <PaymentMethodsSettings />
-      </ModalComponent>
+      />
 
       {/* User Feedback Modal */}
       <ModalComponent
         visible={isFeedbackVisible}
         onClose={() => setIsFeedbackVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <UserFeedbackModal />
+        <UserFeedbackModal onClose={() => setIsFeedbackVisible(false)} />
       </ModalComponent>
     </View>
   );

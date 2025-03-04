@@ -192,9 +192,9 @@ const styles = StyleSheet.create({
   // Tab Navigation
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: '#dff6f0',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: 'white',
   },
   tab: {
     flex: 1,

@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-// Import apiClient instead of axios
 import apiClient from "../config/api";
 
 // Existing modals/components
@@ -22,7 +21,6 @@ import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
 import HouseServicesModal from "../modals/HouseServicesModal";
-
 
 // New components
 import HouseHeader from "../components/myhouse/HouseHeader";
@@ -34,7 +32,6 @@ import InviteModalContent from "../components/myhouse/InviteModalContent";
 
 const { width } = Dimensions.get("window");
 
-// TabNavigation component that was missing
 
 
 const HouseTabzScreen = () => {
@@ -83,7 +80,6 @@ const HouseTabzScreen = () => {
         setLoading(false);
         return;
       }
-      // Use apiClient with relative path
       const response = await apiClient.get(`/api/houses/${user.houseId}`);
       setHouse(response.data);
       setError(null);
@@ -187,23 +183,44 @@ const HouseTabzScreen = () => {
           onShare={handleShare}
         />
       </ModalComponent>
+      
+      {/* Current Tab Modal */}
       <ModalComponent
         visible={isCurrentTabVisible}
         onClose={() => setIsCurrentTabVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <CurrentHouseTab house={house} />
+        <CurrentHouseTab 
+          house={house} 
+          onClose={() => setIsCurrentTabVisible(false)} 
+        />
       </ModalComponent>
+      
+      {/* Paid Tab Modal */}
       <ModalComponent
         visible={isPaidTabVisible}
         onClose={() => setIsPaidTabVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <PaidHouseTabz house={house} />
+        <PaidHouseTabz 
+          house={house} 
+          onClose={() => setIsPaidTabVisible(false)} 
+        />
       </ModalComponent>
+      
+      {/* House Services Modal */}
       <ModalComponent
         visible={isServicesVisible}
         onClose={() => setIsServicesVisible(false)}
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <HouseServicesModal house={house} />
+        <HouseServicesModal 
+          house={house} 
+          onClose={() => setIsServicesVisible(false)} 
+        />
       </ModalComponent>
 
       {showTooltip && (
@@ -344,4 +361,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HouseTabzScreen
+export default HouseTabzScreen;

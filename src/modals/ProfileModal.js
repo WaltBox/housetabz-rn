@@ -9,7 +9,9 @@ import {
   RefreshControl,
   StyleSheet,
   Dimensions,
-  Platform
+  Platform,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +31,7 @@ const DEFAULT_USER = {
   charges: [],
 };
 
-const ProfileModal = ({ visible, onClose }) => {
+const ProfileModal = ({ visible = false, onClose }) => {
   const { user: authUser } = useAuth();
   const [userData, setUserData] = useState(DEFAULT_USER);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,6 @@ const ProfileModal = ({ visible, onClose }) => {
       setLoading(false);
       return;
     }
-
     try {
       const response = await apiClient.get(`/api/users/${authUser.id}`);
       setUserData({
@@ -86,10 +87,10 @@ const ProfileModal = ({ visible, onClose }) => {
         </View>
       );
     }
-
     if (error) {
       return (
         <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color="#ef4444" />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchUserData}>
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -97,7 +98,6 @@ const ProfileModal = ({ visible, onClose }) => {
         </View>
       );
     }
-
     return (
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -174,6 +174,7 @@ const ProfileModal = ({ visible, onClose }) => {
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => setIsUserTabVisible(true)}
+            activeOpacity={0.7}
           >
             <View style={styles.menuIconContainer}>
               <MaterialIcons name="person" size={24} color="#34d399" />
@@ -182,12 +183,13 @@ const ProfileModal = ({ visible, onClose }) => {
               <Text style={styles.menuText}>Your Tab</Text>
               <Text style={styles.menuSubtext}>View your active tab details</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#e2e8f0" />
+            <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => setIsTransactionsModalVisible(true)}
+            activeOpacity={0.7}
           >
             <View style={styles.menuIconContainer}>
               <MaterialIcons name="receipt" size={24} color="#34d399" />
@@ -196,7 +198,7 @@ const ProfileModal = ({ visible, onClose }) => {
               <Text style={styles.menuText}>Transaction History</Text>
               <Text style={styles.menuSubtext}>View past transactions</Text>
             </View>
-            <MaterialIcons name="chevron-right" size={24} color="#e2e8f0" />
+            <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
           </TouchableOpacity>
         </View>
 
@@ -219,32 +221,86 @@ const ProfileModal = ({ visible, onClose }) => {
       visible={visible} 
       onClose={onClose} 
       fullScreen={true}
-      title="Profile"
-      backgroundColor="#ffffff"
+      backgroundColor="#dff6f0"
     >
-      {renderContent()}
+      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={onClose}
+              hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
+            >
+              <MaterialIcons name="close" size={28} color="#64748b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile</Text>
+            <View style={styles.headerPlaceholder} />
+          </View>
+        </View>
+        
+        {renderContent()}
+      </SafeAreaView>
 
       {/* Nested Modals */}
       <ModalComponent
         visible={isUserTabVisible}
         onClose={() => setIsUserTabVisible(false)}
-        title="Your Tab"
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <UserTabModal user={userData} />
+        <UserTabModal 
+          user={userData} 
+          onClose={() => setIsUserTabVisible(false)}
+        />
       </ModalComponent>
 
       <ModalComponent
         visible={isTransactionsModalVisible}
         onClose={() => setIsTransactionsModalVisible(false)}
-        title="Transaction History"
+        fullScreen={true}
+        backgroundColor="#dff6f0"
       >
-        <UserTransactionsModal user={userData} />
+        <UserTransactionsModal 
+          user={userData}
+          onClose={() => setIsTransactionsModalVisible(false)}
+        />
       </ModalComponent>
     </ModalComponent>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#dff6f0",
+  },
+  headerContainer: {
+    backgroundColor: "#dff6f0",
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1e293b',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  headerPlaceholder: {
+    width: 28,
+  },
   scrollContent: {
     flexGrow: 1,
   },
@@ -263,7 +319,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#ef4444',
-    marginBottom: 16,
+    marginVertical: 16,
     textAlign: 'center',
   },
   retryButton: {
@@ -333,23 +389,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(203, 213, 225, 0.2)',
     borderRadius: 12,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 213, 225, 0.3)',
   },
   statIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
   statTextContainer: {
     flex: 1,
@@ -386,7 +439,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 6,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: 'rgba(203, 213, 225, 0.3)',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -403,21 +456,18 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(203, 213, 225, 0.2)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 213, 225, 0.3)',
   },
   menuIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(240, 253, 244, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

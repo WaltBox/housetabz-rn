@@ -18,7 +18,7 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:3004';
 
-const PaymentMethodsSettings = ({ visible, onClose }) => {
+const PaymentMethodsSettings = ({ visible = false, onClose }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { user } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -36,7 +36,6 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
       }
       return false;
     });
-
     return () => backHandler.remove();
   }, [visible]);
 
@@ -57,7 +56,6 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
         Alert.alert('Error', 'Please log in to view payment methods');
         return;
       }
-
       setLoading(true);
       const response = await axios.get(`${API_URL}/api/payment-methods`);
       setPaymentMethods(response.data.paymentMethods || []);
@@ -71,12 +69,8 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
 
   const handleClose = () => {
     console.log('handleClose called - attempting to close modal');
-    // First set our local state
     setLocalVisible(false);
-    
-    // Add a small delay
     setTimeout(() => {
-      // Then call the parent's onClose
       if (typeof onClose === 'function') {
         onClose();
       }
@@ -89,10 +83,8 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
         Alert.alert('Error', 'Please log in to add a payment method');
         return;
       }
-
       setProcessing(true);
       setLoading(true);
-
       const setupResponse = await axios.post(
         `${API_URL}/api/payment-methods/setup-intent`,
         {}
@@ -101,26 +93,22 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
       if (!clientSecret || !setupIntentId) {
         throw new Error('No client secret or setupIntentId received');
       }
-
       const initResponse = await initPaymentSheet({
         merchantDisplayName: 'HouseTabz',
         setupIntentClientSecret: clientSecret,
         allowsDelayedPaymentMethods: true,
         appearance: { colors: { primary: '#34d399' } },
       });
-
       if (initResponse.error) {
         Alert.alert('Error', initResponse.error.message);
         return;
       }
-
       const presentResponse = await presentPaymentSheet();
       if (presentResponse.error) {
         if (presentResponse.error.code === 'Canceled') return;
         Alert.alert('Error', presentResponse.error.message);
         return;
       }
-
       await axios.post(`${API_URL}/api/payment-methods/complete`, { setupIntentId });
       Alert.alert('Success', 'Payment method added successfully');
       await fetchPaymentMethods();
@@ -152,7 +140,6 @@ const PaymentMethodsSettings = ({ visible, onClose }) => {
 
   const handleDelete = async (methodId) => {
     if (!user) return;
-
     Alert.alert(
       'Remove Payment Method',
       'Are you sure you want to remove this payment method?',
@@ -328,7 +315,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingHorizontal: 16,
-    paddingTop: 30, // Added extra padding to push content down
+    paddingTop: 30,
     paddingBottom: 100,
     backgroundColor: "#dff6f0",
   },

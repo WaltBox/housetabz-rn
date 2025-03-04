@@ -255,8 +255,8 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  headerCard: { backgroundColor: '#fff', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  container: { flex: 1, backgroundColor: '#dff6f0' },
+  headerCard: { backgroundColor: '#dff6f0', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   headerSplit: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   headerSection: { flex: 1 },
   headerLabel: { fontSize: 14, color: '#64748b', marginBottom: 4, fontWeight: '500' },

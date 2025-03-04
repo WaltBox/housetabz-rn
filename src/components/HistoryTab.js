@@ -144,7 +144,7 @@ const HistoryTab = () => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: "#fff", 
+    backgroundColor: "#dff6f0", 
     padding: 16 
   },
   header: {

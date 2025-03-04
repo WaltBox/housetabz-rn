@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  SafeAreaView,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from '../context/AuthContext';
-// Import apiClient instead of axios
 import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
@@ -32,7 +34,6 @@ const NotificationsModal = ({ onClose }) => {
     try {
       if (!user?.id) return;
       
-      // Use apiClient with relative path
       const response = await apiClient.get(
         `/api/users/${user.id}/notifications`
       );
@@ -42,16 +43,9 @@ const NotificationsModal = ({ onClose }) => {
         justRead: false,
       })));
     } catch (err) {
-      // Check if this is the specific "no notifications" error
-      if (err.response && 
-          err.response.status === 404 && 
-          err.response.data && 
-          err.response.data.message === "No notifications found for this user.") {
-        console.log('User has no notifications');
-        // Set empty notifications array
+      if (err.response?.status === 404) {
         setNotifications([]);
       } else {
-        // This is an actual error with the API
         console.error('Failed to fetch notifications:', err);
         setNotifications([]);
       }
@@ -78,7 +72,6 @@ const NotificationsModal = ({ onClose }) => {
   const markAsRead = async (notificationId) => {
     try {
       if (!user?.id) return;
-      // Use apiClient with relative path
       await apiClient.patch(
         `/api/users/${user.id}/notifications/${notificationId}`
       );
@@ -106,12 +99,10 @@ const NotificationsModal = ({ onClose }) => {
       activeOpacity={0.6}
     >
       <View style={styles.notificationRow}>
-        {/* Unread indicator */}
         {!item.isRead && (
           <View style={styles.unreadIndicator} />
         )}
         
-        {/* Content */}
         <View style={styles.notificationContent}>
           <Text style={[
             styles.notificationText,
@@ -138,12 +129,11 @@ const NotificationsModal = ({ onClose }) => {
           </View>
         </View>
 
-        {/* Chevron for unread */}
         {!item.isRead && (
           <MaterialIcons 
             name="chevron-right" 
             size={20} 
-            color="#94a3b8"
+            color="#cbd5e1"
             style={styles.chevron}
           />
         )}
@@ -183,93 +173,102 @@ const NotificationsModal = ({ onClose }) => {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Inbox</Text>
-          {/* <TouchableOpacity 
-            onPress={onClose}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-          >
-            <MaterialIcons name="close" size={24} color="#64748b" />
-          </TouchableOpacity> */}
-        </View>
-
-        {/* Filters */}
-        <View style={styles.filterContainer}>
-          {['all', 'unread', 'read'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setFilter(f)}
-              style={[
-                styles.filterTab,
-                filter === f && styles.filterTabActive
-              ]}
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={onClose}
+              hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
             >
-              <Text style={[
-                styles.filterText,
-                filter === f && styles.filterTextActive
-              ]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </Text>
+              <MaterialIcons name="close" size={28} color="#64748b" />
             </TouchableOpacity>
-          ))}
+            <Text style={styles.headerTitle}>Inbox</Text>
+            <View style={styles.headerPlaceholder} />
+          </View>
+
+          <View style={styles.filterContainer}>
+            {['all', 'unread', 'read'].map((f) => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setFilter(f)}
+                style={[
+                  styles.filterTab,
+                  filter === f && styles.filterTabActive
+                ]}
+              >
+                <Text style={[
+                  styles.filterText,
+                  filter === f && styles.filterTextActive
+                ]}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* Notifications List */}
-      <FlatList
-        data={filteredNotifications}
-        renderItem={renderNotification}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={ListEmpty}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        showsVerticalScrollIndicator={false}
-      />
+        <FlatList
+          data={filteredNotifications}
+          renderItem={renderNotification}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={ListEmpty}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          showsVerticalScrollIndicator={false}
+        />
 
-      {/* Toast */}
-      {toastMessage && (
-        <Animated.View 
-          style={[styles.toast, { opacity: toastOpacity }]}
-        >
-          <MaterialIcons name="check" size={16} color="white" />
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </Animated.View>
-      )}
-    </View>
+        {toastMessage && (
+          <Animated.View 
+            style={[styles.toast, { opacity: toastOpacity }]}
+          >
+            <MaterialIcons name="check" size={16} color="white" />
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </Animated.View>
+        )}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#dff6f0",
+  },
+  headerContainer: {
+    backgroundColor: "#dff6f0",
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
   },
   header: {
-    paddingTop: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  title: {
-    fontSize: 28,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#1e293b',
+    textAlign: 'center',
     fontFamily: 'Quicksand-Bold',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  headerPlaceholder: {
+    width: 28,
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   filterTab: {
     marginRight: 24,
@@ -277,21 +276,22 @@ const styles = StyleSheet.create({
   },
   filterTabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#10b981',
+    borderBottomColor: '#34d399',
   },
   filterText: {
     fontSize: 15,
     color: '#64748b',
     fontWeight: '500',
+    fontFamily: 'Quicksand-Medium',
   },
   filterTextActive: {
     color: '#34d399',
     fontWeight: '600',
   },
   listHeader: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#dff6f0',
   },
   listHeaderText: {
     fontSize: 13,
@@ -299,24 +299,25 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    fontFamily: 'Quicksand-SemiBold',
   },
   list: {
     flexGrow: 1,
   },
   notificationItem: {
     paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    backgroundColor: 'transparent',
   },
   notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   unreadIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10b981',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#34d399',
     marginRight: 12,
   },
   notificationContent: {
@@ -324,10 +325,11 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   notificationText: {
-    fontSize: 15,
-    color: 'black',
+    fontSize: 14,
+    color: '#1e293b',
     lineHeight: 20,
     marginBottom: 4,
+    fontFamily: 'Quicksand-Medium',
   },
   notificationTextRead: {
     color: '#64748b',
@@ -342,6 +344,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     color: '#94a3b8',
+    fontFamily: 'Quicksand-Regular',
   },
   chevron: {
     marginLeft: 'auto',
@@ -349,7 +352,7 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#f1f5f9',
-    marginLeft: 16,
+    marginLeft: 20,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -363,18 +366,20 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginTop: 16,
     marginBottom: 8,
+    fontFamily: 'Quicksand-SemiBold',
   },
   emptyText: {
     fontSize: 14,
     color: '#64748b',
     textAlign: 'center',
+    fontFamily: 'Quicksand-Regular',
   },
   toast: {
     position: 'absolute',
     bottom: 24,
     left: width * 0.1,
     right: width * 0.1,
-    backgroundColor: '#10b981',
+    backgroundColor: '#34d399',
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
@@ -386,6 +391,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: 'Quicksand-Medium',
   },
 });
 

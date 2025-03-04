@@ -13,25 +13,26 @@ import {
   StatusBar
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
 import ProfileModal from './ProfileModal';
 import PaymentMethodsSettings from './PaymentMethodsSettings';
 
-const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
+const SettingsModal = ({ onClose = () => {} }) => {
   const { logout } = useAuth();
-  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [autopay, setAutopay] = useState(false);
+  
+  // Profile Modal
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  
+  // Payment Methods Modal 
+  const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
 
   const SettingsSection = ({ title, children }) => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>
-        {children}
-      </View>
+      <View style={styles.sectionContent}>{children}</View>
     </View>
   );
 
@@ -47,9 +48,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
         </View>
         <View style={styles.settingsRowText}>
           <Text style={styles.settingsRowTitle}>{title}</Text>
-          {subtitle && (
-            <Text style={styles.settingsRowSubtitle}>{subtitle}</Text>
-          )}
+          {subtitle && <Text style={styles.settingsRowSubtitle}>{subtitle}</Text>}
         </View>
       </View>
       
@@ -68,22 +67,12 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
     </TouchableOpacity>
   );
 
-  // Close the settings modal and open the ProfileModal after a delay
   const handleOpenProfileModal = () => {
-    onClose();
-    setTimeout(() => {
-      setIsProfileModalVisible(true);
-    }, 300);
+    setIsProfileModalVisible(true);
   };
 
-  // Close settings modal and navigate to Payment Methods modal
   const handleOpenPaymentMethodsModal = () => {
-    onClose();
-    setTimeout(() => {
-      if (onNavigateToPaymentMethods && typeof onNavigateToPaymentMethods === 'function') {
-        onNavigateToPaymentMethods();
-      }
-    }, 300);
+    setIsPaymentMethodsVisible(true);
   };
 
   const handleSignOut = async () => {
@@ -110,7 +99,7 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
   
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       <SafeAreaView style={styles.container}>
         <View style={styles.headerContainer}>
           <View style={styles.header}>
@@ -131,7 +120,6 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Account Section */}
           <SettingsSection title="Account Settings">
             <SettingsRow
               icon="person-outline"
@@ -155,7 +143,6 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
             />
           </SettingsSection>
 
-          {/* Preferences Section */}
           <SettingsSection title="Preferences">
             <SettingsRow
               icon="notifications-none"
@@ -183,7 +170,6 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
             />
           </SettingsSection>
 
-          {/* Support Section */}
           <SettingsSection title="Support & Legal">
             <SettingsRow
               icon="help-outline"
@@ -210,7 +196,6 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
             />
           </SettingsSection>
 
-          {/* App Section */}
           <SettingsSection title="Application">
             <SettingsRow
               icon="info-outline"
@@ -224,7 +209,6 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
             />
           </SettingsSection>
 
-          {/* Sign Out */}
           <View style={styles.signOutContainer}>
             <TouchableOpacity 
               style={styles.signOutButton}
@@ -239,10 +223,14 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Profile Modal */}
       <ProfileModal 
         visible={isProfileModalVisible}
         onClose={() => setIsProfileModalVisible(false)}
+      />
+      
+      <PaymentMethodsSettings 
+        visible={isPaymentMethodsVisible}
+        onClose={() => setIsPaymentMethodsVisible(false)}
       />
     </>
   );
@@ -251,12 +239,12 @@ const SettingsModal = ({ onNavigateToPaymentMethods, onClose = () => {} }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#dff6f0",
   },
   headerContainer: {
-    backgroundColor: '#f8fafc',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    backgroundColor: "#dff6f0",
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#d1d5db',
     paddingTop: Platform.OS === 'android' ? 40 : 20,
   },
   header: {
@@ -264,11 +252,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 20,
+    paddingVertical: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1e293b',
     textAlign: 'center',
@@ -278,55 +265,49 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   headerPlaceholder: {
-    width: 38,
+    width: 28,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 40,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 80,
+    backgroundColor: "#dff6f0",
   },
   section: {
-    marginBottom: 35,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#94a3b8',
-    marginBottom: 12,
-    letterSpacing: 0.8,
+    color: '#1e293b',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
     textTransform: 'uppercase',
   },
   sectionContent: {
-    backgroundColor: 'white',
-    borderRadius: 14,
-    overflow: 'hidden',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    // Content flows directly on the modal background.
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    backgroundColor: 'white',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    backgroundColor: "transparent",
   },
   settingsRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
+    gap: 12,
     flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#f0fdf4',
     alignItems: 'center',
     justifyContent: 'center',
@@ -335,40 +316,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingsRowTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: '#1e293b',
     letterSpacing: -0.2,
   },
   settingsRowSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94a3b8',
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: 2,
+    lineHeight: 16,
   },
   signOutContainer: {
-    marginTop: 24,
-    paddingHorizontal: 12,
+    marginTop: 20,
+    paddingHorizontal: 10,
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#fee2e2',
-    backgroundColor: '#fef2f2',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "transparent",
   },
   signOutText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#ef4444',
     letterSpacing: -0.2,
   },
   footerSpace: {
-    height: 60,
+    height: 40,
   }
 });
 
