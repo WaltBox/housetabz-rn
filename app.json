@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "housetabz-rn",
+    "name": "HouseTabz",
     "slug": "housetabz-rn",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,7 +18,13 @@
       "assets/images/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.housetabz.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to add photos to your profile",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you share them with your friends"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +37,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }

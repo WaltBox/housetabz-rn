@@ -31,10 +31,12 @@ export const API_URL = getBaseUrl();
 const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000,
+  withCredentials: true, // include cookies if that’s your auth mechanism
   headers: {
     'Content-Type': 'application/json',
   }
 });
+
 
 // Log which API URL is being used (helpful during development)
 console.log(`Using API URL: ${API_URL}`);

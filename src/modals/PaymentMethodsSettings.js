@@ -15,8 +15,8 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import axios from 'axios';
+import apiClient, { API_URL } from '../config/api';
 
-const API_URL = 'http://localhost:3004';
 
 const PaymentMethodsSettings = ({ visible = false, onClose }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -57,7 +57,7 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
         return;
       }
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/payment-methods`);
+      const response = await apiClient.get('/api/payment-methods');
       setPaymentMethods(response.data.paymentMethods || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
