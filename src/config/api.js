@@ -1,6 +1,7 @@
 // src/config/api.js
 import { Platform } from 'react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Development URLs
 const DEV_URLS = {
@@ -31,12 +32,30 @@ export const API_URL = getBaseUrl();
 const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000,
-  withCredentials: true, // include cookies if that’s your auth mechanism
+  withCredentials: true, // include cookies if that's your auth mechanism
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
+// Add a request interceptor to attach auth token
+apiClient.interceptors.request.use(
+  async (config) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    } catch (error) {
+      console.error('Error adding auth token to request:', error);
+      return config;
+    }
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Log which API URL is being used (helpful during development)
 console.log(`Using API URL: ${API_URL}`);

@@ -14,9 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
-import axios from 'axios';
-import apiClient, { API_URL } from '../config/api';
-
+import apiClient from '../config/api';
 
 const PaymentMethodsSettings = ({ visible = false, onClose }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -85,31 +83,39 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       }
       setProcessing(true);
       setLoading(true);
-      const setupResponse = await axios.post(
-        `${API_URL}/api/payment-methods/setup-intent`,
+      
+      // Use apiClient instead of axios
+      const setupResponse = await apiClient.post(
+        '/api/payment-methods/setup-intent',
         {}
       );
+      
       const { clientSecret, setupIntentId } = setupResponse.data;
       if (!clientSecret || !setupIntentId) {
         throw new Error('No client secret or setupIntentId received');
       }
+      
       const initResponse = await initPaymentSheet({
         merchantDisplayName: 'HouseTabz',
         setupIntentClientSecret: clientSecret,
         allowsDelayedPaymentMethods: true,
         appearance: { colors: { primary: '#34d399' } },
       });
+      
       if (initResponse.error) {
         Alert.alert('Error', initResponse.error.message);
         return;
       }
+      
       const presentResponse = await presentPaymentSheet();
       if (presentResponse.error) {
         if (presentResponse.error.code === 'Canceled') return;
         Alert.alert('Error', presentResponse.error.message);
         return;
       }
-      await axios.post(`${API_URL}/api/payment-methods/complete`, { setupIntentId });
+      
+      // Use apiClient instead of axios
+      await apiClient.post('/api/payment-methods/complete', { setupIntentId });
       Alert.alert('Success', 'Payment method added successfully');
       await fetchPaymentMethods();
     } catch (error) {
@@ -128,7 +134,9 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
     try {
       if (!user) return;
       setProcessing(true);
-      await axios.put(`${API_URL}/api/payment-methods/${methodId}/default`);
+      
+      // Use apiClient instead of axios
+      await apiClient.put(`/api/payment-methods/${methodId}/default`);
       await fetchPaymentMethods();
     } catch (error) {
       console.error('Error setting default payment method:', error);
@@ -151,7 +159,9 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
           onPress: async () => {
             try {
               setProcessing(true);
-              await axios.delete(`${API_URL}/api/payment-methods/${methodId}`);
+              
+              // Use apiClient instead of axios
+              await apiClient.delete(`/api/payment-methods/${methodId}`);
               await fetchPaymentMethods();
             } catch (error) {
               console.error('Error removing payment method:', error);
