@@ -22,13 +22,15 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Use taskData.serviceRequest.paymentAmount for "Your Share" if available.
-  // Otherwise fallback to the bundle’s monthlyAmount.
-  const effectivePaymentAmount = taskData?.serviceRequest?.paymentAmount != null
-    ? Number(taskData.serviceRequest.paymentAmount)
-    : (taskData?.serviceRequestBundle?.takeOverRequest?.monthlyAmount
-        ? Number(taskData.serviceRequestBundle.takeOverRequest.monthlyAmount)
-        : 0);
+  // For one-time upfront payment amount
+  const effectivePaymentAmount = taskData?.paymentAmount != null
+    ? Number(taskData.paymentAmount)
+    : 0;
+
+  // For monthly recurring amount (individual share)
+  const effectiveMonthlyAmount = taskData?.monthlyAmount != null
+    ? Number(taskData.monthlyAmount)
+    : 0;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,7 +110,13 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
 
   // Use request from stagedRequest or takeOverRequest.
   const request = bundleDetails.stagedRequest || bundleDetails.takeOverRequest;
-  const isStaged = true;
+  
+  // Determine if this is a recurring service (for takeOverRequest)
+  const isRecurring = bundleDetails.takeOverRequest != null;
+  
+  // Determine if this is a staged request or a takeover request
+  const isStaged = bundleDetails.stagedRequest != null;
+  
   const { status, creator, tasks = [] } = bundleDetails;
   const pendingParticipants = tasks.filter(task => task.response === 'pending');
   const acceptedCount = tasks.filter(t => t.response === 'accepted').length;
@@ -153,16 +161,42 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                 {request.partnerName ? `with ${request.partnerName}` : ''}
               </Text>
               <View style={styles.costContainer}>
+                {/* Total Cost Row */}
                 <View style={styles.row}>
-                  <Text style={styles.label}>{isStaged ? 'Total Service Cost' : 'Monthly Amount'}</Text>
-                  <Text style={styles.value}>
-                    ${Number(request.estimatedAmount || request.monthlyAmount || 0).toFixed(2)}
-                  </Text>
+                  {isRecurring ? (
+                    <>
+                      <Text style={styles.label}>Total Monthly Cost</Text>
+                      <Text style={styles.value}>
+                        ${Number(request.monthlyAmount || 0).toFixed(2)}/mo
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.label}>Total Service Cost</Text>
+                      <Text style={styles.value}>
+                        ${Number(request.estimatedAmount || 0).toFixed(2)}
+                      </Text>
+                    </>
+                  )}
                 </View>
-                <View style={[styles.row, styles.highlightedRow]}>
-                  <Text style={styles.label}>Your Share</Text>
-                  <Text style={styles.value}>${effectivePaymentAmount.toFixed(2)}</Text>
-                </View>
+                
+                {/* Your Monthly Share Row - for recurring services */}
+                {isRecurring && effectiveMonthlyAmount > 0 && (
+                  <View style={[styles.row, styles.highlightedRow]}>
+                    <Text style={styles.label}>Your Monthly Share</Text>
+                    <Text style={styles.value}>${effectiveMonthlyAmount.toFixed(2)}/mo</Text>
+                  </View>
+                )}
+                
+                {/* Your Upfront Payment Row - for any service with upfront payment */}
+                {effectivePaymentAmount > 0 && (
+                  <View style={[styles.row, styles.highlightedRow, isRecurring ? {marginTop: 8} : {}]}>
+                    <Text style={styles.label}>
+                      {isRecurring ? 'Your Upfront Payment' : 'Your Share'}
+                    </Text>
+                    <Text style={styles.value}>${effectivePaymentAmount.toFixed(2)}</Text>
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -196,80 +230,87 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
           </View>
 
           {/* Payment Method Section */}
-         {/* Payment Method Section */}
-<View style={styles.section}>
-  <Text style={styles.sectionTitle}>Payment Method</Text>
-  {paymentMethods.length === 0 ? (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>You need a card on file.</Text>
-      <TouchableOpacity style={styles.addButton} onPress={onAddPaymentMethod}>
-        <Text style={styles.addButtonText}>Add Payment Method</Text>
-      </TouchableOpacity>
-    </View>
-  ) : (
-    !showPaymentOptions ? (
-      <TouchableOpacity style={styles.paymentCard} onPress={() => setShowPaymentOptions(true)}>
-        <View style={styles.row}>
-          <MaterialIcons 
-            name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)} 
-            size={24} 
-            color="#34d399" 
-          />
-          <View style={styles.paymentInfo}>
-            <Text style={styles.paymentTitle}>
-              {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
-            </Text>
-            {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
-              <Text style={styles.paymentSubtitle}>Default</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+            {paymentMethods.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>You need a card on file.</Text>
+                <TouchableOpacity style={styles.addButton} onPress={onAddPaymentMethod}>
+                  <Text style={styles.addButtonText}>Add Payment Method</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              !showPaymentOptions ? (
+                <TouchableOpacity style={styles.paymentCard} onPress={() => setShowPaymentOptions(true)}>
+                  <View style={styles.row}>
+                    <MaterialIcons 
+                      name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)} 
+                      size={24} 
+                      color="#34d399" 
+                    />
+                    <View style={styles.paymentInfo}>
+                      <Text style={styles.paymentTitle}>
+                        {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
+                      </Text>
+                      {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
+                        <Text style={styles.paymentSubtitle}>Default</Text>
+                      )}
+                    </View>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.paymentOptions}>
+                  {paymentMethods.map(method => (
+                    <TouchableOpacity
+                      key={method.id}
+                      style={[
+                        styles.paymentOption,
+                        selectedMethod === method.id && styles.selectedOption,
+                      ]}
+                      onPress={() => {
+                        setSelectedMethod(method.id);
+                        setShowPaymentOptions(false);
+                      }}
+                    >
+                      <View style={styles.row}>
+                        <MaterialIcons 
+                          name={getMethodIcon(method.type)} 
+                          size={24} 
+                          color={selectedMethod === method.id ? '#34d399' : '#64748b'} 
+                        />
+                        <View style={styles.paymentInfo}>
+                          <Text style={styles.paymentTitle}>{getPaymentMethodDisplay(method)}</Text>
+                          {method.isDefault && (
+                            <Text style={styles.paymentSubtitle}>Default</Text>
+                          )}
+                        </View>
+                      </View>
+                      {selectedMethod === method.id && (
+                        <MaterialIcons name="check-circle" size={20} color="#34d399" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )
             )}
           </View>
-        </View>
-        <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
-      </TouchableOpacity>
-    ) : (
-      <View style={styles.paymentOptions}>
-        {paymentMethods.map(method => (
-          <TouchableOpacity
-            key={method.id}
-            style={[
-              styles.paymentOption,
-              selectedMethod === method.id && styles.selectedOption,
-            ]}
-            onPress={() => {
-              setSelectedMethod(method.id);
-              setShowPaymentOptions(false);
-            }}
-          >
-            <View style={styles.row}>
-              <MaterialIcons 
-                name={getMethodIcon(method.type)} 
-                size={24} 
-                color={selectedMethod === method.id ? '#34d399' : '#64748b'} 
-              />
-              <View style={styles.paymentInfo}>
-                <Text style={styles.paymentTitle}>{getPaymentMethodDisplay(method)}</Text>
-                {method.isDefault && (
-                  <Text style={styles.paymentSubtitle}>Default</Text>
-                )}
-              </View>
-            </View>
-            {selectedMethod === method.id && (
-              <MaterialIcons name="check-circle" size={20} color="#34d399" />
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
-    )
-  )}
-</View>
-
         </ScrollView>
 
         {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.row}>
-            <Text style={styles.label}>{isStaged ? 'Commitment Total' : 'Monthly Share'}</Text>
-            <Text style={styles.value}>${effectivePaymentAmount.toFixed(2)}</Text>
+            <Text style={styles.label}>
+              {isRecurring 
+                ? (effectivePaymentAmount > 0 ? 'Upfront Payment' : 'Monthly Share')
+                : 'Commitment Total'}
+            </Text>
+            <Text style={styles.value}>
+              ${(isRecurring && effectivePaymentAmount === 0 
+                ? effectiveMonthlyAmount 
+                : effectivePaymentAmount).toFixed(2)}
+              {isRecurring && effectivePaymentAmount === 0 ? '/mo' : ''}
+            </Text>
           </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
@@ -615,4 +656,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

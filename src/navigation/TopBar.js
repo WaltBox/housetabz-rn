@@ -130,10 +130,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 95,
+    height: 100,
     padding: 20,
     backgroundColor: '#dff6f0',
     elevation: 4,
+    borderBottomColor: 'white',
+    borderBottomWidth: 4,
   },
   headerTitle: {
     fontFamily: 'Montserrat-Black',
