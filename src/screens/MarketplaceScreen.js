@@ -16,13 +16,12 @@ import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SpecialDeals from "../components/SpecialDeals";
 import { useAuth } from "../context/AuthContext";
-import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
+import apiClient from "../config/api"; // Import apiClient instead of axios
 
 const { width, height } = Dimensions.get("window");
 const CARD_GUTTER = 16;
 const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2;
-const API_URL = "http://localhost:3004";
 
 const MarketplaceScreen = () => {
   const { user } = useAuth();
@@ -41,7 +40,7 @@ const MarketplaceScreen = () => {
     // Fetch deals count for the Special Deals header
     const fetchDealsCount = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/deals`);
+        const response = await apiClient.get(`/api/deals`);
         setSpecialDealsCount(response.data.deals.length);
       } catch (err) {
         console.error("Error fetching deals count:", err);
@@ -55,7 +54,7 @@ const MarketplaceScreen = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${API_URL}/api/partners`);
+      const { data } = await apiClient.get(`/api/partners`);
       setPartnerDetails(Array.isArray(data) ? data : []);
     } catch (err) {
       setError("Unable to load marketplace data. Please try again.");
