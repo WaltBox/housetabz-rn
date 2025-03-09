@@ -38,7 +38,6 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
       try {
         setLoading(true);
         setError(null);
-
         const serviceRequestBundleId = taskData?.serviceRequestBundleId || taskData?.bundleId;
         if (!serviceRequestBundleId) {
           throw new Error('Missing service request data');
@@ -172,7 +171,6 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                     </>
                   )}
                 </View>
-
                 {isRecurring && effectiveMonthlyAmount > 0 && (
                   <View style={[styles.row, styles.highlightedRow]}>
                     <Text style={styles.label}>Your Monthly Share</Text>
