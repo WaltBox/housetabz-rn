@@ -357,4 +357,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InviteModalContent
+export default InviteModalContent;
