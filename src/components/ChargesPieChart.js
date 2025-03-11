@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     color: '#2B2D42',
     marginBottom: 8,
     letterSpacing: -0.5,
-    fontFamily:'Sigmar-Regular'
+    fontFamily:'Montserrat-Black'
   },
   badgeRow: {
     flexDirection: 'row',

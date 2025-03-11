@@ -10,14 +10,12 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import PayTab from '../components/PayTab';
-import MethodsTab from '../components/MethodsTab';
 import HistoryTab from '../components/HistoryTab';
 // Import apiClient instead of axios
 import apiClient from '../config/api';
 
 const TABS = {
   PAY: 'pay',
-  METHODS: 'methods',
   HISTORY: 'history',
 };
 
@@ -27,8 +25,6 @@ const BillingScreen = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [charges, setCharges] = useState([]);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [defaultMethod, setDefaultMethod] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch data when user ID changes or when refreshTrigger is updated
@@ -36,7 +32,6 @@ const BillingScreen = () => {
     if (authUser?.id) {
       fetchUserData();
       fetchCharges();
-      fetchPaymentMethods();
     }
   }, [authUser?.id, refreshTrigger]);
 
@@ -94,19 +89,6 @@ const BillingScreen = () => {
     }
   };
 
-  const fetchPaymentMethods = async () => {
-    try {
-      if (!authUser?.id) return;
-      // Use apiClient with relative path
-      const response = await apiClient.get(`/api/payment-methods`);
-      const methods = response.data.paymentMethods || [];
-      setPaymentMethods(methods);
-      setDefaultMethod(methods.find(method => method.isDefault));
-    } catch (error) {
-      console.error('Error fetching payment methods:', error);
-    }
-  };
-
   // Process when charges are updated by the PayTab component
   const handleChargesUpdated = useCallback((paidChargeIds) => {
     console.log('Charges updated in BillingScreen:', paidChargeIds);
@@ -155,23 +137,12 @@ const BillingScreen = () => {
         ))}
       </View>
 
-      {/* Refresh Button */}
-      {/* <TouchableOpacity 
-        style={styles.refreshButton} 
-        onPress={refreshData}
-      >
-        <MaterialIcons name="refresh" size={20} color="#64748b" />
-      </TouchableOpacity> */}
-
       {/* Render Selected Tab */}
       {activeTab === TABS.PAY && (
         <PayTab 
           charges={charges} 
           onChargesUpdated={handleChargesUpdated} 
         />
-      )}
-      {activeTab === TABS.METHODS && (
-        <MethodsTab defaultMethod={defaultMethod} paymentMethods={paymentMethods} />
       )}
       {activeTab === TABS.HISTORY && <HistoryTab />}
     </View>
@@ -212,21 +183,6 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: '#34d399',
-  },
-  // Refresh Button
-  refreshButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
 });
 

@@ -133,14 +133,14 @@ const SettingsModal = ({ onClose = () => {} }) => {
               subtitle="Manage connected accounts"
               onPress={handleOpenPaymentMethodsModal}
             />
-            <SettingsRow
+            {/* <SettingsRow
               icon="autorenew"
               title="AutoPay Configuration"
               subtitle={autopay ? "Active - Manage schedule" : "Set up recurring payments"}
               type="switch"
               value={autopay}
               onPress={setAutopay}
-            />
+            /> */}
           </SettingsSection>
 
           <SettingsSection title="Preferences">
@@ -160,14 +160,14 @@ const SettingsModal = ({ onClose = () => {} }) => {
               value={emailUpdates}
               onPress={setEmailUpdates}
             />
-            <SettingsRow
+            {/* <SettingsRow
               icon="dark-mode"
               title="Dark Theme"
               subtitle="Enable night mode"
               type="switch"
               value={darkMode}
               onPress={setDarkMode}
-            />
+            /> */}
           </SettingsSection>
 
           <SettingsSection title="Support & Legal">

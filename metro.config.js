@@ -1,7 +1,9 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
 
-/** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+module.exports = (async () => {
+  const config = await getDefaultConfig(__dirname);
+  // Remove or comment out any extraNodeModules mapping for @babel/runtime
+  // config.resolver.extraNodeModules = { ... };
 
-module.exports = config;
+  return config;
+})();

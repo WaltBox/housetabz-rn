@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
     marginBottom: 2,
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Sigmar-Regular',
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Montserrat-Black',
   },
   statLabel: {
     fontSize: 12,

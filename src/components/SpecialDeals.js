@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-// Import apiClient instead of axios
 import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
@@ -18,7 +17,6 @@ const SpecialDeals = () => {
   useEffect(() => {
     const fetchDeals = async () => {
       try {
-        // Use apiClient with relative path instead of axios with absolute URL
         const response = await apiClient.get('/api/deals');
         setDeals(response.data.deals || []);
       } catch (error) {
@@ -45,7 +43,6 @@ const SpecialDeals = () => {
       style={styles.dealCard}
       activeOpacity={0.7}
     >
-      {/* Header with Icon and Deal Name */}
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           <LinearGradient
@@ -66,7 +63,6 @@ const SpecialDeals = () => {
         </View>
       </View>
       
-      {/* Price and Expiry on the same row */}
       <View style={styles.footerRow}>
         <LinearGradient
           colors={['#22c55e', '#34d399']}
@@ -96,16 +92,9 @@ const SpecialDeals = () => {
     );
   }
 
+  // If there are no deals, hide the special deals container altogether.
   if (deals.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.emptyIconContainer}>
-          <MaterialIcons name="auto-awesome" size={48} color="#22c55e" />
-        </View>
-        <Text style={styles.emptyTitle}>No Deals Available</Text>
-        <Text style={styles.emptyText}>Check back later for special offers.</Text>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -165,7 +154,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 18,
-
   },
   iconContainer: {
     shadowColor: '#22c55e',
@@ -198,7 +186,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
     marginBottom: 3,
-    
   },
   details: {
     fontSize: 14,

@@ -8,13 +8,16 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  BackHandler
+  BackHandler,
+  Dimensions
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import apiClient from '../config/api';
+
+const { width } = Dimensions.get('window');
 
 const PaymentMethodsSettings = ({ visible = false, onClose }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -84,7 +87,6 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       setProcessing(true);
       setLoading(true);
       
-      // Use apiClient instead of axios
       const setupResponse = await apiClient.post(
         '/api/payment-methods/setup-intent',
         {}
@@ -114,7 +116,6 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
         return;
       }
       
-      // Use apiClient instead of axios
       await apiClient.post('/api/payment-methods/complete', { setupIntentId });
       Alert.alert('Success', 'Payment method added successfully');
       await fetchPaymentMethods();
@@ -135,7 +136,6 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       if (!user) return;
       setProcessing(true);
       
-      // Use apiClient instead of axios
       await apiClient.put(`/api/payment-methods/${methodId}/default`);
       await fetchPaymentMethods();
     } catch (error) {
@@ -160,7 +160,6 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
             try {
               setProcessing(true);
               
-              // Use apiClient instead of axios
               await apiClient.delete(`/api/payment-methods/${methodId}`);
               await fetchPaymentMethods();
             } catch (error) {
@@ -175,8 +174,14 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
     );
   };
 
+  // Uber-style payment method card
   const renderPaymentMethod = (method) => (
-    <View key={method.id} style={styles.methodCard}>
+    <TouchableOpacity 
+      key={method.id} 
+      style={styles.methodCard}
+      onPress={() => handleSetDefault(method.id)}
+      disabled={processing || method.isDefault}
+    >
       <View style={styles.methodLeft}>
         <View style={styles.iconContainer}>
           <MaterialIcons 
@@ -185,80 +190,34 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
             color="#34d399" 
           />
         </View>
-        <View>
-          <Text style={styles.methodTitle}>
-            {method.type === 'bank'
-              ? method.name
-              : `${method.brand?.toUpperCase()} •••• ${method.last4}`}
-          </Text>
-          {method.type === 'card' && (
-            <Text style={styles.methodSubtitle}>
-              Expires {String(method.expiryMonth).padStart(2, '0')}/{String(method.expiryYear).slice(-2)}
-            </Text>
-          )}
-        </View>
+        <Text style={styles.methodTitle}>
+          {method.type === 'bank'
+            ? method.name
+            : `${method.brand?.toUpperCase()} •••• ${method.last4}`}
+        </Text>
       </View>
       
       <View style={styles.methodRight}>
-        {method.isDefault ? (
-          <View style={styles.defaultBadge}>
-            <Text style={styles.defaultText}>Default</Text>
-          </View>
-        ) : (
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => handleSetDefault(method.id)}
-            disabled={processing}
-          >
-            <Text style={styles.actionButtonText}>Set Default</Text>
-          </TouchableOpacity>
+        {method.isDefault && (
+          <Text style={styles.defaultText}>Default</Text>
         )}
-        <TouchableOpacity 
-          onPress={() => handleDelete(method.id)}
-          style={styles.deleteButton}
-          disabled={processing}
-        >
-          <MaterialIcons name="delete-outline" size={20} color="#94a3b8" />
-        </TouchableOpacity>
+        <MaterialIcons name="chevron-right" size={24} color="#94a3b8" />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const content = (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Default Payment Method Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Default Payment Method</Text>
-            <Text style={styles.sectionSubtitle}>Used for all transactions</Text>
-          </View>
-          
-          {paymentMethods.length > 0 ? (
-            paymentMethods.some(method => method.isDefault) ? 
-              paymentMethods.map(method => method.isDefault && renderPaymentMethod(method)) :
-              <View style={styles.emptyState}>
-                <MaterialIcons name="payment" size={40} color="#e2e8f0" />
-                <Text style={styles.emptyText}>No default method set</Text>
-              </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <MaterialIcons name="payment" size={40} color="#e2e8f0" />
-              <Text style={styles.emptyText}>No default method set</Text>
-            </View>
-          )}
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#34d399" />
         </View>
-
-        {/* Other Payment Methods */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Saved Payment Methods</Text>
-            <Text style={styles.sectionSubtitle}>Manage your payment options</Text>
-          </View>
-          
+      ) : (
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Payment Methods List */}
           {paymentMethods.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialIcons name="credit-card-off" size={40} color="#e2e8f0" />
@@ -266,35 +225,23 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
               <Text style={styles.emptySubtext}>Add a payment method to get started</Text>
             </View>
           ) : (
-            paymentMethods.filter(method => !method.isDefault).length > 0 ? 
-              paymentMethods.map(method => !method.isDefault && renderPaymentMethod(method)) :
-              <View style={styles.emptyState}>
-                <MaterialIcons name="credit-card-off" size={40} color="#e2e8f0" />
-                <Text style={styles.emptyText}>No additional methods</Text>
-              </View>
+            <View style={styles.methodsList}>
+              {paymentMethods.map(method => renderPaymentMethod(method))}
+            </View>
           )}
-        </View>
-        
-        {/* Footer space for floating button */}
-        <View style={styles.footerSpace} />
-      </ScrollView>
-
-      {/* Add Button */}
-      <TouchableOpacity 
-        style={[styles.addButton, (loading || processing) && styles.addButtonDisabled]}
-        onPress={handleAddPaymentMethod}
-        disabled={loading || processing}
-        activeOpacity={0.8}
-      >
-        {processing ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <>
-            <MaterialIcons name="add" size={20} color="white" />
+          
+          {/* Add Payment Method Button below the list */}
+          <TouchableOpacity 
+            style={[styles.addButton, (processing) && styles.addButtonDisabled]}
+            onPress={handleAddPaymentMethod}
+            disabled={processing}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="add" size={20} color="#34d399" />
             <Text style={styles.addButtonText}>Add Payment Method</Text>
-          </>
-        )}
-      </TouchableOpacity>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -321,53 +268,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: "#dff6f0",
   },
   scrollContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 30,
-    paddingBottom: 100,
-    backgroundColor: "#dff6f0",
+    paddingBottom: 40,
   },
-  section: {
-    marginBottom: 24,
-    backgroundColor: "#dff6f0",
-  },
-  sectionHeader: {
-    marginBottom: 16,
-    backgroundColor: "#dff6f0",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#64748b',
+  methodsList: {
+    width: '100%',
+    backgroundColor: '#dff6f0',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
   },
   methodCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    width: '100%',
+    backgroundColor: '#dff6f0',
   },
   methodLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   iconContainer: {
     width: 40,
@@ -381,93 +307,64 @@ const styles = StyleSheet.create({
   methodRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   methodTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  methodSubtitle: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-  actionButton: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  actionButtonText: {
-    color: '#34d399',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '500',
-  },
-  defaultBadge: {
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    color: '#1e293b',
   },
   defaultText: {
     color: '#34d399',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
-  },
-  deleteButton: {
-    padding: 4,
+    marginRight: 12,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 40,
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 8,
+    marginHorizontal: 16,
+    marginTop: 20,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#64748b',
-    marginTop: 12,
+    marginTop: 16,
     fontWeight: '500',
   },
   emptySubtext: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94a3b8',
     marginTop: 4,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    padding: 16,
-    backgroundColor: '#34d399',
-    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 50,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    marginLeft: 16,
+    marginTop: 10,
+    alignSelf: 'flex-start',
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 16,
+    color: '#34d399',
+    fontSize: 15,
     fontWeight: '600',
+    marginLeft: 8,
   },
   addButtonDisabled: {
     opacity: 0.7,
-  },
-  footerSpace: {
-    height: 80,
   }
 });
 

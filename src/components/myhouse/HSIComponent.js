@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1e293b",
     letterSpacing: -0.5,
-    fontFamily: "Sigmar-Regular",
+    fontFamily: "Montserrat-Black",
   },
   infoButton: {
     padding: 4,

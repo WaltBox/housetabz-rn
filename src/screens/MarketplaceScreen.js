@@ -149,20 +149,20 @@ const MarketplaceScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Special Deals Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.titleGroup}>
-              <MaterialIcons name="auto-awesome" size={24} color="#22c55e" />
-              <Text style={styles.sectionTitle}>Special Deals</Text>
-            </View>
-            {specialDealsCount > 0 && (
+        {specialDealsCount > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.titleGroup}>
+                <MaterialIcons name="auto-awesome" size={24} color="#22c55e" />
+                <Text style={styles.sectionTitle}>Special Deals</Text>
+              </View>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{specialDealsCount} available</Text>
               </View>
-            )}
+            </View>
+            <SpecialDeals />
           </View>
-          <SpecialDeals />
-        </View>
+        )}
 
         {/* Featured Services */}
         <View style={styles.featuredSection}>
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   gradient: {
-    paddingTop: 50,
+    paddingTop: 20, // Reduced padding top to center content better
     paddingBottom: 20,
     paddingHorizontal: 24,
     borderBottomRightRadius: 40,
@@ -251,14 +251,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#1e293b',
     letterSpacing: -0.5,
-    fontFamily: 'Sigmar-Regular',
+    fontFamily: 'Montserrat-Black',
   },
   countBadge: {
     backgroundColor: '#f0fdf4',
@@ -283,7 +282,7 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     marginBottom: 16,
     letterSpacing: -0.5,
-    fontFamily: 'Sigmar-Regular',
+    fontFamily: 'Montserrat-Black',
   },
   cardGrid: {
     flexDirection: "row",

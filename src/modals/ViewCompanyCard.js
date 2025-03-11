@@ -64,7 +64,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
   const constructShopUrl = () => {
     try {
       console.log('User ID when constructing shop URL:', userId); // Add this
-      const baseUrl = 'https://69cc-2605-a601-a0c6-4f00-b9c5-962b-1f98-dae6.ngrok-free.app/cleaning-test.html';
+      const baseUrl = 'https://f932-2605-a601-a0c6-4f00-254d-d042-938f-f537.ngrok-free.app/cleaning-test.html';
       return `${baseUrl}?ref=housetabz&partner_id=${partner.id || '2'}`;
     } catch (error) {
       console.error('Error constructing URL:', error);

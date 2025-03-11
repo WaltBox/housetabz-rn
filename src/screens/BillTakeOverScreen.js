@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    fontFamily:'Sigmar-Regular'
+    fontFamily:'Montserrat-Black'
   },
   inputContainer: {
     flexDirection: 'row',

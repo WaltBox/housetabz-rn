@@ -4,13 +4,11 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity, 
-  Modal, 
   StyleSheet,
   Image,
   Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import ProfileModal from '../modals/ProfileModal';
 
@@ -30,36 +28,20 @@ const TakeOverScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Enhanced Top Section */}
+        {/* Enhanced Top Section - Remodeled */}
         <View style={styles.topContainer}>
-          <LinearGradient 
-            colors={['#059669', '#34d399']}
-            style={styles.gradientContainer}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.topContent}>
-              <View style={styles.textContainer}>
-                <Text style={styles.titleLine}>Bill</Text>
-                <Text style={styles.titleLine}>Take Over</Text>
-              </View>
-              
-              <View style={styles.imageContainer}>
-                {/* Light Beam Effect */}
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.4)', 'transparent']}
-                  style={styles.lightBeam}
-                  start={{ x: 0.1, y: 0 }}
-                  end={{ x: 0.9, y: 1 }}
-                />
-                <Image 
-                  source={require('../../assets/chess-piece.png')}
-                  style={styles.knightImage}
-                  resizeMode="contain"
-                />
-              </View>
+          <View style={styles.topContent}>
+            <Image 
+              source={require('../../assets/billtakeover.png')}
+              style={styles.gloriousImage}
+              resizeMode="contain"
+            />
+            <View style={styles.textContainer}>
+              <Text style={[styles.titleText, styles.titleFirst]}>Bill</Text>
+              <Text style={[styles.titleText, styles.titleSecond]}>Take</Text>
+              <Text style={[styles.titleText, styles.titleThird]}>Over</Text>
             </View>
-          </LinearGradient>
+          </View>
           <View style={styles.bottomBorder} />
         </View>
 
@@ -116,12 +98,40 @@ const styles = StyleSheet.create({
     height: height / 3.5,
     marginBottom: 24,
     position: 'relative',
-    overflow: 'hidden',
-  },
-  gradientContainer: {
-    flex: 1,
+    backgroundColor: '#34d399',
+    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 24,
+  },
+  topContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  gloriousImage: {
+    width: width * 0.5,
+    height: width * 0.5,
+    marginRight: 16,
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  titleText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    fontFamily: 'Montserrat-Bold',
+    lineHeight: 36,
+  },
+  titleFirst: {
+    marginLeft: 0,
+  },
+  titleSecond: {
+    marginLeft: 20,
+  },
+  titleThird: {
+    marginLeft: 40,
   },
   bottomBorder: {
     position: 'absolute',
@@ -129,58 +139,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: 'black',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  topContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flex: 1,
-  },
-  textContainer: {
-    flex: 1,
-    zIndex: 1,
-  },
-  titleLine: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: 'white',
-    lineHeight: 42,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-    fontFamily: 'Montserrat-Bold',
-    letterSpacing: -0.5,
-  },
-  imageContainer: {
-    width: width * 0.4,
-    height: width * 0.4,
-    position: 'relative',
-    marginRight: -20,
-  },
-  knightImage: {
-    width: '100%',
-    height: '100%',
-    zIndex: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  lightBeam: {
-    position: 'absolute',
-    width: '160%',
-    height: '160%',
-    left: '-30%',
-    top: '-30%',
-    transform: [{ rotate: '-25deg' }],
-    opacity: 0.7,
-    zIndex: 1,
-    borderRadius: 100,
+    backgroundColor: '#1e293b',
   },
   introContainer: {
     paddingHorizontal: 24,
