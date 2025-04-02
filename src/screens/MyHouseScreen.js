@@ -157,17 +157,25 @@ const HouseTabzScreen = () => {
             onInvitePress={() => setShowInviteModal(true)}
           />
 
-          <HSIComponent house={house} onInfoPress={() => setShowTooltip(true)} />
-
+<HSIComponent 
+  house={house} 
+  houseBalance={house?.finance?.balance} 
+  houseLedger={house?.finance?.ledger}
+  onInfoPress={() => setShowTooltip(true)} 
+/>
           {/* <StatsSection house={house} /> */}
 
-          <Scoreboard house={house} />
+          <Scoreboard 
+  house={house} 
+  houseFinance={house?.finance} 
+/>
 
-          <ActionCards
-            onCurrentTabPress={() => setIsCurrentTabVisible(true)}
-            onPaidTabPress={() => setIsPaidTabVisible(true)}
-            onServicesPress={() => setIsServicesVisible(true)}
-          />
+<ActionCards
+  houseBalance={house?.finance?.balance}
+  onCurrentTabPress={() => setIsCurrentTabVisible(true)}
+  onPaidTabPress={() => setIsPaidTabVisible(true)}
+  onServicesPress={() => setIsServicesVisible(true)}
+/>
         </ScrollView>
       ) : (
         <View style={styles.billTakeoverContainer}>

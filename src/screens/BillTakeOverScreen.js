@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -22,6 +22,7 @@ import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 
+
 const BillTakeoverScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
@@ -29,6 +30,25 @@ const BillTakeoverScreen = ({ navigation }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [submittedData, setSubmittedData] = useState(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  
+  // Add state for house data inside the component
+  const [houseData, setHouseData] = useState(null);
+  
+  // Move the useEffect inside the component
+  useEffect(() => {
+    const fetchHouseData = async () => {
+      try {
+        if (user?.houseId) {
+          const response = await apiClient.get(`/api/houses/${user.houseId}`);
+          setHouseData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching house data:', error);
+      }
+    };
+
+    fetchHouseData();
+  }, [user]);
   
   const [formData, setFormData] = useState({
     serviceName: '',
@@ -38,6 +58,7 @@ const BillTakeoverScreen = ({ navigation }) => {
     requiredUpfrontPayment: '0',
     isFixedService: true,
   });
+
 
   // Define steps
   const steps = [
@@ -76,6 +97,8 @@ const BillTakeoverScreen = ({ navigation }) => {
           icon: 'attach-money',
           keyboardType: 'decimal-pad',
           prefix: '$',
+          // Only show this field for fixed services
+          shouldShow: () => formData.isFixedService,
         },
         {
           field: 'dueDate',
@@ -88,16 +111,17 @@ const BillTakeoverScreen = ({ navigation }) => {
       ]
     },
     {
-      title: "Need money now?",
-      subtitle: "Is there any upfront payment required?",
+      title: "One-time Upfront Payment",
+      subtitle: "Is there a security deposit or setup fee needed?",
       fields: [
         {
           field: 'requiredUpfrontPayment',
-          label: 'Amount',
+          label: 'Security Deposit or Setup Fee',
           placeholder: '0.00',
           icon: 'security',
           keyboardType: 'decimal-pad',
           prefix: '$',
+          helperText: 'This is a ONE-TIME payment, not your monthly bill amount'
         }
       ]
     }
@@ -164,8 +188,12 @@ const BillTakeoverScreen = ({ navigation }) => {
         monthlyAmount: formData.isFixedService ? parseFloat(formData.monthlyAmount) : null,
         dueDate: dueDateNum,
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
+        // Add service type field explicitly
+        serviceType: formData.isFixedService ? 'fixed' : 'variable',
+        // Add a hint for the backend about bundle type
+        bundleType: formData.isFixedService ? 'fixed_recurring' : 'variable_recurring',
       };
-
+  
       // Use apiClient with relative path
       const response = await apiClient.post("/api/take-over-requests", payload);
       setSubmittedData(response.data);
@@ -186,6 +214,11 @@ const BillTakeoverScreen = ({ navigation }) => {
 
   // Custom Field Renderer
   const renderField = (fieldConfig, index, isLastField) => {
+    // Skip fields that shouldn't be shown based on form state
+    if (fieldConfig.shouldShow && !fieldConfig.shouldShow()) {
+      return null;
+    }
+  
     // Special case for checkbox
     if (fieldConfig.isCheckbox) {
       return (
@@ -234,15 +267,36 @@ const BillTakeoverScreen = ({ navigation }) => {
     );
   };
 
-  // Determine which step to render
-  const renderCurrentStep = () => {
-    if (currentStep === totalSteps) {
-      // Review step (last step)
-      return (
-        <View style={styles.reviewContainer}>
-          <Text style={styles.reviewTitle}>Review Your Request</Text>
+ // Determine which step to render
+const renderCurrentStep = () => {
+  if (currentStep === totalSteps) {
+    // Calculate monthly amounts
+    const billAmount = formData.isFixedService ? parseFloat(formData.monthlyAmount || 0) : 0;
+    
+    // Get actual roommate count from house data
+    const roommateCount = houseData?.users?.length || 2; // Default to 2 if data not loaded
+    
+    const userBasePortion = formData.isFixedService ? 
+      (billAmount / roommateCount).toFixed(2) : 
+      'Varies';
+    
+    const userTotalPortion = formData.isFixedService ? 
+      ((billAmount / roommateCount) + 2).toFixed(2) : 
+      'Varies + $2.00';
+  
+
+    return (
+      <View style={styles.reviewContainer}>
+        <Text style={styles.reviewTitle}>Review Your Request</Text>
+        
+        {/* Bill Information Card */}
+        <View style={styles.cardContainer}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="receipt-long" size={22} color="#34d399" />
+            <Text style={styles.cardTitle}>Bill Information</Text>
+          </View>
           
-          <View style={styles.summaryContainer}>
+          <View style={styles.cardContent}>
             <SummaryItem 
               icon="business"
               label="Provider"
@@ -264,7 +318,7 @@ const BillTakeoverScreen = ({ navigation }) => {
             {formData.isFixedService && (
               <SummaryItem 
                 icon="attach-money"
-                label="Monthly"
+                label="Monthly Amount"
                 value={`$${formData.monthlyAmount}`}
               />
             )}
@@ -274,55 +328,113 @@ const BillTakeoverScreen = ({ navigation }) => {
               label="Due Date"
               value={`Day ${formData.dueDate}`}
             />
-            
-            {parseFloat(formData.requiredUpfrontPayment) > 0 && (
-              <SummaryItem 
-                icon="security"
-                label="Upfront"
-                value={`$${formData.requiredUpfrontPayment}`}
-              />
-            )}
+          </View>
+        </View>
+        
+        {/* Your Details Card */}
+        <View style={styles.cardContainer}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="person" size={22} color="#34d399" />
+            <Text style={styles.cardTitle}>Your Details</Text>
           </View>
           
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.disabledButton]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.submitButtonText}>Submit Request</Text>
-                <MaterialIcons name="check" size={20} color="#fff" />
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.cardContent}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Your share of the bill</Text>
+              <Text style={styles.detailValue}>
+                {formData.isFixedService ? `$${userBasePortion}/mo` : "Varies monthly"}
+              </Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>HouseTabz management</Text>
+              <Text style={styles.detailValue}>$2.00/mo</Text>
+            </View>
+            
+            <View style={styles.divider} />
+            
+            <View style={styles.detailTotal}>
+              <Text style={styles.detailTotalLabel}>Your monthly total</Text>
+              <Text style={styles.detailTotalValue}>${userTotalPortion}</Text>
+            </View>
+            
+            <View style={styles.benefitsContainer}>
+              <View style={styles.benefitItem}>
+                <MaterialIcons name="check-circle" size={16} color="#34d399" />
+                <Text style={styles.benefitText}>Auto payment reminders</Text>
+              </View>
+              
+              <View style={styles.benefitItem}>
+                <MaterialIcons name="check-circle" size={16} color="#34d399" />
+                <Text style={styles.benefitText}>Fair split between roommates</Text>
+              </View>
+              
+              <View style={styles.benefitItem}>
+                <MaterialIcons name="check-circle" size={16} color="#34d399" />
+                <Text style={styles.benefitText}>Payment tracking & history</Text>
+              </View>
+            </View>
+          </View>
         </View>
-      );
-    } else {
-      const currentStepData = steps[currentStep];
-      const isLastField = currentStepData.fields.length - 1;
-      
-      return (
-        <View style={styles.stepContainer}>
-          <Text style={styles.stepTitle}>{currentStepData.title}</Text>
-          <Text style={styles.stepSubtitle}>{currentStepData.subtitle}</Text>
-          
-          {currentStepData.fields.map((field, index) => 
-            renderField(field, index, index === isLastField)
+        
+        {/* One-time Payment Card (if applicable) */}
+        {parseFloat(formData.requiredUpfrontPayment) > 0 && (
+          <View style={styles.cardContainer}>
+            <View style={styles.cardHeader}>
+              <MaterialIcons name="security" size={22} color="#34d399" />
+              <Text style={styles.cardTitle}>One-time Payment</Text>
+            </View>
+            
+            <View style={styles.cardContent}>
+              <Text style={styles.upfrontNote}>
+                This is a one-time security deposit or setup fee:
+              </Text>
+              <Text style={styles.upfrontAmount}>
+                ${formData.requiredUpfrontPayment}
+              </Text>
+            </View>
+          </View>
+        )}
+        
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <>
+              <Text style={styles.submitButtonText}>Submit Request</Text>
+              <MaterialIcons name="check" size={20} color="#fff" />
+            </>
           )}
-          
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={fadeToNextStep}
-          >
-            <MaterialIcons name="arrow-forward" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      );
-    }
-  };
+        </TouchableOpacity>
+      </View>
+    );
+  } else {
+    const currentStepData = steps[currentStep];
+    const isLastField = currentStepData.fields.length - 1;
+    
+    return (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>{currentStepData.title}</Text>
+        <Text style={styles.stepSubtitle}>{currentStepData.subtitle}</Text>
+        
+        {currentStepData.fields.map((field, index) => 
+          renderField(field, index, index === isLastField)
+        )}
+        
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={fadeToNextStep}
+        >
+          <MaterialIcons name="arrow-forward" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -628,6 +740,131 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.7,
+  },
+
+  helpTextContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(240, 249, 255, 0.7)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#cce5ff',
+  },
+  helpText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#0066cc',
+  },
+  serviceFeeContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 248, 240, 0.7)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffe0cc',
+  },
+  serviceFeeText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#ff6600',
+  },
+  totalValue: {
+    fontWeight: '700',
+    color: '#0f766e',
+  },
+
+  cardContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    width: '100%',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginLeft: 10,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 16,
+    color: '#64748b',
+  },
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 12,
+  },
+  detailTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  detailTotalLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  detailTotalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f766e',
+  },
+  benefitsContainer: {
+    marginTop: 12,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+    padding: 12,
+  },
+  benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  benefitText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#1e293b',
+  },
+  upfrontNote: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  upfrontAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0f766e',
+    textAlign: 'center',
   },
 });
 

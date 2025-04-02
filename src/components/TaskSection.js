@@ -7,29 +7,32 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
 
 const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, handleScroll }) => {
+  // Filter tasks to show only those with a "pending" response
+  const pendingTasks = tasks.filter(task => task.response === 'pending');
+  
   // Calculate initial padding to center the first card
   const initialPadding = (width - CARD_WIDTH) / 2;
 
   return (
     <View style={styles.section}>
-      {/* Header Section - Now floating with fun icon */}
+      {/* Header Section */}
       <View style={styles.taskHeader}>
         <View style={styles.taskTitleGroup}>
           <MaterialIcons name="rocket-launch" size={24} color="#22c55e" />
           <Text style={styles.sectionTitle}>Tasks</Text>
         </View>
-        {taskCount > 0 && (
+        {pendingTasks.length > 0 && (
           <View style={styles.taskBadge}>
-            <Text style={styles.taskBadgeText}>{taskCount} pending</Text>
+            <Text style={styles.taskBadgeText}>{pendingTasks.length} pending</Text>
           </View>
         )}
       </View>
       
-      {tasks.length > 0 ? (
+      {pendingTasks.length > 0 ? (
         <View>
-          {/* Task Carousel - Centered */}
+          {/* Task Carousel */}
           <FlatList
-            data={tasks}
+            data={pendingTasks}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id.toString()}
@@ -55,7 +58,7 @@ const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, hand
           
           {/* Pagination Indicators */}
           <View style={styles.paginationDots}>
-            {tasks.map((_, index) => (
+            {pendingTasks.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -93,7 +96,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     paddingHorizontal: 24,
-   
   },
   taskTitleGroup: {
     flexDirection: 'row',
@@ -102,10 +104,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    // fontWeight: '900',
     color: '#1e293b',
     letterSpacing: -0.5,
-     fontFamily: 'Montserrat-Black',
+    fontFamily: 'Montserrat-Black',
   },
   taskBadge: {
     backgroundColor: '#f0fdf4',

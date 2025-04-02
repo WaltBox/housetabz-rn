@@ -4,14 +4,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   ScrollView,
   SafeAreaView,
+  StyleSheet,
   Platform
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../config/api';
 
 const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaymentMethod }) => {
@@ -23,12 +22,12 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For one-time upfront payment amount
+  // Upfront pledge required (the amount the user must pay now)
   const effectivePaymentAmount = taskData?.paymentAmount != null
     ? Number(taskData.paymentAmount)
     : 0;
 
-  // For monthly recurring amount (individual share)
+  // Monthly ownership amount (the recurring amount the user claims)
   const effectiveMonthlyAmount = taskData?.monthlyAmount != null
     ? Number(taskData.monthlyAmount)
     : 0;
@@ -107,171 +106,180 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   if (error) return <ErrorModal visible={visible} error={error} onClose={onClose} />;
   if (!bundleDetails) return null;
 
-  const request = bundleDetails.stagedRequest || bundleDetails.takeOverRequest;
-  const isRecurring = bundleDetails.takeOverRequest != null;
-  const isStaged = bundleDetails.stagedRequest != null;
-  const { status, creator, tasks = [] } = bundleDetails;
-  const pendingParticipants = tasks.filter(task => task.response === 'pending');
-  const acceptedCount = tasks.filter(t => t.response === 'accepted').length;
-  const totalParticipants = tasks.length;
+  // Ensure these properties exist before using them
+  const request = bundleDetails.stagedRequest || bundleDetails.takeOverRequest || {};
+  const isRecurring = bundleDetails.takeOverRequest != null || 
+                     bundleDetails.type === 'fixed_recurring' || 
+                     bundleDetails.type === 'variable_recurring';
+  const tasks = bundleDetails.tasks || [];
+  const creator = bundleDetails.creator || {};
+  const acceptedCount = tasks.filter(t => t.response === 'accepted').length || 0;
+  const totalParticipants = tasks.length || 1;
+  const pendingParticipants = tasks.filter(task => task.response === 'pending') || [];
 
   return (
     <Modal visible={visible} transparent onRequestClose={onClose}>
-      <SafeAreaView style={styles.modalContainer}>
+      <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Secure Group Commitment</Text>
-          <MaterialIcons
-            name="close"
-            size={28}
-            color="#64748b"
-            onPress={onClose}
-            style={styles.closeIcon}
-          />
+          <Text style={styles.headerTitle}>
+            {bundleDetails.type === 'marketplace_onetime' 
+              ? "One-time Service Request" 
+              : bundleDetails.type === 'fixed_recurring'
+                ? "Fixed Monthly Expense" 
+                : "Variable Monthly Expense"
+            }
+          </Text>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <MaterialIcons name="close" size={28} color="#64748b" />
+          </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.contentContainer}>
-          {/* Status Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Status</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>{isStaged ? 'Commitment Status' : 'Request Status'}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(status) + '1a' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(status) }]}>{status?.toUpperCase()}</Text>
-              </View>
-            </View>
-            <View style={styles.row}>
-              <MaterialIcons name="group" size={16} color="#64748b" />
-              <Text style={styles.subLabel}>Organized by {creator?.username}</Text>
-            </View>
-          </View>
-
-          {/* Service Details */}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Service Details Card */}
           {request && (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{request.serviceName}</Text>
-              <Text style={styles.cardSubTitle}>
-                {request.partnerName ? `with ${request.partnerName}` : ''}
+              <Text style={styles.cardTitle}>{request.serviceName || ''}</Text>
+              <Text style={styles.cardSubtitle}>
+                {request.partnerName ? `Provider: ${request.partnerName}` : ''}
               </Text>
-              <View style={styles.costContainer}>
-                <View style={styles.row}>
-                  {isRecurring ? (
-                    <>
-                      <Text style={styles.label}>Total Monthly Cost</Text>
-                      <Text style={styles.value}>
-                        ${Number(request.monthlyAmount || 0).toFixed(2)}/mo
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.label}>Total Service Cost</Text>
-                      <Text style={styles.value}>
-                        ${Number(request.estimatedAmount || 0).toFixed(2)}
-                      </Text>
-                    </>
-                  )}
+              
+              {/* Organized by */}
+              <View style={styles.organizedBy}>
+                <MaterialIcons name="person" size={18} color="#64748b" />
+                <Text style={styles.organizedByText}>Request by {creator?.username || 'Unknown'}</Text>
+              </View>
+
+              {/* Progress bar */}
+              <View style={styles.progressContainer}>
+                <Text style={styles.progressLabel}>Roommate Approvals: {acceptedCount}/{totalParticipants}</Text>
+                <View style={styles.progressTrack}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${(acceptedCount/totalParticipants) * 100}%` }
+                    ]} 
+                  />
                 </View>
-                {isRecurring && effectiveMonthlyAmount > 0 && (
-                  <View style={[styles.row, styles.highlightedRow]}>
-                    <Text style={styles.label}>Your Monthly Share</Text>
-                    <Text style={styles.value}>${effectiveMonthlyAmount.toFixed(2)}/mo</Text>
+              </View>
+
+              {/* Payment details */}
+              <View style={styles.paymentSection}>
+                {/* Upfront Payment */}
+                {effectivePaymentAmount > 0 && (
+                  <View style={{ marginBottom: 16 }}>
+                    <View style={styles.titleWithHelp}>
+                      <Text style={styles.paymentTitle}>
+                        {bundleDetails.type === 'marketplace_onetime' ? "One-time Payment" : "Upfront Pledge Required"}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => alert(bundleDetails.type === 'marketplace_onetime' 
+                          ? "This is your share of the one-time service cost. Payment will only process after all roommates approve."
+                          : "This is your portion of the initial setup fee or security deposit required to start the service."
+                        )}
+                      >
+                        <MaterialIcons name="help-outline" size={18} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.paymentRow}>
+                      <Text style={styles.paymentLabel}>Your Amount</Text>
+                      <Text style={styles.paymentAmount}>${effectivePaymentAmount.toFixed(2)}</Text>
+                    </View>
                   </View>
                 )}
 
-                {effectivePaymentAmount > 0 && (
-                  <View style={[styles.row, styles.highlightedRow, isRecurring ? { marginTop: 8 } : {}]}>
-                    <Text style={styles.label}>
-                      {isRecurring ? 'Your Upfront Payment' : 'Your Share'}
-                    </Text>
-                    <Text style={styles.value}>${effectivePaymentAmount.toFixed(2)}</Text>
+                {/* Monthly Ownership - Only for recurring services */}
+                {(bundleDetails.type === 'fixed_recurring' || bundleDetails.type === 'variable_recurring') && (
+                  <View>
+                    <View style={styles.titleWithHelp}>
+                      <Text style={styles.paymentTitle}>
+                        {bundleDetails.type === 'fixed_recurring' 
+                          ? "Monthly Share" 
+                          : "Variable Monthly Share"
+                        }
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => alert(bundleDetails.type === 'fixed_recurring'
+                          ? "This is your portion of the fixed monthly bill that will be split between roommates."
+                          : "This is your estimated share of the monthly expense. The actual amount may vary month to month."
+                        )}
+                      >
+                        <MaterialIcons name="help-outline" size={18} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.paymentRow}>
+                      <Text style={styles.paymentLabel}>Monthly Amount</Text>
+                      <Text style={styles.paymentAmount}>${effectiveMonthlyAmount.toFixed(2)}/mo</Text>
+                    </View>
                   </View>
                 )}
               </View>
             </View>
           )}
 
-          {/* Pledge Info */}
-          <View style={styles.infoCard}>
-            <MaterialIcons name="verified-user" size={22} color="#34d399" />
-            <Text style={styles.infoText}>
-              By confirming your pledge, HouseTabz will process your payment when everyone in house pledges.
-            </Text>
-          </View>
-
-          {/* Participants Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Participants</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Waiting On ({pendingParticipants.length})</Text>
-              <Text style={styles.subLabel}>{acceptedCount}/{totalParticipants} Accepted</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarScroll}>
-              {pendingParticipants.map(task => (
-                <View key={task.id} style={styles.avatarContainer}>
-                  <View style={[styles.avatar, { borderColor: getStatusColor(task.response) }]}>
-                    <Text style={styles.avatarText}>{task.user?.username[0]?.toUpperCase()}</Text>
-                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(task.response) }]} />
-                  </View>
-                  <Text style={styles.avatarName}>{task.user?.username}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
           {/* Payment Method Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={styles.paymentMethodSection}>
+            <Text style={styles.paymentMethodTitle}>Payment Method</Text>
+            
             {paymentMethods.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>You need a card on file.</Text>
-                <TouchableOpacity style={styles.addButton} onPress={onAddPaymentMethod}>
-                  <Text style={styles.addButtonText}>Add Payment Method</Text>
+              <View style={styles.noPaymentMethodsContainer}>
+                <Text style={styles.noPaymentMethodsText}>No payment methods available</Text>
+                <TouchableOpacity 
+                  style={styles.addMethodButton}
+                  onPress={onAddPaymentMethod}
+                >
+                  <Text style={styles.addMethodButtonText}>Add Payment Method</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               !showPaymentOptions ? (
-                <TouchableOpacity style={styles.paymentCard} onPress={() => setShowPaymentOptions(true)}>
-                  <View style={styles.row}>
+                <TouchableOpacity 
+                  style={styles.paymentMethodSelector}
+                  onPress={() => setShowPaymentOptions(true)}
+                >
+                  <View style={styles.paymentMethodInfo}>
                     <MaterialIcons
                       name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)}
                       size={24}
                       color="#34d399"
+                      style={styles.methodIcon}
                     />
-                    <View style={styles.paymentInfo}>
-                      <Text style={styles.paymentTitle}>
+                    <View style={styles.paymentMethodDetails}>
+                      <Text style={styles.paymentMethodName}>
                         {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
                       </Text>
                       {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
-                        <Text style={styles.paymentSubtitle}>Default</Text>
+                        <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
                       )}
                     </View>
                   </View>
                   <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
                 </TouchableOpacity>
               ) : (
-                <View style={styles.paymentOptions}>
+                <View>
                   {paymentMethods.map(method => (
                     <TouchableOpacity
                       key={method.id}
                       style={[
-                        styles.paymentOption,
-                        selectedMethod === method.id && styles.selectedOption,
+                        styles.paymentMethodOption,
+                        selectedMethod === method.id ? styles.selectedPaymentMethod : styles.unselectedPaymentMethod
                       ]}
                       onPress={() => {
                         setSelectedMethod(method.id);
                         setShowPaymentOptions(false);
                       }}
                     >
-                      <View style={styles.row}>
+                      <View style={styles.paymentMethodInfo}>
                         <MaterialIcons
                           name={getMethodIcon(method.type)}
                           size={24}
-                          color={selectedMethod === method.id ? '#34d399' : '#64748b'}
+                          color={selectedMethod === method.id ? "#34d399" : "#64748b"}
+                          style={styles.methodIcon}
                         />
-                        <View style={styles.paymentInfo}>
-                          <Text style={styles.paymentTitle}>{getPaymentMethodDisplay(method)}</Text>
+                        <View style={styles.paymentMethodDetails}>
+                          <Text style={styles.paymentMethodName}>{getPaymentMethodDisplay(method)}</Text>
                           {method.isDefault && (
-                            <Text style={styles.paymentSubtitle}>Default</Text>
+                            <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
                           )}
                         </View>
                       </View>
@@ -284,37 +292,101 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
               )
             )}
           </View>
+
+          {/* Info Card */}
+          <View style={styles.infoCard}>
+            <MaterialIcons name="info" size={22} color="#34d399" style={styles.infoIcon} />
+            <Text style={styles.infoText}>
+              {bundleDetails.type === 'marketplace_onetime'
+                ? "Your payment will only be processed after all roommates have agreed to their pledges."
+                : effectivePaymentAmount > 0
+                  ? "By confirming, you agree to both your upfront pledge and monthly expense responsibility."
+                  : "By confirming, you're claiming responsibility for your portion of this recurring expense."
+              }
+            </Text>
+          </View>
+
+          {/* Participants List */}
+          <View style={styles.participantsCard}>
+            <Text style={styles.participantsTitle}>Roommate Status</Text>
+            
+            {tasks.map(task => (
+              <View 
+                key={task.id || Math.random().toString()} 
+                style={styles.participantRow}
+              >
+                <View style={styles.participantInfo}>
+                  <View style={styles.participantAvatar}>
+                    <Text style={styles.participantInitial}>{task.user?.username?.[0]?.toUpperCase() || "?"}</Text>
+                  </View>
+                  <Text style={styles.participantName}>{task.user?.username || "Unknown"}</Text>
+                </View>
+                <View style={[styles.participantStatusBadge, { backgroundColor: getStatusColor(task.response) + '20' }]}>
+                  <Text style={[styles.participantStatusText, { color: getStatusColor(task.response) }]}>
+                    {task.response === 'pending' ? 'PENDING' : task.response === 'accepted' ? 'ACCEPTED' : 'REJECTED'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </ScrollView>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <View style={styles.amountRow}>
-            <Text style={styles.label}>
-              {isRecurring
-                ? (effectivePaymentAmount > 0 ? 'Upfront Payment' : 'Monthly Share')
-                : 'Commitment Total'}
+        {/* Footer with buttons */}
+        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <Text style={{ fontSize: 16 }}>
+              {isRecurring && effectivePaymentAmount > 0 
+                ? "Upfront Payment" 
+                : isRecurring 
+                  ? "Monthly Ownership" 
+                  : "Payment Amount"}
             </Text>
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountText}>
-                ${(isRecurring && effectivePaymentAmount === 0
-                  ? effectiveMonthlyAmount
-                  : effectivePaymentAmount).toFixed(2)}
-                {isRecurring && effectivePaymentAmount === 0 ? '/mo' : ''}
-              </Text>
-            </View>
+            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+              ${isRecurring && effectivePaymentAmount > 0 
+                ? effectivePaymentAmount.toFixed(2) 
+                : effectiveMonthlyAmount.toFixed(2)}
+              {isRecurring && effectivePaymentAmount === 0 ? "/mo" : ""}
+            </Text>
           </View>
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+          
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity 
+              style={{ 
+                flex: 1, 
+                backgroundColor: "#f1f5f9", 
+                padding: 16, 
+                borderRadius: 12, 
+                alignItems: "center",
+                marginRight: 8
+              }}
+              onPress={onClose}
+            >
+              <Text style={{ fontWeight: "bold", color: "#475569" }}>Decline</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.confirmButton} onPress={handleAccept} disabled={isProcessing}>
+            
+            <TouchableOpacity 
+              style={{ 
+                flex: 1,
+                flexDirection: "row", 
+                backgroundColor: "#34d399", 
+                padding: 16, 
+                borderRadius: 12, 
+                alignItems: "center", 
+                justifyContent: "center",
+                marginLeft: 8
+              }}
+              onPress={handleAccept}
+              disabled={isProcessing || paymentMethods.length === 0}
+            >
               {isProcessing ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <View style={styles.buttonContent}>
-                  <MaterialIcons name="lock" size={18} color="white" />
-                  <Text style={styles.confirmButtonText}>Confirm Pledge</Text>
-                </View>
+                <>
+                  <MaterialIcons name="check-circle" size={20} color="white" style={{ marginRight: 8 }} />
+                  <Text style={{ fontWeight: "bold", color: "white" }}>
+                    {effectivePaymentAmount > 0 ? "Pledge Payment" : "Accept Ownership"}
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -324,11 +396,9 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   );
 };
 
-export default AcceptServicePayment;
-
 const LoadingModal = ({ visible }) => (
   <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
+    <View style={styles.modalOverlay}>
       <ActivityIndicator size="large" color="#34d399" />
     </View>
   </Modal>
@@ -336,12 +406,15 @@ const LoadingModal = ({ visible }) => (
 
 const ErrorModal = ({ visible, error, onClose }) => (
   <Modal transparent visible={visible}>
-    <View style={styles.centerContainer}>
+    <View style={styles.modalOverlay}>
       <View style={styles.errorCard}>
-        <MaterialIcons name="error-outline" size={40} color="#dc2626" />
+        <MaterialIcons name="error-outline" size={40} color="#dc2626" style={styles.errorIcon} />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={onClose}>
-          <Text style={styles.retryText}>Close</Text>
+        <TouchableOpacity 
+          style={styles.errorButton}
+          onPress={onClose}
+        >
+          <Text style={styles.errorButtonText}>Close</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -349,7 +422,8 @@ const ErrorModal = ({ visible, error, onClose }) => (
 );
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  // Main container styles
+  container: {
     flex: 1,
     backgroundColor: "#dff6f0",
   },
@@ -357,316 +431,406 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: "#dff6f0",
-    borderBottomWidth: 0.5,
+    padding: 16,
+    borderBottomWidth: 1,
     borderBottomColor: "#d1d5db",
+    backgroundColor: "#dff6f0",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : "Quicksand-Bold",
+    fontWeight: "bold",
+    color: "#0f172a",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : "System",
   },
-  closeIcon: {
-    padding: 5,
+  closeButton: {
+    padding: 8,
   },
-  contentContainer: {
-    padding: 20,
+  
+  // Content and cards
+  scrollContent: {
+    paddingBottom: 20,
     backgroundColor: "#dff6f0",
   },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : "Quicksand-Bold",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 14,
-    color: "#1e293b",
-    fontWeight: "500",
-  },
-  subLabel: {
-    fontSize: 12,
-    color: "#94a3b8",
-  },
-  statusBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 20,
+    margin: 16,
+    padding: 16,
+    backgroundColor: "white",
+    borderRadius: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1e293b",
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#0f172a",
     marginBottom: 4,
   },
-  cardSubTitle: {
+  cardSubtitle: {
+    fontSize: 16,
+    color: "#64748b",
+    marginBottom: 16,
+  },
+  
+  // Organized by section
+  organizedBy: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  organizedByText: {
+    marginLeft: 8,
+    color: "#64748b",
+    fontSize: 14,
+  },
+  
+  // Status
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  statusLabel: {
+    color: "#64748b",
+    fontSize: 14,
+    marginRight: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  
+  // Progress
+  progressContainer: {
+    marginBottom: 16,
+  },
+  progressLabel: {
     fontSize: 14,
     color: "#64748b",
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  costContainer: {
-    borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
-    paddingTop: 12,
-  },
-  highlightedRow: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  progressTrack: {
+    height: 8,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 4,
     marginTop: 8,
   },
-  value: {
-    fontSize: 14,
-    color: "#1e293b",
-    fontWeight: "600",
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#34d399",
   },
-  infoCard: {
+  
+  // Payment sections
+  paymentSection: {
+    borderTopWidth: 1,
+    borderColor: "#f1f5f9",
+    paddingTop: 16,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  paymentRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    justifyContent: "space-between",
     backgroundColor: "#f0fdf4",
-    borderRadius: 14,
-    padding: 18,
-    marginVertical: 12,
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#dcfce7",
   },
+  paymentLabel: {
+    color: "#0f172a",
+  },
+  paymentAmount: {
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  titleWithHelp: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  
+  // Payment method section
+  paymentMethodSection: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: "white",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  paymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0f172a",
+    marginBottom: 16,
+  },
+  noPaymentMethodsContainer: {
+    alignItems: "center",
+    padding: 16,
+  },
+  noPaymentMethodsText: {
+    color: "#64748b",
+    marginBottom: 12,
+  },
+  addMethodButton: {
+    backgroundColor: "#34d399",
+    padding: 12,
+    borderRadius: 8,
+  },
+  addMethodButtonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  paymentMethodSelector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
+  },
+  paymentMethodInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  paymentDescription: {
+    fontSize: 14,
+    color: "#64748b",
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  paymentMethodDetails: {
+    marginLeft: 12,
+  },
+  paymentMethodName: {
+    fontWeight: "600",
+    color: "#0f172a",
+  },
+  paymentMethodDefaultLabel: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  paymentMethodOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  selectedPaymentMethod: {
+    borderColor: "#34d399",
+    backgroundColor: "#f0fdf4",
+  },
+  unselectedPaymentMethod: {
+    borderColor: "#e2e8f0",
+    backgroundColor: "white",
+  },
+  
+  // Info Card
+  infoCard: {
+    flexDirection: "row",
+    margin: 16,
+    padding: 16,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 16,
+    borderColor: "#dcfce7",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  infoIcon: {
+    marginRight: 12,
+    alignSelf: "flex-start",
+    paddingTop: 2,
+  },
   infoText: {
     flex: 1,
-    fontSize: 15,
-    color: "#1e293b",
-    lineHeight: 22,
-    marginLeft: 10,
+    color: "#0f172a",
+    lineHeight: 20,
   },
-  avatarScroll: {
-    paddingHorizontal: 4,
-    marginTop: 8,
+  
+  // Participants list
+  participantsCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: "white",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  avatarContainer: {
+  participantsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0f172a",
+    marginBottom: 16,
+  },
+  participantRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginRight: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  participantInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  participantAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#e2e8f0",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    position: "relative",
+    marginRight: 12,
   },
-  avatarText: {
-    fontSize: 18,
+  participantInitial: {
+    color: "#0f172a",
     fontWeight: "600",
-    color: "#1e293b",
   },
-  avatarName: {
-    fontSize: 12,
-    color: "#64748b",
-    marginTop: 6,
-    maxWidth: 64,
-    textAlign: "center",
+  participantName: {
+    color: "#0f172a",
   },
-  statusDot: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#dff6f0",
-  },
-  paymentCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#fff",
+  participantStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    marginBottom: 20,
   },
-  paymentInfo: {
-    marginLeft: 12,
+  methodIcon: {
+    marginRight: 12,
   },
-  paymentTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  paymentSubtitle: {
-    fontSize: 13,
-    color: "#64748b",
-  },
-  paymentOptions: {
-    marginBottom: 20,
-  },
-  paymentOption: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#fff",
-    marginBottom: 8,
-  },
-  selectedOption: {
-    backgroundColor: "#f0fdf4",
-    borderColor: "#34d399",
-  },
-  emptyContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#64748b",
-    marginBottom: 8,
-  },
-  addButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: "#34d399",
-  },
-  addButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
+  
+  // Footer
   footer: {
-    padding: 12,
+    padding: 16,
     borderTopWidth: 1,
     borderTopColor: "#f1f5f9",
     backgroundColor: "#dff6f0",
   },
-  amountContainer: {
-    backgroundColor: 'white',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#dff6f0',
+  footerAmountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  amountText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1e293b',
+  footerAmountLabel: {
+    fontSize: 16,
+    color: "#0f172a",
   },
-  amountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  footerAmountValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#0f172a",
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  buttonRow: {
+    flexDirection: "row",
   },
-  cancelButton: {
+  declineButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
     backgroundColor: "#f1f5f9",
-    alignItems: "center",
-    marginRight: 6,
-  },
-  cancelButtonText: {
-    color: "#64748b",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 10,
+    padding: 16,
     borderRadius: 12,
+    alignItems: "center",
+    marginRight: 8,
+  },
+  declineButtonText: {
+    fontWeight: "bold",
+    color: "#475569",
+  },
+  acceptButton: {
+    flex: 1,
+    flexDirection: "row",
     backgroundColor: "#34d399",
-    flexDirection: "row",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 6,
+    marginLeft: 8,
   },
-  buttonContent: {
+  participantStatusText: {
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  acceptButtonContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-  confirmButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
+  disabledAcceptButton: {
+    backgroundColor: "#94e0c4",
   },
-  centerContainer: {
+  acceptButtonText: {
+    fontWeight: "bold",
+    color: "white",
+  },
+  
+  // Modal styles
+  modalOverlay: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   errorCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 24,
     alignItems: "center",
     width: "80%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  acceptButtonIcon: {
+    marginRight: 8,
   },
   errorText: {
     color: "#dc2626",
     textAlign: "center",
+    marginVertical: 16,
     lineHeight: 22,
-    marginBottom: 16,
   },
-  retryButton: {
+  errorButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
     backgroundColor: "#fecaca",
     borderRadius: 12,
   },
-  retryText: {
+  errorIcon: {
+    marginBottom: 12,
+  },
+  errorButtonText: {
     color: "#dc2626",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
 });
 
-
+export default AcceptServicePayment;

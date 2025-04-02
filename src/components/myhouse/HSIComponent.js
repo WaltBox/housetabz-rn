@@ -7,8 +7,12 @@ import { Dimensions } from "react-native";
 const { width } = Dimensions.get("window");
 
 const HSIComponent = ({ house, onInfoPress }) => {
-  const hsiProgress = house ? house.hsi / 100 : 0;
-  const hsiValue = house?.hsi || "0";
+  // Get HSI score from statusIndex relation or fall back to legacy hsi field
+  const hsiScore = house?.statusIndex?.score ?? house?.hsi ?? 0;
+  const hsiProgress = hsiScore / 100;
+  
+  // Get balance from finance relation or fall back to legacy balance field
+  const houseBalance = house?.finance?.balance ?? house?.balance ?? 0;
   
   // Determine color based on HSI value
   const getStatusColor = (value) => {
@@ -19,7 +23,7 @@ const HSIComponent = ({ house, onInfoPress }) => {
     return ["#f87171", "#ef4444"];
   };
   
-  const [primaryColor, secondaryColor] = getStatusColor(hsiValue);
+  const [primaryColor, secondaryColor] = getStatusColor(hsiScore);
 
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
     const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
@@ -31,12 +35,14 @@ const HSIComponent = ({ house, onInfoPress }) => {
 
   const generateSemiCircle = (progress) => {
     const startAngle = 180;
-    const endAngle = 180 + 180 * progress;
+    const sweepAngle = 180 * progress;
+    const endAngle = startAngle + sweepAngle;
     const start = polarToCartesian(50, 50, 40, startAngle);
     const end = polarToCartesian(50, 50, 40, endAngle);
-    const largeArcFlag = progress > 0.5 ? 1 : 0;
+    const largeArcFlag = sweepAngle >= 180 ? 1 : 0;
     return `M ${start.x} ${start.y} A 40 40 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
   };
+  
 
   return (
     <View style={styles.container}>
@@ -90,7 +96,7 @@ const HSIComponent = ({ house, onInfoPress }) => {
         </Svg>
         
         <View style={styles.valueContainer}>
-          <Text style={[styles.hsiText, { color: primaryColor }]}>{hsiValue}</Text>
+          <Text style={[styles.hsiText, { color: primaryColor }]}>{hsiScore}</Text>
           <Text style={styles.hsiSubtext}>/100</Text>
         </View>
         
@@ -103,6 +109,12 @@ const HSIComponent = ({ house, onInfoPress }) => {
              hsiProgress >= 0.4 ? 'Fair' : 'Needs Attention'}
           </Text>
         </View>
+      </View>
+      
+      {/* Add house balance display */}
+      <View style={styles.balanceContainer}>
+        <Text style={styles.balanceLabel}>House Balance:</Text>
+        <Text style={styles.balanceValue}>${houseBalance.toFixed(2)}</Text>
       </View>
     </View>
   );
@@ -168,6 +180,25 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  balanceContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: 12,
+  },
+  balanceLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1e293b",
+  },
+  balanceValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#34d399",
   },
 });
 

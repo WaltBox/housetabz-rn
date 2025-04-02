@@ -1,4 +1,3 @@
-// DashboardScreen.jsx
 import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
@@ -11,7 +10,6 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-// Import apiClient instead of axios
 import apiClient from '../config/api';
 
 import DashboardHeader from '../components/DashboardHeader';
@@ -23,8 +21,11 @@ const DashboardScreen = () => {
   const { user } = useAuth();
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [yourBalance, setYourBalance] = useState(0);
+  const [yourCredit, setYourCredit] = useState(0);
+  const [yourPoints, setYourPoints] = useState(0);
   const [yourChargesData, setYourChargesData] = useState([]);
   const [houseBalance, setHouseBalance] = useState(0);
+  const [houseLedger, setHouseLedger] = useState(0);
   const [roommateChartData, setRoommateChartData] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [taskCount, setTaskCount] = useState(0);
@@ -51,10 +52,19 @@ const DashboardScreen = () => {
       setError(null);
       setLoading(true);
 
-      // Fetch user data - Using apiClient with relative path
+      // Fetch user data with finance information
       const userResponse = await apiClient.get(`/api/users/${user.id}`);
-      const { balance = 0, charges = [], houseId } = userResponse.data;
-      setYourBalance(balance);
+      const userData = userResponse.data;
+      const houseId = userData.houseId;
+      
+      // Get financial data (balance) from the finance relation or the legacy balance field
+      const finance = userData.finance || {};
+      setYourBalance(finance.balance !== undefined ? finance.balance : (userData.balance || 0));
+      setYourCredit(finance.credit !== undefined ? finance.credit : (userData.credit || 0));
+      setYourPoints(finance.points !== undefined ? finance.points : (userData.points || 0));
+
+      // Get charges
+      const charges = userData.charges || [];
 
       // Process charges for the pie chart
       const processedCharges =
@@ -62,40 +72,74 @@ const DashboardScreen = () => {
           ? charges.map((charge) => ({
               x: charge.name || 'Charge',
               y: parseFloat(charge.amount) || 0,
-              color: charge.paid ? '#22c55e' : '#ef4444',
+              color: charge.status === 'paid' ? '#22c55e' : '#ef4444',
             }))
           : [{ x: 'No Charges', y: 1, color: '#22c55e' }];
       setYourChargesData(processedCharges);
 
-      // Fetch tasks - Using apiClient with relative path
+      // Fetch tasks
       const tasksResponse = await apiClient.get(`/api/tasks/user/${user.id}`);
       const pendingTasks = tasksResponse.data.tasks.filter((task) => task.status === false);
       setTasks(pendingTasks);
       setTaskCount(pendingTasks.length);
 
-      // Fetch house data if available - Using apiClient with relative path
+      // Fetch house data if available
       if (houseId) {
         const houseResponse = await apiClient.get(`/api/houses/${houseId}`);
-        const { bills = [], users = [] } = houseResponse.data;
+        const houseData = houseResponse.data;
+        const bills = houseData.bills || [];
+        const users = houseData.users || [];
+        
+        // Get house finance data from the finance relation or the legacy balance field
+        const houseFinance = houseData.finance || {};
+        setHouseBalance(houseFinance.balance !== undefined ? houseFinance.balance : (houseData.balance || 0));
+        setHouseLedger(houseFinance.ledger !== undefined ? houseFinance.ledger : (houseData.ledger || 0));
 
+        // Calculate total from bills as well for validation
         const totalHouseBalance = bills.reduce(
           (sum, bill) => sum + (parseFloat(bill.amount) || 0),
           0
         );
-        setHouseBalance(totalHouseBalance);
+        
+        // If finance data is missing, fall back to calculated total
+        if (houseFinance.balance === undefined && houseData.balance === undefined) {
+          setHouseBalance(totalHouseBalance);
+        }
 
+        // Create roommate data for the chart
         const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'];
-        const roommateData = users.map((user, index) => ({
-          x: user.username || `User ${index + 1}`,
-          y: user.charges?.reduce(
-              (sum, charge) => sum + (parseFloat(charge.amount) || 0),
-              0
-            ) || 1,
-          color: colors[index % colors.length],
-        }));
-        setRoommateChartData(roommateData);
+        
+        // Attempt to get user finance data, fallback to charges if available
+        const roommateData = users.map((roommate, index) => {
+          // Try to get balance from finance relation first
+          const roommateFinance = roommate.finance || {};
+          const roommateBalance = roommateFinance.balance !== undefined 
+            ? roommateFinance.balance 
+            : (roommate.balance || 0);
+            
+          // If we have charges, sum them as fallback
+          const chargesSum = roommate.charges?.reduce(
+            (sum, charge) => sum + (parseFloat(charge.amount) || 0),
+            0
+          ) || 0;
+          
+          // Use finance balance if available, otherwise use charges sum
+          const balanceToUse = roommateFinance.balance !== undefined ? roommateBalance : chargesSum;
+          
+          return {
+            x: roommate.username || `User ${index + 1}`,
+            y: balanceToUse || 1, // Use 1 as minimum to ensure visibility
+            color: colors[index % colors.length],
+          };
+        });
+        
+        setRoommateChartData(roommateData.length > 0 
+          ? roommateData 
+          : [{ x: 'No Data', y: 1, color: '#22c55e' }]
+        );
       } else {
         setHouseBalance(0);
+        setHouseLedger(0);
         setRoommateChartData([{ x: 'No Data', y: 1, color: '#22c55e' }]);
       }
     } catch (err) {
@@ -233,7 +277,6 @@ const DashboardScreen = () => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

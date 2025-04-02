@@ -3,12 +3,18 @@ import { View, Text, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const Scoreboard = ({ house }) => {
-  // Sort users by points
-  const sortedUsers = house?.users?.sort((a, b) => b.points - a.points) || [];
+  // Sort users by points, getting points from finance relation or falling back to legacy points field
+  const sortedUsers = house?.users?.sort((a, b) => {
+    const pointsA = a.finance?.points ?? a.points ?? 0;
+    const pointsB = b.finance?.points ?? b.points ?? 0;
+    return pointsB - pointsA;
+  }) || [];
 
   // Render each user row in grid
   const renderUserItem = (user, index) => {
     const isFirstPlace = index === 0;
+    const points = user.finance?.points ?? user.points ?? 0;
+    const balance = user.finance?.balance ?? user.balance ?? 0;
     
     return (
       <View key={user.id} style={styles.userRow}>
@@ -27,11 +33,12 @@ const Scoreboard = ({ house }) => {
               {user.username}
             </Text>
           </View>
+          <Text style={styles.balanceText}>${balance.toFixed(2)}</Text>
         </View>
         
         {/* Points */}
         <View style={styles.pointsContainer}>
-          <Text style={styles.points}>{user.points}</Text>
+          <Text style={styles.points}>{points}</Text>
           <Text style={styles.pointsLabel}>pts</Text>
         </View>
       </View>
@@ -140,6 +147,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1e293b",
     flex: 1,
+  },
+  balanceText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
   },
   pointsContainer: {
     flexDirection: "row",

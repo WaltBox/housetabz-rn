@@ -19,6 +19,29 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [localUnpaidCharges, setLocalUnpaidCharges] = useState(unpaidCharges);
   
+  // Add state for payment methods
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  
+  // Fetch payment methods
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      try {
+        const response = await apiClient.get('/api/payment-methods');
+        if (response.data.paymentMethods && response.data.paymentMethods.length > 0) {
+          setPaymentMethods(response.data.paymentMethods);
+          // Set default or first payment method
+          const defaultMethod = response.data.paymentMethods.find(m => m.isDefault) || response.data.paymentMethods[0];
+          setSelectedPaymentMethod(defaultMethod);
+        }
+      } catch (error) {
+        console.error('Error fetching payment methods:', error);
+      }
+    };
+    
+    fetchPaymentMethods();
+  }, []);
+  
   // Update local charges when props change
   useEffect(() => {
     setLocalUnpaidCharges(unpaidCharges);
@@ -75,11 +98,19 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   };
 
   const handlePayAll = () => {
+    if (!selectedPaymentMethod) {
+      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      return;
+    }
     setSelectedCharges(localUnpaidCharges);
     setShowConfirmation(true);
   };
 
   const handlePaySelected = () => {
+    if (!selectedPaymentMethod) {
+      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      return;
+    }
     if (selectedCharges.length > 0) {
       setShowConfirmation(true);
     }
@@ -87,13 +118,18 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 
   // Centralized API call
   const handleConfirmPayment = async () => {
+    if (!selectedPaymentMethod) {
+      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      return;
+    }
+    
     try {
       setIsProcessingPayment(true);
       const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
       
       const paymentRequest = {
         chargeIds: selectedCharges.map(charge => charge.id),
-        paymentMethodId: 18 // Replace with dynamic payment method if needed
+        paymentMethodId: selectedPaymentMethod.id // Use the selected payment method instead of hardcoding
       };
       
       console.log('Sending payment request with:', { ...paymentRequest, idempotencyKey });
@@ -124,12 +160,24 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         `Successfully paid ${paidChargeIds.length} charges totaling $${selectedTotal.toFixed(2)}.`,
         [{ text: "OK" }]
       );
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Payment processing error:', error);
       
       let errorMessage = 'An error occurred while processing your payment.';
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.details) {
+          errorMessage = error.response.data.details;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
       }
       
       Alert.alert(
@@ -211,10 +259,10 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         <TouchableOpacity 
           style={[
             styles.paymentButton,
-            (localUnpaidCharges.length === 0 || isProcessingPayment) && styles.disabledButton
+            (localUnpaidCharges.length === 0 || isProcessingPayment || !selectedPaymentMethod) && styles.disabledButton
           ]}
           onPress={localUnpaidCharges.length === 0 ? null : (selectedCharges.length ? handlePaySelected : handlePayAll)}
-          disabled={localUnpaidCharges.length === 0 || isProcessingPayment}
+          disabled={localUnpaidCharges.length === 0 || isProcessingPayment || !selectedPaymentMethod}
         >
           {isProcessingPayment ? (
             <ActivityIndicator size="small" color="#fff" />

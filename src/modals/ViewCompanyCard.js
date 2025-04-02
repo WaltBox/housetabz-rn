@@ -61,11 +61,34 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
 
 
 
+ 
   const constructShopUrl = () => {
     try {
-      console.log('User ID when constructing shop URL:', userId); // Add this
-      const baseUrl = 'https://f932-2605-a601-a0c6-4f00-254d-d042-938f-f537.ngrok-free.app/cleaning-test.html';
-      return `${baseUrl}?ref=housetabz&partner_id=${partner.id || '2'}`;
+      // Extract partner data - handle both nested and direct formats
+      const partnerData = partner.partner || partner;
+      
+      // Get the base URL from partner.link
+      const baseUrl = partnerData.link;
+      
+      console.log('Partner data:', partnerData);
+      console.log('Partner link from data:', baseUrl);
+      
+      if (!baseUrl) {
+        console.error('Partner link is missing for:', partnerData.name);
+        return '';
+      }
+      
+      // Add query parameters back
+      const finalUrl = `${baseUrl}?ref=housetabz&partner_id=${partnerData.id || '2'}&user_id=${userId || ''}`;
+      
+      // Add cache busting in development mode
+      let urlToUse = finalUrl;
+      if (__DEV__) {
+        urlToUse = `${finalUrl}&cacheBust=${Date.now()}`;
+      }
+      
+      console.log('Constructed URL:', urlToUse);
+      return urlToUse;
     } catch (error) {
       console.error('Error constructing URL:', error);
       return '';

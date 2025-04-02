@@ -8,8 +8,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Platform,
-  Animated
+  Platform
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -30,10 +29,12 @@ const getDueDateStatus = (dueDate) => {
 
 const BillCard = ({ bill }) => {
   const { user } = useAuth();
-  const charges = bill?.Charges || [];
+  
+  // Handle different property names for charges
+  const charges = bill?.Charges || bill?.charges || [];
   const dueDateStatus = getDueDateStatus(bill.dueDate);
   
-  const pendingCharges = charges.filter(charge => charge.status === 'pending');
+  const pendingCharges = charges.filter(charge => charge.status === 'pending' || charge.status === 'unpaid');
   const unpaidAmount = pendingCharges.reduce((sum, charge) => 
     sum + Number(charge.amount), 0
   );
@@ -95,14 +96,17 @@ const BillCard = ({ bill }) => {
 
       <View style={styles.chargesContainer}>
         {pendingCharges.map((charge) => {
+          // Handle different property names for user data in charge
+          const chargeUser = charge.User || charge.user || {};
           const isCurrentUser = charge.userId === user?.id;
+          
           return (
             <View key={charge.id} style={styles.chargeRow}>
               <Text style={[
                 styles.chargeName,
                 isCurrentUser && styles.currentUserText
               ]}>
-                {isCurrentUser ? "You" : charge.User?.username}
+                {isCurrentUser ? "You" : chargeUser?.username || "User"}
               </Text>
               <Text style={styles.chargeAmount}>
                 ${Number(charge.amount).toFixed(2)}
@@ -145,10 +149,15 @@ const CurrentHouseTab = ({ house, onClose }) => {
     const fetchBills = async () => {
       try {
         const response = await apiClient.get(`/api/houses/${house.id}/bills`);
-        setBills(response.data);
         
-        const total = response.data.reduce((sum, bill) => {
-          const unpaidCharges = bill.Charges?.filter(c => c.status === 'pending') || [];
+        // Response may be an object with bills property, or directly an array
+        const billsData = response.data.bills || response.data;
+        setBills(billsData);
+        
+        // Calculate total unpaid amount, handling different charge property names
+        const total = billsData.reduce((sum, bill) => {
+          const charges = bill.Charges || bill.charges || [];
+          const unpaidCharges = charges.filter(c => c.status === 'pending' || c.status === 'unpaid') || [];
           return sum + unpaidCharges.reduce((chargeSum, charge) => 
             chargeSum + Number(charge.amount), 0
           );
@@ -207,6 +216,16 @@ const CurrentHouseTab = ({ house, onClose }) => {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Total Unpaid</Text>
           <Text style={styles.summaryAmount}>${totalUnpaid.toFixed(2)}</Text>
+          
+          {/* Display house balance if available */}
+          {(house?.finance?.balance !== undefined || house?.balance !== undefined) && (
+            <View style={styles.houseBalanceContainer}>
+              <Text style={styles.houseBalanceLabel}>House Balance:</Text>
+              <Text style={styles.houseBalanceValue}>
+                ${(house?.finance?.balance ?? house?.balance ?? 0).toFixed(2)}
+              </Text>
+            </View>
+          )}
         </View>
         
         {/* Filter tabs */}
@@ -302,6 +321,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
     fontVariant: ['tabular-nums'],
+    marginBottom: 8,
+  },
+  houseBalanceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(203, 213, 225, 0.3)',
+  },
+  houseBalanceLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  houseBalanceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#34d399',
   },
   filterContainer: {
     flexDirection: 'row',
@@ -328,6 +367,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
+  // ...rest of the styles remain the same
   billsList: {
     padding: 16,
     paddingTop: 0,
