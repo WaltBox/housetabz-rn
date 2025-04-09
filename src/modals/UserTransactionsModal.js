@@ -35,7 +35,7 @@ const getTransactionColor = (type) => {
     case 'refund':
       return '#3b82f6';  // Blue
     default:
-      return '#64748b';  // Gray
+      return '#34d399';  // Gray
   }
 };
 

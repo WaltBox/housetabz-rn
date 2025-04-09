@@ -32,6 +32,17 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
     ? Number(taskData.monthlyAmount)
     : 0;
 
+  // Determine if payment methods should be shown
+  // Only show if there's an upfront payment or it's a one-time marketplace service
+  const shouldShowPaymentMethods = () => {
+    if (!bundleDetails) return false;
+    
+    const isOneTimeService = bundleDetails.type === 'marketplace_onetime';
+    const hasUpfrontPayment = effectivePaymentAmount > 0;
+    
+    return isOneTimeService || hasUpfrontPayment;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,21 +53,22 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
           throw new Error('Missing service request data');
         }
 
-        // Fetch payment methods and bundle details in parallel.
-        const [methodsResponse, bundleResponse] = await Promise.all([
-          apiClient.get('/api/payment-methods'),
-          apiClient.get(`/api/service-request-bundle/${serviceRequestBundleId}`)
-        ]);
-
-        const methods = methodsResponse.data?.paymentMethods || [];
+        // Fetch bundle details first
+        const bundleResponse = await apiClient.get(`/api/service-request-bundles/${serviceRequestBundleId}`);
         const bundleData = bundleResponse.data?.serviceRequestBundle;
         if (!bundleData) throw new Error('Failed to load service details');
-
-        setPaymentMethods(methods);
-        if (methods.length > 0) {
-          setSelectedMethod(methods.find(m => m.isDefault)?.id || methods[0]?.id);
-        }
         setBundleDetails(bundleData);
+        
+        // Only fetch payment methods if they'll be needed
+        if (bundleData.type === 'marketplace_onetime' || 
+            (taskData?.paymentAmount != null && Number(taskData.paymentAmount) > 0)) {
+          const methodsResponse = await apiClient.get('/api/payment-methods');
+          const methods = methodsResponse.data?.paymentMethods || [];
+          setPaymentMethods(methods);
+          if (methods.length > 0) {
+            setSelectedMethod(methods.find(m => m.isDefault)?.id || methods[0]?.id);
+          }
+        }
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
@@ -71,17 +83,38 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   const handleAccept = async () => {
     setIsProcessing(true);
     try {
-      await onSuccess({
-        paymentMethod: selectedMethod,
-        amount: effectivePaymentAmount,
-      });
+      // Use id from either property
+      const taskId = taskData?.id || taskData?.taskId;
+      if (!taskId) {
+        throw new Error('Task ID is missing. Cannot proceed with acceptance.');
+      }
+  
+      if (effectivePaymentAmount > 0) {
+        await onSuccess({
+          taskId,
+          paymentMethod: selectedMethod,
+          amount: effectivePaymentAmount,
+        });
+      } else {
+        if (onSuccess) {
+          await onSuccess({
+            taskId,
+            response: 'accepted'
+          });
+        } else {
+          throw new Error('Accept function not available');
+        }
+      }
+      
+      onClose();
     } catch (error) {
-      console.error('Payment failed:', error);
+      console.error('Acceptance failed:', error);
+      setError(error.message || 'Failed to accept task');
     } finally {
       setIsProcessing(false);
     }
   };
-
+  
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending': return '#f59e0b';
@@ -111,11 +144,16 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   const isRecurring = bundleDetails.takeOverRequest != null || 
                      bundleDetails.type === 'fixed_recurring' || 
                      bundleDetails.type === 'variable_recurring';
+  const isVariableRecurring = bundleDetails.type === 'variable_recurring';
   const tasks = bundleDetails.tasks || [];
   const creator = bundleDetails.creator || {};
   const acceptedCount = tasks.filter(t => t.response === 'accepted').length || 0;
   const totalParticipants = tasks.length || 1;
   const pendingParticipants = tasks.filter(task => task.response === 'pending') || [];
+
+  // Check if accept button should be disabled
+  const isAcceptButtonDisabled = isProcessing || 
+                              (effectivePaymentAmount > 0 && paymentMethods.length === 0);
 
   return (
     <Modal visible={visible} transparent onRequestClose={onClose}>
@@ -165,7 +203,7 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
 
               {/* Payment details */}
               <View style={styles.paymentSection}>
-                {/* Upfront Payment */}
+                {/* Upfront Payment - Only show if there's an amount > 0 */}
                 {effectivePaymentAmount > 0 && (
                   <View style={{ marginBottom: 16 }}>
                     <View style={styles.titleWithHelp}>
@@ -209,7 +247,18 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                     </View>
                     <View style={styles.paymentRow}>
                       <Text style={styles.paymentLabel}>Monthly Amount</Text>
-                      <Text style={styles.paymentAmount}>${effectiveMonthlyAmount.toFixed(2)}/mo</Text>
+                      {isVariableRecurring && effectiveMonthlyAmount === 0 ? (
+                        <Text style={styles.paymentAmount}>Variable</Text>
+                      ) : (
+                        <Text style={styles.paymentAmount}>
+                          {effectiveMonthlyAmount > 0 
+                            ? `$${effectiveMonthlyAmount.toFixed(2)}/mo`
+                            : isVariableRecurring 
+                              ? "Variable" 
+                              : "Pending"
+                          }
+                        </Text>
+                      )}
                     </View>
                   </View>
                 )}
@@ -217,81 +266,83 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
             </View>
           )}
 
-          {/* Payment Method Section */}
-          <View style={styles.paymentMethodSection}>
-            <Text style={styles.paymentMethodTitle}>Payment Method</Text>
-            
-            {paymentMethods.length === 0 ? (
-              <View style={styles.noPaymentMethodsContainer}>
-                <Text style={styles.noPaymentMethodsText}>No payment methods available</Text>
-                <TouchableOpacity 
-                  style={styles.addMethodButton}
-                  onPress={onAddPaymentMethod}
-                >
-                  <Text style={styles.addMethodButtonText}>Add Payment Method</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              !showPaymentOptions ? (
-                <TouchableOpacity 
-                  style={styles.paymentMethodSelector}
-                  onPress={() => setShowPaymentOptions(true)}
-                >
-                  <View style={styles.paymentMethodInfo}>
-                    <MaterialIcons
-                      name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)}
-                      size={24}
-                      color="#34d399"
-                      style={styles.methodIcon}
-                    />
-                    <View style={styles.paymentMethodDetails}>
-                      <Text style={styles.paymentMethodName}>
-                        {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
-                      </Text>
-                      {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
-                        <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
-                      )}
-                    </View>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
-                </TouchableOpacity>
-              ) : (
-                <View>
-                  {paymentMethods.map(method => (
-                    <TouchableOpacity
-                      key={method.id}
-                      style={[
-                        styles.paymentMethodOption,
-                        selectedMethod === method.id ? styles.selectedPaymentMethod : styles.unselectedPaymentMethod
-                      ]}
-                      onPress={() => {
-                        setSelectedMethod(method.id);
-                        setShowPaymentOptions(false);
-                      }}
-                    >
-                      <View style={styles.paymentMethodInfo}>
-                        <MaterialIcons
-                          name={getMethodIcon(method.type)}
-                          size={24}
-                          color={selectedMethod === method.id ? "#34d399" : "#64748b"}
-                          style={styles.methodIcon}
-                        />
-                        <View style={styles.paymentMethodDetails}>
-                          <Text style={styles.paymentMethodName}>{getPaymentMethodDisplay(method)}</Text>
-                          {method.isDefault && (
-                            <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
-                          )}
-                        </View>
-                      </View>
-                      {selectedMethod === method.id && (
-                        <MaterialIcons name="check-circle" size={20} color="#34d399" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+          {/* Payment Method Section - Only show for one-time services or when upfront payment is required */}
+          {shouldShowPaymentMethods() && (
+            <View style={styles.paymentMethodSection}>
+              <Text style={styles.paymentMethodTitle}>Payment Method</Text>
+              
+              {paymentMethods.length === 0 ? (
+                <View style={styles.noPaymentMethodsContainer}>
+                  <Text style={styles.noPaymentMethodsText}>No payment methods available</Text>
+                  <TouchableOpacity 
+                    style={styles.addMethodButton}
+                    onPress={onAddPaymentMethod}
+                  >
+                    <Text style={styles.addMethodButtonText}>Add Payment Method</Text>
+                  </TouchableOpacity>
                 </View>
-              )
-            )}
-          </View>
+              ) : (
+                !showPaymentOptions ? (
+                  <TouchableOpacity 
+                    style={styles.paymentMethodSelector}
+                    onPress={() => setShowPaymentOptions(true)}
+                  >
+                    <View style={styles.paymentMethodInfo}>
+                      <MaterialIcons
+                        name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)}
+                        size={24}
+                        color="#34d399"
+                        style={styles.methodIcon}
+                      />
+                      <View style={styles.paymentMethodDetails}>
+                        <Text style={styles.paymentMethodName}>
+                          {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
+                        </Text>
+                        {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
+                          <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
+                        )}
+                      </View>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
+                  </TouchableOpacity>
+                ) : (
+                  <View>
+                    {paymentMethods.map(method => (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[
+                          styles.paymentMethodOption,
+                          selectedMethod === method.id ? styles.selectedPaymentMethod : styles.unselectedPaymentMethod
+                        ]}
+                        onPress={() => {
+                          setSelectedMethod(method.id);
+                          setShowPaymentOptions(false);
+                        }}
+                      >
+                        <View style={styles.paymentMethodInfo}>
+                          <MaterialIcons
+                            name={getMethodIcon(method.type)}
+                            size={24}
+                            color={selectedMethod === method.id ? "#34d399" : "#64748b"}
+                            style={styles.methodIcon}
+                          />
+                          <View style={styles.paymentMethodDetails}>
+                            <Text style={styles.paymentMethodName}>{getPaymentMethodDisplay(method)}</Text>
+                            {method.isDefault && (
+                              <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
+                            )}
+                          </View>
+                        </View>
+                        {selectedMethod === method.id && (
+                          <MaterialIcons name="check-circle" size={20} color="#34d399" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )
+              )}
+            </View>
+          )}
 
           {/* Info Card */}
           <View style={styles.infoCard}>
@@ -341,12 +392,23 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                   ? "Monthly Ownership" 
                   : "Payment Amount"}
             </Text>
-            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-              ${isRecurring && effectivePaymentAmount > 0 
-                ? effectivePaymentAmount.toFixed(2) 
-                : effectiveMonthlyAmount.toFixed(2)}
-              {isRecurring && effectivePaymentAmount === 0 ? "/mo" : ""}
-            </Text>
+            {isVariableRecurring && effectiveMonthlyAmount === 0 ? (
+              <Text style={{ fontSize: 18, fontWeight: "bold" }}>Variable</Text>
+            ) : (
+              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                {(effectivePaymentAmount > 0 || effectiveMonthlyAmount > 0) ? (
+                  isRecurring && effectivePaymentAmount > 0 
+                    ? `$${effectivePaymentAmount.toFixed(2)}` 
+                    : isRecurring && effectiveMonthlyAmount > 0
+                      ? `$${effectiveMonthlyAmount.toFixed(2)}/mo`
+                      : isRecurring
+                        ? "Pending"
+                        : `$${effectivePaymentAmount.toFixed(2)}`
+                ) : (
+                  "Pending"
+                )}
+              </Text>
+            )}
           </View>
           
           <View style={{ flexDirection: "row" }}>
@@ -365,18 +427,21 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={{ 
-                flex: 1,
-                flexDirection: "row", 
-                backgroundColor: "#34d399", 
-                padding: 16, 
-                borderRadius: 12, 
-                alignItems: "center", 
-                justifyContent: "center",
-                marginLeft: 8
-              }}
+              style={[
+                { 
+                  flex: 1,
+                  flexDirection: "row", 
+                  backgroundColor: "#34d399", 
+                  padding: 16, 
+                  borderRadius: 12, 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  marginLeft: 8
+                },
+                isAcceptButtonDisabled && { opacity: 0.7, backgroundColor: "#94e0c4" }
+              ]}
               onPress={handleAccept}
-              disabled={isProcessing || paymentMethods.length === 0}
+              disabled={isAcceptButtonDisabled}
             >
               {isProcessing ? (
                 <ActivityIndicator color="white" />

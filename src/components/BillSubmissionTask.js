@@ -1,64 +1,34 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
 
-const getServiceIcon = (serviceType) => {
-  switch (serviceType?.toLowerCase()) {
-    case 'cleaning': return 'cleaning-services';
-    case 'energy': return 'electric-bolt';
-    case 'internet': return 'wifi';
-    case 'water': return 'water-drop';
-    default: return 'home';
-  }
-};
+const BillSubmissionTask = ({ task, onPress }) => {
+  // Format due date if available
+  const formatDueDate = (dateString) => {
+    if (!dateString) return 'No due date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
-const ServiceRequestTask = ({ task, onAccept }) => {
-  const { stagedRequest, takeOverRequest } = task.serviceRequestBundle || {};
-  if (!task.serviceRequestBundle) return null;
-  const request = stagedRequest || takeOverRequest;
-  if (!request) return null;
-  
-  const iconName = getServiceIcon(request.serviceType);
-  
-  // Calculate the effective amounts for the user:
-  const effectivePaymentAmount = task?.paymentAmount != null ? Number(task.paymentAmount) : 0;
-  const effectiveMonthlyAmount = task?.monthlyAmount != null ? Number(task.monthlyAmount) : 0;
-  
-  // Determine if this is a variable recurring service
-  const isVariableRecurring = request.serviceType === 'variable_recurring' || 
-                             (task.serviceRequestBundle.type === 'variable_recurring');
-  
-  // Format the price differently for variable recurring
-  let formattedPrice;
-  
-  if (isVariableRecurring) {
-    // For variable recurring services, show "Pending" or "Variable" instead of "$0.00/mo"
-    formattedPrice = effectiveMonthlyAmount > 0 
-      ? `${Number(effectiveMonthlyAmount).toFixed(2)}/mo`
-      : "Variable";
-  } else if (takeOverRequest) {
-    // For fixed recurring services (takeOverRequest)
-    formattedPrice = effectiveMonthlyAmount > 0 
-      ? `${Number(effectiveMonthlyAmount).toFixed(2)}/mo`
-      : "Pending";
-  } else {
-    // For one-time payments
-    formattedPrice = `${Number(effectivePaymentAmount).toFixed(2)}`;
-  }
+  // Check if task is overdue
+  const isOverdue = () => {
+    if (!task.dueDate) return false;
+    const dueDate = new Date(task.dueDate);
+    const today = new Date();
+    return dueDate < today;
+  };
 
-  const subtitle = request.partnerName || request.accountNumber ? 
-    (request.partnerName ? request.partnerName : `Account: ${request.accountNumber}`) : '';
-
-  const handleViewMore = () => onAccept(task);
-
+  // Get service name from task
+  const serviceName = task.houseService?.name || task.metadata?.serviceName || 'Utility Bill';
+  
   return (
     <TouchableOpacity 
       style={styles.taskCard} 
-      onPress={handleViewMore}
+      onPress={() => onPress(task)}
       activeOpacity={0.7}
     >
       {/* This view creates an inset border for the whole card */}
@@ -72,52 +42,48 @@ const ServiceRequestTask = ({ task, onAccept }) => {
             style={styles.iconContainer}
           >
             <MaterialIcons 
-              name={iconName}
+              name="receipt-long"
               size={24} 
               color="#22c55e" 
             />
           </LinearGradient>
         </View>
         <View style={styles.headerContent}>
-          {subtitle !== '' && <Text style={styles.providerName}>{subtitle}</Text>}
+          <Text style={styles.providerName}>
+            {isOverdue() ? 'OVERDUE' : 'MONTHLY BILL'}
+          </Text>
           <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-            {request.serviceName}
+            {serviceName}
           </Text>
           <Text style={styles.serviceType}>
-            {request.serviceType || "Service"}
+            Due: {formatDueDate(task.dueDate)}
           </Text>
         </View>
       </View>
 
       <View style={styles.footerRow}>
-        {/* Wrapper to create an inset border effect around the price pill */}
+        {/* Status Badge (Pending/Overdue) */}
         <View style={styles.priceWrapper}>
           <View style={styles.priceInnerBorder}>
             <LinearGradient
-              colors={['#22c55e', '#34d399']}
+              colors={isOverdue() ? ['#ef4444', '#f87171'] : ['#22c55e', '#34d399']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.pricePill}
             >
-              {isVariableRecurring && effectiveMonthlyAmount === 0 ? (
-                <Text style={styles.pricePillText}>{formattedPrice}</Text>
-              ) : (
-                <>
-                  {(effectivePaymentAmount > 0 || effectiveMonthlyAmount > 0) && (
-                    <Text style={styles.priceCurrency}>$</Text>
-                  )}
-                  <Text style={styles.pricePillText}>{formattedPrice}</Text>
-                </>
-              )}
+              <Text style={styles.pricePillText}>
+                {isOverdue() ? 'OVERDUE' : 'PENDING'}
+              </Text>
             </LinearGradient>
           </View>
         </View>
         
+        {/* Submit Now Button */}
         <TouchableOpacity 
           style={styles.viewMoreContainer}
-          onPress={handleViewMore}
+          onPress={() => onPress(task)}
         >
-          <Text style={styles.viewMoreText}>View more</Text>
+          <Text style={styles.viewMoreText}>Submit Now</Text>
           <MaterialIcons name="arrow-forward-ios" size={14} color="#4f46e5" style={styles.arrowIcon} />
         </TouchableOpacity>
       </View>
@@ -189,7 +155,6 @@ const styles = StyleSheet.create({
   serviceType: {
     fontSize: 14,
     color: '#64748b',
-    textTransform: 'capitalize',
   },
   footerRow: {
     flexDirection: 'row',
@@ -197,13 +162,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 18,
   },
-  // Wrapper for the price area to create an inset effect
+  // Wrapper for the price/status area to create an inset effect
   priceWrapper: {
     backgroundColor: 'white',
     padding: 4,
     borderRadius: 26,
   },
-  // Inner border around the price pill (the "line" effect)
+  // Inner border around the pill (the "line" effect)
   priceInnerBorder: {
     borderWidth: 1,
     borderColor: '#dff6f0',
@@ -221,14 +186,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  priceCurrency: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'white',
-    marginRight: 1,
-  },
   pricePillText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
     color: 'white',
   },
@@ -250,4 +209,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default ServiceRequestTask;
+export default BillSubmissionTask;

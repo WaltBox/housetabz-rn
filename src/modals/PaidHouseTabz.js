@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
+  Animated
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import apiClient from "../config/api";
@@ -20,6 +21,15 @@ const formatDate = (dateString) => {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
+  });
+};
+
+const formatMonth = (dateString) => {
+  if (!dateString) return "Unknown";
+  const date = new Date(dateString);
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long'
   });
 };
 
@@ -38,7 +48,7 @@ const PaidBillItem = ({ bill }) => {
       
       <View style={styles.billDetails}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Paid on:</Text>
+          <Text style={styles.detailLabel}>Final Payment Recieved:</Text>
           <Text style={styles.detailValue}>{formatDate(bill.paymentDate || bill.updatedAt)}</Text>
         </View>
         
@@ -60,11 +70,76 @@ const PaidBillItem = ({ bill }) => {
   );
 };
 
+const MonthAccordion = ({ month, bills, isExpanded, onToggle }) => {
+  const [animation] = useState(new Animated.Value(isExpanded ? 1 : 0));
+  
+  // Calculate total amount for this month
+  const totalAmount = bills.reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0);
+
+  useEffect(() => {
+    Animated.timing(animation, {
+      toValue: isExpanded ? 1 : 0,
+      duration: 200, // Match UserTransactionsModal animation speed
+      useNativeDriver: false,
+    }).start();
+  }, [isExpanded]);
+
+  const bodyHeight = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, bills.length * 140], // Approximate height based on number of bills
+  });
+
+  return (
+    <View style={styles.transactionContainer}>
+      {/* Thin color indicator at top */}
+      <View style={styles.colorIndicator} backgroundColor="#34d399" />
+      
+      <TouchableOpacity 
+        style={[styles.paymentItem, isExpanded && styles.paymentItemActive]} 
+        onPress={onToggle}
+        activeOpacity={0.7}
+      >
+        <View style={styles.paymentHeader}>
+          <View style={styles.paymentHeaderLeft}>
+            <View style={[styles.monthIconContainer, { backgroundColor: "#34d39920" }]}>
+              <MaterialIcons 
+                name="date-range" 
+                size={20} 
+                color="#34d399" 
+              />
+            </View>
+            <Text style={styles.monthTitle}>{month}</Text>
+          </View>
+          
+          <View style={styles.paymentHeaderRight}>
+            <Text style={styles.monthTotal}>${totalAmount.toFixed(2)}</Text>
+            <MaterialIcons 
+              name={isExpanded ? "expand-less" : "expand-more"} 
+              size={24} 
+              color={isExpanded ? "#34d399" : "#64748b"} 
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+      
+      <Animated.View style={[styles.chargesContainer, { 
+        height: bodyHeight,
+        opacity: animation
+      }]}>
+        {isExpanded && bills.map((bill) => (
+          <PaidBillItem key={bill.id} bill={bill} />
+        ))}
+      </Animated.View>
+    </View>
+  );
+};
+
 const PaidHouseTabz = ({ house, onClose }) => {
   const [paidBills, setPaidBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [expandedMonth, setExpandedMonth] = useState(null);
+  
   useEffect(() => {
     const fetchPaidBills = async () => {
       try {
@@ -73,7 +148,7 @@ const PaidHouseTabz = ({ house, onClose }) => {
           return;
         }
         
-        const response = await apiClient.get(`/api/houses/${house.id}/bills/paid`);
+        const response = await apiClient.get(`/api/houses/${house.id}/paid-bills`);
         setPaidBills(response.data || []);
         setError(null);
       } catch (err) {
@@ -95,15 +170,32 @@ const PaidHouseTabz = ({ house, onClose }) => {
     );
   }
 
-  const mockPaidBills = [
-    { id: 1, name: "Internet Bill", amount: 89.99, paymentDate: "2024-02-15", paymentMethod: "Credit Card" },
-    { id: 2, name: "Water & Sewer", amount: 45.75, paymentDate: "2024-02-10", paymentMethod: "Bank Transfer" },
-    { id: 3, name: "Electricity", amount: 124.50, paymentDate: "2024-01-28", paymentMethod: "Credit Card" },
-    { id: 4, name: "Netflix Subscription", amount: 17.99, paymentDate: "2024-02-05", paymentMethod: "Split Payment" }
-  ];
+  // Group bills by month based on due date
+  const groupedBills = paidBills.reduce((groups, bill) => {
+    const dueDate = bill.dueDate || bill.paymentDate;
+    if (!dueDate) return groups;
+    
+    const date = new Date(dueDate);
+    const monthYear = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+    
+    if (!groups[monthYear]) {
+      groups[monthYear] = [];
+    }
+    
+    groups[monthYear].push(bill);
+    return groups;
+  }, {});
 
-  // Use mock data for demonstration until real API endpoint is available
-  const billsToDisplay = paidBills.length > 0 ? paidBills : mockPaidBills;
+  // Sort months in reverse chronological order
+  const sortedMonths = Object.keys(groupedBills).sort((a, b) => {
+    const dateA = new Date(a);
+    const dateB = new Date(b);
+    return dateB - dateA;
+  });
+
+  const toggleAccordion = (month) => {
+    setExpandedMonth(expandedMonth === month ? null : month);
+  };
 
   return (
     <>
@@ -118,7 +210,7 @@ const PaidHouseTabz = ({ house, onClose }) => {
             >
               <MaterialIcons name="close" size={28} color="#64748b" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Payment History</Text>
+            <Text style={styles.headerTitle}>PaidTabz</Text>
             <View style={styles.headerPlaceholder} />
           </View>
         </View>
@@ -137,12 +229,19 @@ const PaidHouseTabz = ({ house, onClose }) => {
           </View>
         ) : (
           <FlatList
-            data={billsToDisplay}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => <PaidBillItem bill={item} />}
-            contentContainerStyle={styles.billsList}
+            data={sortedMonths}
+            keyExtractor={(item) => item}
+            renderItem={({ item: month }) => (
+              <MonthAccordion
+                month={month}
+                bills={groupedBills[month]}
+                isExpanded={expandedMonth === month}
+                onToggle={() => toggleAccordion(month)}
+              />
+            )}
+            contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={() => (
+            ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <MaterialIcons name="history" size={48} color="#64748b" />
                 <Text style={styles.emptyTitle}>No Payment History</Text>
@@ -150,7 +249,7 @@ const PaidHouseTabz = ({ house, onClose }) => {
                   Paid bills and transactions will appear here
                 </Text>
               </View>
-            )}
+            }
           />
         )}
       </SafeAreaView>
@@ -189,11 +288,67 @@ const styles = StyleSheet.create({
   headerPlaceholder: {
     width: 28,
   },
-  billsList: {
+  list: {
     padding: 16,
   },
-  billItem: {
+  transactionContainer: {
     marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(203, 213, 225, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(203, 213, 225, 0.3)',
+  },
+  colorIndicator: {
+    height: 4,
+    width: '100%',
+  },
+  paymentItem: {
+    padding: 16,
+  },
+  paymentItemActive: {
+    backgroundColor: 'rgba(240, 253, 244, 0.5)',
+  },
+  paymentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  paymentHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  monthIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  monthTotal: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1e293b",
+    marginRight: 8,
+  },
+  chargesContainer: {
+    overflow: "hidden",
+    backgroundColor: 'rgba(240, 253, 244, 0.5)',
+    paddingHorizontal: 16,
+  },
+  billItem: {
+    marginTop: 16,
+    marginBottom: 8,
     backgroundColor: '#f0fdf4',
     borderRadius: 12,
     padding: 16,

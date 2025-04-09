@@ -1,50 +1,119 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import ServiceRequestTask from '../components/ServiceRequestTask';
+import ServiceRequestTask from './ServiceRequestTask';
+import BillSubmissionTask from './BillSubmissionTask';
+import BillSubmissionModal from '../modals/BillSubmissionModal';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
 
-const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, handleScroll }) => {
-  // Filter tasks to show only those with a "pending" response
+const TaskSection = ({ tasks = [], billSubmissions = [], activeTaskIndex, taskCount, handleTaskAction, handleScroll, onBillSubmitted }) => {
+  const [selectedBillSubmission, setSelectedBillSubmission] = useState(null);
+  const [isBillSubmissionModalVisible, setIsBillSubmissionModalVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Combine regular tasks and bill submissions
   const pendingTasks = tasks.filter(task => task.response === 'pending');
+  const allTasks = [
+    ...pendingTasks,
+    ...billSubmissions.map(submission => ({
+      ...submission,
+      type: 'billSubmission' // Add a type to distinguish from regular tasks
+    }))
+  ];
   
   // Calculate initial padding to center the first card
   const initialPadding = (width - CARD_WIDTH) / 2;
 
-  return (
-    <View style={styles.section}>
-      {/* Header Section */}
-      <View style={styles.taskHeader}>
-        <View style={styles.taskTitleGroup}>
-          <MaterialIcons name="rocket-launch" size={24} color="#22c55e" />
-          <Text style={styles.sectionTitle}>Tasks</Text>
+  const handleBillSubmissionPress = (submission) => {
+    setSelectedBillSubmission(submission);
+    setIsBillSubmissionModalVisible(true);
+  };
+
+  const handleBillSubmissionSuccess = (result) => {
+    if (onBillSubmitted && typeof onBillSubmitted === 'function') {
+      onBillSubmitted(result);
+    }
+    setIsBillSubmissionModalVisible(false);
+    setSelectedBillSubmission(null);
+  };
+
+  const renderTaskItem = ({ item }) => {
+    if (item.type === 'billSubmission') {
+      return (
+        <View style={styles.taskItemContainer}>
+          <BillSubmissionTask 
+            task={item} 
+            onPress={handleBillSubmissionPress}
+          />
         </View>
-        {pendingTasks.length > 0 && (
-          <View style={styles.taskBadge}>
-            <Text style={styles.taskBadgeText}>{pendingTasks.length} pending</Text>
-          </View>
-        )}
+      );
+    }
+    
+    return (
+      <View style={styles.taskItemContainer}>
+    <ServiceRequestTask
+  task={item}
+  onAccept={(task) => handleTaskAction(task, 'accepted')}
+  onReject={(task) => handleTaskAction(task, 'rejected')}
+/>
+
+      </View>
+    );
+  };
+
+  const toggleExpanded = () => {
+    // Only allow toggling if there are no tasks
+    if (allTasks.length === 0) {
+      setIsExpanded(!isExpanded);
+    }
+  };
+
+  // Header section that's always visible
+  const renderHeader = () => (
+    <TouchableOpacity 
+      onPress={toggleExpanded}
+      activeOpacity={allTasks.length > 0 ? 1 : 0.7} // Only make it look pressable if there are no tasks
+      style={styles.taskHeader}
+    >
+      <View style={styles.taskTitleGroup}>
+        <MaterialIcons name="rocket-launch" size={24} color="#22c55e" />
+        <Text style={styles.sectionTitle}>Tasks</Text>
       </View>
       
-      {pendingTasks.length > 0 ? (
+      <View style={styles.rightHeaderContent}>
+        {allTasks.length > 0 && (
+          <View style={styles.taskBadge}>
+            <Text style={styles.taskBadgeText}>{allTasks.length} pending</Text>
+          </View>
+        )}
+        {/* Only show arrow when there are no tasks */}
+        {allTasks.length === 0 && (
+          <MaterialIcons 
+            name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+            size={24} 
+            color="#64748b" 
+            style={{ marginLeft: 8 }}
+          />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Main content based on task existence and expansion state
+  const renderContent = () => {
+    // If we have tasks, always show them
+    if (allTasks.length > 0) {
+      return (
         <View>
           {/* Task Carousel */}
           <FlatList
-            data={pendingTasks}
+            data={allTasks}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.taskItemContainer}>
-                <ServiceRequestTask
-                  task={item}
-                  onAccept={(taskId) => handleTaskAction(taskId, 'accepted')}
-                  onReject={(taskId) => handleTaskAction(taskId, 'rejected')}
-                />
-              </View>
-            )}
+            keyExtractor={(item) => (item.type === 'billSubmission' ? `bill-${item.id}` : item.id.toString())}
+            renderItem={renderTaskItem}
             contentContainerStyle={[
               styles.taskListContent, 
               { paddingLeft: initialPadding }
@@ -58,7 +127,7 @@ const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, hand
           
           {/* Pagination Indicators */}
           <View style={styles.paginationDots}>
-            {pendingTasks.map((_, index) => (
+            {allTasks.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -72,7 +141,12 @@ const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, hand
             ))}
           </View>
         </View>
-      ) : (
+      );
+    }
+    
+    // If no tasks and expanded, show the empty state
+    if (isExpanded) {
+      return (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
             <MaterialIcons name="auto-awesome" size={48} color="#22c55e" />
@@ -80,14 +154,32 @@ const TaskSection = ({ tasks, activeTaskIndex, taskCount, handleTaskAction, hand
           <Text style={styles.emptyTitle}>All Caught Up!</Text>
           <Text style={styles.emptyText}>No pending tasks at the moment.</Text>
         </View>
-      )}
+      );
+    }
+    
+    // If not expanded and no tasks, return nothing (header will still be visible)
+    return null;
+  };
+
+  return (
+    <View style={styles.section}>
+      {renderHeader()}
+      {renderContent()}
+
+      {/* Bill Submission Modal */}
+      <BillSubmissionModal
+        visible={isBillSubmissionModalVisible}
+        onClose={() => setIsBillSubmissionModalVisible(false)}
+        billSubmission={selectedBillSubmission}
+        onSuccess={handleBillSubmissionSuccess}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 32,
+    marginBottom: 24,
     paddingHorizontal: 0,
   },
   taskHeader: {
@@ -101,6 +193,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  rightHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,

@@ -11,34 +11,45 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
+import PaymentFlow from '../modals/PaymentFlow';
 import { LinearGradient } from "expo-linear-gradient";
 
 const { height } = Dimensions.get("window");
 const MODAL_HEIGHT = height * 0.94;
 
-const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
+const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
   const [showBrowser, setShowBrowser] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-
+  
+  // Add these new state variables
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentData, setPaymentData] = useState(null);
+  
+  const webviewRef = React.useRef(null);
   if (!visible || !partner) return null;
 
   const getInjectedScript = () => {
     return `
       (function() {
         try {
+          // Only set the HouseTabz WebView identifier
+          window.sessionStorage.setItem('housetabz_webview', 'true');
+          
+          // We can keep user ID for analytics/tracking if needed
+          // (but not really required for authentication anymore)
           window.sessionStorage.setItem('housetabz_user_id', '${userId || ""}');
           
-          // Send logs back to React Native
+          // Log for debugging
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'log',
             message: 'Session Storage Check',
             data: {
-              storedUserId: window.sessionStorage.getItem('housetabz_user_id'),
-              attemptedId: '${userId || ""}'
+              isHouseTabzWebView: window.sessionStorage.getItem('housetabz_webview'),
+              storedUserId: window.sessionStorage.getItem('housetabz_user_id')
             }
           }));
-
-          // Override console.log
+  
+          // Override console.log for debugging
           const originalConsole = console.log;
           console.log = (...args) => {
             window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -47,7 +58,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
             }));
             originalConsole.apply(console, args);
           };
-
+  
         } catch (error) {
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'error',
@@ -58,10 +69,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
       true;
     `;
   };
-
-
-
- 
+  
   const constructShopUrl = () => {
     try {
       // Extract partner data - handle both nested and direct formats
@@ -135,13 +143,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
             <Text style={styles.ratingText}>4.8</Text>
             <Text style={styles.reviewCount}>(243 reviews)</Text>
           </View>
-          {partner.avg_price && (
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>
-                AVG / Roommate: ${parseFloat(partner.avg_price).toFixed(2)}
-              </Text>
-            </View>
-          )}
+      
         </View>
 
         {/* Content Sections */}
@@ -198,25 +200,36 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
       </View>
 
       <WebView
-      source={{ 
-        uri: constructShopUrl(),
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }}
-      style={styles.webView}
-      startInLoadingState={true}
-      injectedJavaScript={getInjectedScript()}
-      onMessage={(event) => {
-        const data = JSON.parse(event.nativeEvent.data);
-        // Log messages from WebView
-        console.log('WebView Message:', data);
-      }}
-      renderLoading={() => (
-        <View style={styles.webviewLoading}>
-          <ActivityIndicator size="large" color="#22c55e" />
-        </View>
+        ref={webviewRef}
+        source={{ 
+          uri: constructShopUrl(),
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Access-Control-Allow-Origin': '*'
+          }
+        }}
+        style={styles.webView}
+        startInLoadingState={true}
+        injectedJavaScript={getInjectedScript()}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            console.log('WebView Message:', data);
+            
+            // Handle payment request messages
+            if (data.type === 'housetabz_payment_request') {
+              console.log('Payment request received:', data.data);
+              setPaymentData(data.data);
+              setShowPaymentModal(true);
+            }
+          } catch (error) {
+            console.error('Error processing WebView message:', error);
+          }
+        }}
+        renderLoading={() => (
+          <View style={styles.webviewLoading}>
+            <ActivityIndicator size="large" color="#22c55e" />
+          </View>
         )}
       />
     </View>
@@ -240,6 +253,62 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId }) => {
       </View>
 
       {showBrowser ? renderBrowser() : renderMainContent()}
+
+      {/* Payment Modal */}
+      {showPaymentModal && paymentData && (
+  <PaymentFlow
+    visible={showPaymentModal}
+    onClose={() => {
+      setShowPaymentModal(false);
+      // Send cancellation response back to WebView
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          window.dispatchEvent(new MessageEvent('message', {
+            data: JSON.stringify({
+              type: 'housetabz_payment_response',
+              status: 'cancel'
+            })
+          }));
+          true;
+        `);
+      }
+    }}
+    paymentData={paymentData}
+    onSuccess={(data) => {
+      // Send success response back to WebView
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          window.dispatchEvent(new MessageEvent('message', {
+            data: JSON.stringify({
+              type: 'housetabz_payment_response',
+              status: 'success',
+              data: ${JSON.stringify(data || {})}
+            })
+          }));
+          true;
+        `);
+      }
+      
+      // Close the modal
+      setShowPaymentModal(false);
+    }}
+    onError={(error) => {
+      // Send error response back to WebView
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          window.dispatchEvent(new MessageEvent('message', {
+            data: JSON.stringify({
+              type: 'housetabz_payment_response',
+              status: 'error',
+              message: ${JSON.stringify(error?.message || 'Payment request failed')}
+            })
+          }));
+          true;
+        `);
+      }
+    }}
+  />
+)}
     </View>
   );
 };

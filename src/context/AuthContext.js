@@ -8,6 +8,7 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // New state variable to store the JWT
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,11 +17,12 @@ export const AuthProvider = ({ children }) => {
 
   const loadStoredUser = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      const storedToken = await AsyncStorage.getItem('userToken');
       const storedUser = await AsyncStorage.getItem('userData');
-      if (token && storedUser) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      if (storedToken && storedUser) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         setUser(JSON.parse(storedUser));
+        setToken(storedToken); // Set the token state
       }
     } catch (error) {
       console.error('Error loading stored user:', error);
@@ -42,13 +44,14 @@ export const AuthProvider = ({ children }) => {
       if (!token || !data?.user) {
         throw new Error('Invalid response structure from server');
       }
-      const user = data.user;
+      const loggedInUser = data.user;
       // Store auth data
       await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
+      await AsyncStorage.setItem('userData', JSON.stringify(loggedInUser));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      console.log('Login successful:', user);
+      setUser(loggedInUser);
+      setToken(token); // Update token state
+      console.log('Login successful:', loggedInUser);
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -63,6 +66,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
+      setToken(null); // Clear token state
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -82,6 +86,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('userData', JSON.stringify(user));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
+      setToken(token); // Update token state
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
@@ -94,7 +99,6 @@ export const AuthProvider = ({ children }) => {
       // Update the endpoint URL to include /api
       const response = await axios.put(`${API_URL}/api/users/${user.id}/house`, { houseId });
       const updatedUser = response.data.user;
-      
       // Update local state and storage with the new user data
       setUser(updatedUser);
       await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
@@ -104,12 +108,13 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
-  
+
   return (
     <AuthContext.Provider
       value={{
         user,
-        setUser, // <-- Add this
+        token,             // Expose the token so it can be used in other components
+        setUser,
         loading,
         login,
         logout,

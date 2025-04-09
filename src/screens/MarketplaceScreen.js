@@ -24,7 +24,7 @@ const CARD_GUTTER = 16;
 const CARD_WIDTH = (width - CARD_GUTTER * 3) / 2;
 
 const MarketplaceScreen = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [partnerDetails, setPartnerDetails] = useState([]);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,14 +178,15 @@ const MarketplaceScreen = () => {
         onRequestClose={handleCloseModal}
       >
         <View style={styles.modalOverlay}>
-          {selectedPartner && (
-            <ViewCompanyCard
-              partner={selectedPartner}
-              visible={!!selectedPartner}
-              onClose={handleCloseModal}
-              userId={user?.id}
-            />
-          )}
+        {selectedPartner && (
+  <ViewCompanyCard
+    partner={selectedPartner}
+    visible={!!selectedPartner}
+    onClose={handleCloseModal}
+    userId={user?.id}
+    jwtToken={token}  // Use token from AuthContext
+  />
+)}
         </View>
       </Modal>
     </View>

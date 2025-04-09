@@ -177,15 +177,31 @@ const CurrentHouseTab = ({ house, onClose }) => {
   }, [house?.id]);
 
   const getFilteredBills = () => {
-    if (filterStatus === 'all') return bills;
+    // First, remove any bills with status 'paid'
+    const unpaidBills = bills.filter(bill => bill.status !== 'paid');
+  
+    if (filterStatus === 'pending') {
+      // For pending, you might want bills that are neither overdue nor due soon.
+      // Here, we'll assume pending means they haven't reached the due date yet and aren't in the "upcoming" range.
+      return unpaidBills.filter(bill => {
+        const status = getDueDateStatus(bill.dueDate);
+        // Assuming that pending bills are those not colored red (overdue) or orange (upcoming)
+        return status.color !== '#ef4444' && status.color !== '#f59e0b';
+      });
+    }
     
-    return bills.filter(bill => {
-      const status = getDueDateStatus(bill.dueDate);
-      if (filterStatus === 'overdue') return status.color === '#ef4444'; // Red = overdue
-      if (filterStatus === 'upcoming') return status.color === '#f59e0b'; // Orange = upcoming soon
-      return true;
-    });
+    if (filterStatus === 'overdue') {
+      return unpaidBills.filter(bill => getDueDateStatus(bill.dueDate).color === '#ef4444');
+    }
+    
+    if (filterStatus === 'upcoming') {
+      return unpaidBills.filter(bill => getDueDateStatus(bill.dueDate).color === '#f59e0b');
+    }
+    
+    // Default: show all unpaid bills
+    return unpaidBills;
   };
+  
 
   if (loading) {
     return (

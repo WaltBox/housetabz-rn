@@ -3,37 +3,39 @@ import { View, Text, StyleSheet } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
 const Scoreboard = ({ house }) => {
-  // Sort users by points, getting points from finance relation or falling back to legacy points field
+  // Sort users by points (finance.points or legacy points)
   const sortedUsers = house?.users?.sort((a, b) => {
     const pointsA = a.finance?.points ?? a.points ?? 0;
     const pointsB = b.finance?.points ?? b.points ?? 0;
     return pointsB - pointsA;
   }) || [];
 
-  // Render each user row in grid
   const renderUserItem = (user, index) => {
     const isFirstPlace = index === 0;
     const points = user.finance?.points ?? user.points ?? 0;
-    const balance = user.finance?.balance ?? user.balance ?? 0;
-    
+
     return (
       <View key={user.id} style={styles.userRow}>
-        {/* Position indicator */}
+        {/* Position */}
         <View style={styles.rankContainer}>
           <Text style={styles.rankText}>{index + 1}</Text>
         </View>
         
-        {/* User info with crown for first place */}
+        {/* Name + crown */}
         <View style={styles.userInfo}>
           <View style={styles.nameContainer}>
             {isFirstPlace && (
-              <MaterialIcons name="emoji-events" size={16} color="#f59e0b" style={styles.crownIcon} />
+              <MaterialIcons 
+                name="emoji-events" 
+                size={16} 
+                color="#f59e0b" 
+                style={styles.crownIcon} 
+              />
             )}
             <Text style={styles.username} numberOfLines={1}>
               {user.username}
             </Text>
           </View>
-          <Text style={styles.balanceText}>${balance.toFixed(2)}</Text>
         </View>
         
         {/* Points */}
@@ -54,17 +56,15 @@ const Scoreboard = ({ house }) => {
       
       {sortedUsers.length > 0 ? (
         <View style={styles.grid}>
-          {/* Create pairs of users, dividing the array into chunks of 2 */}
           {Array.from({ length: Math.ceil(sortedUsers.length / 2) }, (_, rowIndex) => (
             <View key={rowIndex} style={styles.gridRow}>
-              {/* First column */}
+              {/* Left */}
               {rowIndex * 2 < sortedUsers.length && (
                 <View style={{ width: '48%' }}>
                   {renderUserItem(sortedUsers[rowIndex * 2], rowIndex * 2)}
                 </View>
               )}
-              
-              {/* Second column */}
+              {/* Right */}
               {rowIndex * 2 + 1 < sortedUsers.length ? (
                 <View style={{ width: '48%' }}>
                   {renderUserItem(sortedUsers[rowIndex * 2 + 1], rowIndex * 2 + 1)}
@@ -147,11 +147,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1e293b",
     flex: 1,
-  },
-  balanceText: {
-    fontSize: 12,
-    color: "#64748b",
-    marginTop: 2,
   },
   pointsContainer: {
     flexDirection: "row",

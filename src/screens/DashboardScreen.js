@@ -29,6 +29,7 @@ const DashboardScreen = () => {
   const [houseLedger, setHouseLedger] = useState(0);
   const [roommateChartData, setRoommateChartData] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [billSubmissions, setBillSubmissions] = useState([]);
   const [taskCount, setTaskCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -80,13 +81,25 @@ const DashboardScreen = () => {
           : [{ x: 'No Unpaid Charges', y: 1, color: '#22c55e', dummy: true }];
       setYourChargesData(processedCharges);
 
-      // Fetch tasks for the user
-      const tasksResponse = await apiClient.get(`/api/tasks/user/${user.id}`);
+      // Fetch tasks and bill submissions in parallel
+      const [tasksResponse, billSubmissionsResponse] = await Promise.all([
+        apiClient.get(`/api/tasks/user/${user.id}`),
+        apiClient.get(`/api/users/${user.id}/bill-submissions`)
+      ]);
+      
+      // Process tasks
       const pendingTasks = tasksResponse.data.tasks.filter(task => task.status === false);
       setTasks(pendingTasks);
-      setTaskCount(pendingTasks.length);
+      
+      // Process bill submissions
+      const submissions = billSubmissionsResponse.data.submissions || [];
+      setBillSubmissions(submissions);
+      
+      // Calculate total task count (regular tasks + bill submissions)
+      const totalTaskCount = pendingTasks.length + submissions.length;
+      setTaskCount(totalTaskCount);
 
-              // Process house distribution (roommate data)
+      // Process house distribution (roommate data)
       if (houseId) {
         const houseResponse = await apiClient.get(`/api/houses/${houseId}`);
         const houseData = houseResponse.data;
@@ -215,9 +228,16 @@ const DashboardScreen = () => {
 
   const handleTaskAction = async (data, action) => {
     try {
-      const taskId = typeof data === 'object' ? data.taskId : data;
+      const taskId = typeof data === 'object' ? (data.id || data.taskId) : data;
+
+      if (!taskId) {
+        console.error("Task ID is undefined. Data received:", data);
+        throw new Error("Task ID is undefined");
+      }
+      
       if (typeof data === 'object' && action === 'accepted') {
-        setSelectedPaymentTask(data);
+        const updatedTask = { ...data, id: taskId };
+        setSelectedPaymentTask(updatedTask);
         setIsPaymentModalVisible(true);
       } else {
         await apiClient.patch(`/api/tasks/${taskId}`, {
@@ -230,11 +250,22 @@ const DashboardScreen = () => {
       console.error(`Error ${action}ing task:`, error);
     }
   };
+  
+
+  const handleBillSubmitted = (result) => {
+    // Refresh data after a bill is submitted
+    fetchData();
+  };
 
   const handlePaymentSuccess = async () => {
     if (selectedPaymentTask) {
       try {
-        await apiClient.patch(`/api/tasks/${selectedPaymentTask.taskId}`, {
+        // Extract task ID from either "id" or "taskId"
+        const taskId = selectedPaymentTask.id || selectedPaymentTask.taskId;
+        if (!taskId) {
+          throw new Error('Task ID is missing in selectedPaymentTask');
+        }
+        await apiClient.patch(`/api/tasks/${taskId}`, {
           response: 'accepted',
           paymentStatus: 'completed',
           userId: user.id,
@@ -247,6 +278,7 @@ const DashboardScreen = () => {
     setIsPaymentModalVisible(false);
     setSelectedPaymentTask(null);
   };
+  
 
   if (loading) {
     return (
@@ -269,6 +301,9 @@ const DashboardScreen = () => {
     );
   }
 
+  // Determine if we should show the task section at all
+  const hasAnyTasks = tasks.length > 0 || billSubmissions.length > 0;
+
   return (
     <SafeAreaView style={styles.container}>
       <DashboardHeader />
@@ -278,13 +313,15 @@ const DashboardScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22c55e" />
         }
       >
-        {/* Task Section */}
+        {/* Task Section - always show, but it will internally handle visibility */}
         <TaskSection
           tasks={tasks}
+          billSubmissions={billSubmissions}
           activeTaskIndex={activeTaskIndex}
           taskCount={taskCount}
           handleTaskAction={handleTaskAction}
           handleScroll={handleScroll}
+          onBillSubmitted={handleBillSubmitted}
         />
 
         {/* Charts */}
