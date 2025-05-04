@@ -15,10 +15,11 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import ProfileModal from './ProfileModal';
 import PaymentMethodsSettings from './PaymentMethodsSettings';
+import { useNotifications } from '../context/NotificationContext';
 
 const SettingsModal = ({ onClose = () => {} }) => {
   const { logout } = useAuth();
-  const [notifications, setNotifications] = useState(true);
+  const { notificationsEnabled, toggleNotifications } = useNotifications();
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [autopay, setAutopay] = useState(false);
@@ -96,6 +97,42 @@ const SettingsModal = ({ onClose = () => {} }) => {
       ]
     );
   };
+
+  const handleToggleNotifications = async (newValue) => {
+    try {
+      if (newValue) {
+        // Enable notifications
+        PushNotification.requestPermissions();
+        // You might want to re-register the token here
+      } else {
+        // Disable notifications
+        // Here you would update your backend to mark this device token as inactive
+        try {
+          // Assuming you have access to the device token and auth context
+          const { authToken } = useAuth();
+          
+          fetch('http://YOUR_LOCAL_IP:3004/api/users/device-token', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+              deviceToken: 'YOUR_DEVICE_TOKEN' // You'll need to store this somewhere
+            })
+          });
+        } catch (error) {
+          console.error('Error updating notification preferences:', error);
+        }
+      }
+      
+      // Update the UI state
+      setNotifications(newValue);
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      Alert.alert('Error', 'Could not update notification settings');
+    }
+  };
   
   return (
     <>
@@ -144,14 +181,14 @@ const SettingsModal = ({ onClose = () => {} }) => {
           </SettingsSection>
 
           <SettingsSection title="Preferences">
-            <SettingsRow
-              icon="notifications-none"
-              title="Push Notifications"
-              subtitle="App alerts and reminders"
-              type="switch"
-              value={notifications}
-              onPress={setNotifications}
-            />
+          <SettingsRow
+    icon="notifications-none"
+    title="Push Notifications"
+    subtitle="App alerts and reminders"
+    type="switch"
+    value={notificationsEnabled}
+    onPress={toggleNotifications}
+  />
             <SettingsRow
               icon="mail-outline"
               title="Email Communications"

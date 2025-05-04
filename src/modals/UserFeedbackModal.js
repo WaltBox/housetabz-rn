@@ -14,8 +14,11 @@ import {
   StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import apiClient from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const UserFeedbackModal = ({ onClose }) => {
+  const { user } = useAuth();
   const [feedback, setFeedback] = useState('');
   const [category, setCategory] = useState('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,18 +33,32 @@ const UserFeedbackModal = ({ onClose }) => {
   ];
 
   const handleSubmit = async () => {
-    if (!feedback.trim() || feedback.length < 10) {
+    if (!feedback.trim() || feedback.trim().length < 10) {
       Alert.alert('Help Us Understand', 'Please write at least 10 characters');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      Alert.alert('Thank You!', 'Your feedback makes us better', [
-        { text: 'OK', onPress: () => setFeedback('') }
-      ]);
+      // Post the feedback to the API endpoint
+      const response = await apiClient.post('/api/feedback', {
+        category,
+        message: feedback.trim()
+      });
+      
+      if (response.status === 201) {
+        Alert.alert('Thank You!', 'Your feedback makes us better', [
+          { text: 'OK', onPress: () => {
+              setFeedback('');
+              setCharCount(0);
+            } }
+        ]);
+      } else {
+        Alert.alert('Oops!', 'Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', 'There was a problem submitting your feedback.');
     } finally {
       setIsSubmitting(false);
     }

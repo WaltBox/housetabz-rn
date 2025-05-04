@@ -19,6 +19,14 @@ const TakeoverSuccess = ({ data, onDone }) => {
     return `$${parseFloat(value).toFixed(2)}`;
   };
   
+  // Calculate number of roommates notified (safely)
+  const getRoommatesNotifiedCount = () => {
+    if (!Array.isArray(data.tasks) || !data.serviceRequestBundle) {
+      return 0;
+    }
+    return data.tasks.filter(task => task.userId !== data.serviceRequestBundle.userId).length;
+  };
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
@@ -101,13 +109,13 @@ const TakeoverSuccess = ({ data, onDone }) => {
             )}
             
             {/* Number of Roommates to Notify */}
-            {data.tasks && (
+            {Array.isArray(data.tasks) && (
               <View style={styles.detailItem}>
                 <MaterialIcons name="people" size={18} color="#34d399" style={styles.detailIcon} />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Roommates Notified</Text>
                   <Text style={styles.detailValue}>
-                    {data.tasks.filter(task => task.userId !== data.serviceRequestBundle?.userId).length} people
+                    {getRoommatesNotifiedCount()} people
                   </Text>
                 </View>
               </View>

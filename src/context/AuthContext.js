@@ -1,18 +1,44 @@
-// src/context/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Platform } from 'react-native';
 import { API_URL, API_ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null); // New state variable to store the JWT
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStoredUser();
+  }, []);
+
+  // Setup axios interceptor for token expiration
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (
+          error.response && 
+          error.response.status === 401 && 
+          error.response.data?.message === 'Token expired'
+        ) {
+          console.log('Token expired, initiating logout');
+          
+          // Simply log the user out which will redirect to login
+          await logout();
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+    
+    // Clean up interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
   }, []);
 
   const loadStoredUser = async () => {
@@ -22,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       if (storedToken && storedUser) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         setUser(JSON.parse(storedUser));
-        setToken(storedToken); // Set the token state
+        setToken(storedToken);
       }
     } catch (error) {
       console.error('Error loading stored user:', error);
@@ -31,26 +57,48 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Register device token (expects a plain string).
+  const registerDeviceToken = async (deviceTokenData) => {
+    if (!user || !token) {
+      console.log('Cannot register device token - user not authenticated');
+      return false;
+    }
+    const tokenString = typeof deviceTokenData === 'string' ? deviceTokenData : deviceTokenData.token;
+    if (!tokenString) {
+      console.error('Invalid device token format:', deviceTokenData);
+      return false;
+    }
+    console.log('Registering device token with backend:', tokenString);
+    try {
+      const response = await axios.post(`${API_URL}/api/users/device-token`, {
+        deviceToken: tokenString,
+        deviceType: Platform.OS,
+      });
+      console.log('Device token registration successful:', response.status);
+      return true;
+    } catch (error) {
+      console.error('Error registering device token:', error);
+      return false;
+    }
+  };
+
+  // Login function. Device token registration is handled in PushNotificationHandler.
   const login = async (email, password) => {
     try {
       console.log('Attempting login...', { email });
       console.log('Using API URL:', API_URL);
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.login}`, {
-        email,
-        password,
-      });
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.login}`, { email, password });
       console.log('Login response:', response.data);
-      const { token, data } = response.data;
-      if (!token || !data?.user) {
+      const { token: authToken, data } = response.data;
+      if (!authToken || !data?.user) {
         throw new Error('Invalid response structure from server');
       }
       const loggedInUser = data.user;
-      // Store auth data
-      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userToken', authToken);
       await AsyncStorage.setItem('userData', JSON.stringify(loggedInUser));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       setUser(loggedInUser);
-      setToken(token); // Update token state
+      setToken(authToken);
       console.log('Login successful:', loggedInUser);
       return true;
     } catch (error) {
@@ -66,7 +114,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem('userData');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
-      setToken(null); // Clear token state
+      setToken(null);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -75,31 +123,67 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await axios.post(`${API_URL}${API_ENDPOINTS.register}`, userData);
-      // Our backend returns: { success, message, data: { user, token } }
-      const { data } = response.data; // data contains { user, token }
-      const { token, user } = data;
-      if (!token || !user) {
+      const { data } = response.data;
+      const { token: authToken, user: registeredUser } = data;
+      if (!authToken || !registeredUser) {
         throw new Error('Invalid registration response');
       }
-      // Store auth data so the user is "logged in"
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-      setToken(token); // Update token state
+      await AsyncStorage.setItem('userToken', authToken);
+      await AsyncStorage.setItem('userData', JSON.stringify(registeredUser));
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      setUser(registeredUser);
+      setToken(authToken);
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
     }
   };
+  const verifyResetCode = async (email, code) => {
+    try {
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.verifyResetCode}`, { 
+        email, 
+        code 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Code verification error:', error);
+      throw error;
+    }
+  };
+  const requestPasswordResetCode = async (email) => {
+    try {
+      console.log('Requesting password reset code for:', email);
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.requestResetCode}`, { email });
+      console.log('Reset code request successful');
+      return response.data;
+    } catch (error) {
+      console.error('Password reset code request error:', error);
+      throw error;
+    }
+  };
+  
+  // Reset password with code
+  const resetPasswordWithCode = async (email, code, newPassword) => {
+    try {
+      console.log('Attempting to reset password with code');
+      const response = await axios.post(`${API_URL}${API_ENDPOINTS.resetPassword}`, { 
+        email, 
+        code, 
+        newPassword 
+      });
+      console.log('Password reset successful');
+      return response.data;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
 
   const updateUserHouse = async (houseId) => {
     try {
-      // Update the endpoint URL to include /api
       const response = await axios.put(`${API_URL}/api/users/${user.id}/house`, { houseId });
       const updatedUser = response.data.user;
-      // Update local state and storage with the new user data
       setUser(updatedUser);
       await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
       return true;
@@ -111,20 +195,24 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        token,             // Expose the token so it can be used in other components
-        setUser,
-        loading,
-        login,
-        logout,
-        register,
-        updateUserHouse,
-        isAuthenticated: !!user,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    value={{
+      user,
+      token,
+      loading,
+      login,
+      logout,
+      register,
+      updateUserHouse,
+      registerDeviceToken,
+      isAuthenticated: !!user,
+      // Add these new methods:
+      verifyResetCode,
+      requestPasswordResetCode,
+      resetPasswordWithCode,
+    }}
+  >
+    {children}
+  </AuthContext.Provider>
   );
 };
 

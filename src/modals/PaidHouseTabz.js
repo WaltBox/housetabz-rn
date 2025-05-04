@@ -137,7 +137,6 @@ const MonthAccordion = ({ month, bills, isExpanded, onToggle }) => {
 const PaidHouseTabz = ({ house, onClose }) => {
   const [paidBills, setPaidBills] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [expandedMonth, setExpandedMonth] = useState(null);
   
   useEffect(() => {
@@ -150,11 +149,9 @@ const PaidHouseTabz = ({ house, onClose }) => {
         
         const response = await apiClient.get(`/api/houses/${house.id}/paid-bills`);
         setPaidBills(response.data || []);
-        setError(null);
+        setLoading(false);
       } catch (err) {
         console.error('Error fetching paid bills:', err);
-        setError('Failed to load payment history');
-      } finally {
         setLoading(false);
       }
     };
@@ -215,43 +212,31 @@ const PaidHouseTabz = ({ house, onClose }) => {
           </View>
         </View>
 
-        {error ? (
-          <View style={styles.errorContainer}>
-            <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              style={styles.retryButton} 
-              onPress={() => setLoading(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={sortedMonths}
-            keyExtractor={(item) => item}
-            renderItem={({ item: month }) => (
-              <MonthAccordion
-                month={month}
-                bills={groupedBills[month]}
-                isExpanded={expandedMonth === month}
-                onToggle={() => toggleAccordion(month)}
-              />
-            )}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <MaterialIcons name="history" size={48} color="#64748b" />
-                <Text style={styles.emptyTitle}>No Payment History</Text>
-                <Text style={styles.emptyText}>
-                  Paid bills and transactions will appear here
-                </Text>
+        <FlatList
+          data={sortedMonths}
+          keyExtractor={(item) => item}
+          renderItem={({ item: month }) => (
+            <MonthAccordion
+              month={month}
+              bills={groupedBills[month]}
+              isExpanded={expandedMonth === month}
+              onToggle={() => toggleAccordion(month)}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <MaterialIcons name="history" size={48} color="#fff" />
               </View>
-            }
-          />
-        )}
+              <Text style={styles.emptyTitle}>No Paid Tabz</Text>
+              <Text style={styles.emptyText}>
+                Your payment history will appear here once you've paid bills
+              </Text>
+            </View>
+          }
+        />
       </SafeAreaView>
     </>
   );
@@ -290,6 +275,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
+    flexGrow: 1, // Ensures the content fills the available space
   },
   transactionContainer: {
     marginBottom: 16,
@@ -414,46 +400,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#dff6f0',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#ef4444',
-    textAlign: 'center',
-    marginVertical: 16,
-  },
-  retryButton: {
-    backgroundColor: '#34d399',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   emptyContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    marginTop: 40,
+    marginTop: 60,
+  },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#34d399',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#64748b',
     textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: '80%',
   }
 });
 

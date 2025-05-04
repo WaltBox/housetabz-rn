@@ -5,6 +5,10 @@ import { useAuth } from '../context/AuthContext';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
+import ForgotPasswordScreen from '../screens/ResetPassword/ForgotPasswordScreen';
+import VerifyResetCodeScreen from '../screens/ResetPassword/VerifyResetCodeScreen';
+import ResetPasswordSuccessScreen from '../screens/ResetPassword/ResetPasswordSuccessScreen';
+import SetNewPasswordScreen from '../screens/ResetPassword/SetNewPasswordScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
 // App Screens
@@ -31,23 +35,13 @@ import JoinHouseScreen from '../screens/JoinHouseScreen';
 const Stack = createStackNavigator();
 
 const AuthStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: true }}>
-    <Stack.Screen 
-      name="Login" 
-      component={LoginScreen}
-      options={{ 
-        title: 'Login',
-        headerShown: false 
-      }}
-    />
-    <Stack.Screen 
-      name="Register" 
-      component={RegisterScreen}
-      options={{ 
-        title: 'Create Account',
-        headerShown: false 
-      }}
-    />
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <Stack.Screen name="VerifyResetCode" component={VerifyResetCodeScreen} />
+    <Stack.Screen name="SetNewPassword" component={SetNewPasswordScreen} />
+    <Stack.Screen name="ResetPasswordSuccess" component={ResetPasswordSuccessScreen} />
   </Stack.Navigator>
 );
 

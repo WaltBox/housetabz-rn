@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
-// Import apiClient instead of axios
+import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 import apiClient from '../config/api';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
@@ -23,6 +23,9 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   
+  // Add state for payment methods modal
+  const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
+  
   // Fetch payment methods
   useEffect(() => {
     const fetchPaymentMethods = async () => {
@@ -40,7 +43,7 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     };
     
     fetchPaymentMethods();
-  }, []);
+  }, [isPaymentMethodsVisible]); // Re-fetch when modal closes
   
   // Update local charges when props change
   useEffect(() => {
@@ -97,9 +100,21 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     });
   };
 
+  // Handle opening payment methods modal
+  const handleOpenPaymentMethodsModal = () => {
+    setIsPaymentMethodsVisible(true);
+  };
+
   const handlePayAll = () => {
     if (!selectedPaymentMethod) {
-      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      Alert.alert(
+        "Missing Payment Method", 
+        "Please add a payment method to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Add Payment Method", onPress: handleOpenPaymentMethodsModal }
+        ]
+      );
       return;
     }
     setSelectedCharges(localUnpaidCharges);
@@ -108,7 +123,14 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 
   const handlePaySelected = () => {
     if (!selectedPaymentMethod) {
-      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      Alert.alert(
+        "Missing Payment Method", 
+        "Please add a payment method to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Add Payment Method", onPress: handleOpenPaymentMethodsModal }
+        ]
+      );
       return;
     }
     if (selectedCharges.length > 0) {
@@ -119,7 +141,14 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   // Centralized API call
   const handleConfirmPayment = async () => {
     if (!selectedPaymentMethod) {
-      Alert.alert("Missing Payment Method", "Please add a payment method to continue.");
+      Alert.alert(
+        "Missing Payment Method", 
+        "Please add a payment method to continue.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Add Payment Method", onPress: handleOpenPaymentMethodsModal }
+        ]
+      );
       return;
     }
     
@@ -242,20 +271,33 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerCard}>
-        <View style={styles.headerSplit}>
-          <View style={styles.headerSection}>
-            <Text style={styles.headerLabel}>Total Due</Text>
-            <Text style={styles.headerAmount}>${totalBalance.toFixed(2)}</Text>
-          </View>
-          {selectedCharges.length > 0 && (
+        <View style={styles.headerTop}>
+          <View style={styles.headerSplit}>
             <View style={styles.headerSection}>
-              <Text style={styles.headerLabel}>Selected</Text>
-              <Text style={[styles.headerAmount, styles.selectedAmount]}>
-                ${selectedTotal.toFixed(2)}
-              </Text>
+              <Text style={styles.headerLabel}>Total Due</Text>
+              <Text style={styles.headerAmount}>${totalBalance.toFixed(2)}</Text>
             </View>
-          )}
+            {selectedCharges.length > 0 && (
+              <View style={styles.headerSection}>
+                <Text style={styles.headerLabel}>Selected</Text>
+                <Text style={[styles.headerAmount, styles.selectedAmount]}>
+                  ${selectedTotal.toFixed(2)}
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Add Payment Method Button - always visible */}
+          <TouchableOpacity 
+            style={styles.addPaymentMethodBtn}
+            onPress={handleOpenPaymentMethodsModal}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="credit-card" size={18} color="#34d399" />
+            <Text style={styles.addPaymentMethodText}>Add Payment Method</Text>
+          </TouchableOpacity>
         </View>
+        
         <TouchableOpacity 
           style={[
             styles.paymentButton,
@@ -290,6 +332,12 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         )}
       </ScrollView>
 
+      {/* Payment Methods Modal */}
+      <PaymentMethodsSettings 
+        visible={isPaymentMethodsVisible}
+        onClose={() => setIsPaymentMethodsVisible(false)}
+      />
+
       <PaymentConfirmationModal
         visible={showConfirmation}
         onClose={() => !isProcessingPayment && setShowConfirmation(false)}
@@ -305,11 +353,29 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#dff6f0' },
   headerCard: { backgroundColor: '#dff6f0', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  headerSplit: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  headerTop: { marginBottom: 12 },
+  headerSplit: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   headerSection: { flex: 1 },
   headerLabel: { fontSize: 14, color: '#64748b', marginBottom: 4, fontWeight: '500' },
   headerAmount: { fontSize: 28, fontWeight: '700', color: '#1e293b', fontFamily: 'Quicksand-Bold' },
   selectedAmount: { color: '#34d399' },
+  // New "Add Payment Method" button - lowkey style
+  addPaymentMethodBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',  // Very light green background
+    marginBottom: 4,
+  },
+  addPaymentMethodText: {
+    color: '#34d399',
+    fontSize: 13,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
   paymentButton: { backgroundColor: '#34d399', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   disabledButton: { backgroundColor: '#94e0c1', opacity: 0.7 },
   paymentButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', marginRight: 4 },
@@ -333,6 +399,29 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 48 },
   emptyStateTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginVertical: 8 },
   emptyStateText: { color: '#64748b', fontSize: 14, textAlign: 'center' },
+  // Modified styles for payment method notice - no button in the notice anymore
+  noPaymentMethodContainer: {
+    backgroundColor: '#fff',
+    margin: 24,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  noPaymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noPaymentMethodText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 4,
+    textAlign: 'center',
+  }
 });
 
 export default PayTab;

@@ -12,11 +12,14 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import apiClient from '../config/api';
+import HouseServiceDetailModal from './HouseServiceDetailModal';
 
 const HouseServicesModal = ({ house, onClose }) => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('active'); // Default tab is 'active'
+  const [selectedService, setSelectedService] = useState(null); // Track selected service
 
   const fetchHouseServices = async () => {
     try {
@@ -38,6 +41,13 @@ const HouseServicesModal = ({ house, onClose }) => {
     }
   }, [house?.id]);
 
+  // Filter services based on active tab
+  const filteredServices = services.filter(service => {
+    if (activeTab === 'active') return service.status === 'active';
+    if (activeTab === 'pending') return service.status === 'pending';
+    return true;
+  });
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -49,7 +59,7 @@ const HouseServicesModal = ({ house, onClose }) => {
   const renderServiceItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.serviceCard}
-      onPress={() => {/* TODO: Handle service press */}}
+      onPress={() => setSelectedService(item)}
       activeOpacity={0.7}
     >
       <View style={styles.serviceContent}>
@@ -62,9 +72,7 @@ const HouseServicesModal = ({ house, onClose }) => {
         </View>
         <View style={styles.serviceTextContainer}>
           <Text style={styles.serviceName}>{item.name}</Text>
-          {item.provider && (
-            <Text style={styles.serviceProvider}>{item.provider}</Text>
-          )}
+          <Text style={styles.serviceType}>{formatServiceType(item.type)}</Text>
         </View>
       </View>
       <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
@@ -73,18 +81,37 @@ const HouseServicesModal = ({ house, onClose }) => {
 
   const getServiceIcon = (type) => {
     switch (type) {
-      case 'utility':
-        return 'power';
-      case 'subscription':
-        return 'subscriptions';
-      case 'internet':
-        return 'wifi';
+      case 'fixed_recurring':
+        return 'request-quote';
+      case 'variable_recurring':
+        return 'sync-alt';
+      case 'one_time':
+        return 'receipt';
       case 'marketplace_onetime':
         return 'shopping-cart';
       default:
         return 'home';
     }
   };
+  
+  const formatServiceType = (type) => {
+    switch (type) {
+      case 'fixed_recurring':
+        return 'Fixed';
+      case 'variable_recurring':
+        return 'Variable';
+      case 'one_time':
+        return 'One-time';
+      case 'marketplace_onetime':
+        return 'Marketplace';
+      default:
+        return type.replace(/_/g, ' ');
+    }
+  };
+
+  // Count services by status
+  const activeCount = services.filter(s => s.status === 'active').length;
+  const pendingCount = services.filter(s => s.status === 'pending').length;
 
   return (
     <>
@@ -102,6 +129,42 @@ const HouseServicesModal = ({ house, onClose }) => {
             <Text style={styles.headerTitle}>House Services</Text>
             <View style={styles.headerPlaceholder} />
           </View>
+          
+          {/* Tab Navigation */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.tab, 
+                activeTab === 'active' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('active')}
+            >
+              <Text style={[
+                styles.tabText,
+                activeTab === 'active' && styles.activeTabText
+              ]}>
+                Active ({activeCount})
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.tab,
+                activeTab === 'pending' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('pending')}
+            >
+              <Text style={[
+                styles.tabText,
+                activeTab === 'pending' && styles.activeTabText
+              ]}>
+                Pending ({pendingCount})
+              </Text>
+              {pendingCount > 0 && (
+                <View style={styles.pendingDot} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {error ? (
@@ -118,26 +181,45 @@ const HouseServicesModal = ({ house, onClose }) => {
           </View>
         ) : (
           <FlatList
-            data={services}
+            data={filteredServices}
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderServiceItem}
             contentContainerStyle={styles.servicesList}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
-                <MaterialIcons name="home" size={48} color="#64748b" />
-                <Text style={styles.emptyTitle}>No Services Added</Text>
-                <Text style={styles.emptyText}>
-                  Add house services to manage bills more efficiently
+                <MaterialIcons 
+                  name={activeTab === 'active' ? 'home' : 'pending-actions'} 
+                  size={48} 
+                  color="#64748b" 
+                />
+                <Text style={styles.emptyTitle}>
+                  No {activeTab === 'active' ? 'Active' : 'Pending'} Services
                 </Text>
-                <TouchableOpacity 
-                  style={styles.addButton}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.addButtonText}>Add Service</Text>
-                </TouchableOpacity>
+                <Text style={styles.emptyText}>
+                  {activeTab === 'active' 
+                    ? 'Add house services to manage bills more efficiently'
+                    : 'No services are currently awaiting approval'}
+                </Text>
+                {activeTab === 'active' && (
+                  <TouchableOpacity 
+                    style={styles.addButton}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.addButtonText}>Add Service</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
+          />
+        )}
+        
+        {/* Detail Modal */}
+        {selectedService && (
+          <HouseServiceDetailModal
+            visible={selectedService !== null}
+            service={selectedService}
+            onClose={() => setSelectedService(null)}
           />
         )}
       </SafeAreaView>
@@ -176,6 +258,40 @@ const styles = StyleSheet.create({
   headerPlaceholder: {
     width: 28,
   },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  activeTab: {
+    borderBottomColor: '#34d399',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#1e293b',
+    fontWeight: '600',
+  },
+  pendingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+    marginLeft: 5,
+  },
   servicesList: {
     padding: 16,
   },
@@ -185,7 +301,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'white',
     marginBottom: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -215,7 +331,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     fontWeight: '500',
   },
-  serviceProvider: {
+  serviceType: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,

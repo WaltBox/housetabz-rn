@@ -184,18 +184,15 @@ const BillTakeoverScreen = ({ navigation }) => {
       const payload = {
         ...formData,
         userId: user.id,
-        // For variable services, don't send a monthlyAmount
         monthlyAmount: formData.isFixedService ? parseFloat(formData.monthlyAmount) : null,
-        dueDate: dueDateNum,
+        dueDate: parseInt(formData.dueDate, 10),
         requiredUpfrontPayment: parseFloat(formData.requiredUpfrontPayment) || 0,
-        // Add service type field explicitly
         serviceType: formData.isFixedService ? 'fixed' : 'variable',
-        // Add a hint for the backend about bundle type
         bundleType: formData.isFixedService ? 'fixed_recurring' : 'variable_recurring',
       };
   
-      // Use apiClient with relative path
       const response = await apiClient.post("/api/take-over-requests", payload);
+      console.log("API response data:", response.data);
       setSubmittedData(response.data);
       setShowSuccess(true);
     } catch (error) {

@@ -206,6 +206,28 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
     </TouchableOpacity>
   );
 
+  // Render empty payment method in Uber style
+  const renderEmptyPaymentMethod = () => (
+    <View style={styles.methodsList}>
+      <View style={styles.methodCard}>
+        <View style={styles.methodLeft}>
+          <View style={styles.iconContainer}>
+            <MaterialIcons 
+              name="credit-card-off" 
+              size={20} 
+              color="#94a3b8" 
+            />
+          </View>
+          <Text style={styles.emptyMethodTitle}>
+            You have no payment methods on file
+          </Text>
+        </View>
+        
+   
+      </View>
+    </View>
+  );
+
   const content = (
     <View style={styles.container}>
       {loading ? (
@@ -219,11 +241,7 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
         >
           {/* Payment Methods List */}
           {paymentMethods.length === 0 ? (
-            <View style={styles.emptyState}>
-              <MaterialIcons name="credit-card-off" size={40} color="#e2e8f0" />
-              <Text style={styles.emptyText}>No payment methods found</Text>
-              <Text style={styles.emptySubtext}>Add a payment method to get started</Text>
-            </View>
+            renderEmptyPaymentMethod()
           ) : (
             <View style={styles.methodsList}>
               {paymentMethods.map(method => renderPaymentMethod(method))}
@@ -313,33 +331,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1e293b',
   },
+  // Style for empty payment method text
+  emptyMethodTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#94a3b8',
+  },
   defaultText: {
     color: '#34d399',
     fontSize: 14,
     fontWeight: '500',
     marginRight: 12,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginHorizontal: 16,
-    marginTop: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#64748b',
-    marginTop: 16,
-    fontWeight: '500',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 4,
   },
   addButton: {
     flexDirection: 'row',

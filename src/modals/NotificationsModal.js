@@ -72,9 +72,8 @@ const NotificationsModal = ({ onClose }) => {
   const markAsRead = async (notificationId) => {
     try {
       if (!user?.id) return;
-      await apiClient.patch(
-        `/api/users/${user.id}/notifications/${notificationId}`
-      );
+      // Notice we're now using PUT and the URL now has /read at the end.
+      await apiClient.put(`/api/users/${user.id}/notifications/${notificationId}/read`);
       setNotifications(prev =>
         prev.map(n =>
           n.id === notificationId ? { ...n, isRead: true, justRead: true } : n
@@ -85,6 +84,8 @@ const NotificationsModal = ({ onClose }) => {
       console.error('Error marking notification as read:', err);
     }
   };
+  
+
 
   const filteredNotifications = notifications.filter(n => {
     if (filter === 'unread') return !n.isRead;

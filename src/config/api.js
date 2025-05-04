@@ -65,6 +65,10 @@ export const API_ENDPOINTS = {
   login: '/api/auth/login',
   register: '/api/auth/register',
   user: '/api/users',
+
+  requestResetCode: '/api/auth/request-reset-code',
+  resetPassword: '/api/auth/reset-password-with-code',
+  verifyResetCode: '/api/auth/verify-reset-code',
   // Add more endpoints as needed
 };
 

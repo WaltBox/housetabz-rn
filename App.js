@@ -1,25 +1,30 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AppLoading from 'expo-app-loading';
 import { useFonts } from 'expo-font';
 import { StripeProvider } from '@stripe/stripe-react-native';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider } from './src/context/AuthContext'; 
 import AppNavigator from './src/navigation/AppNavigator';
 import Constants from 'expo-constants';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Platform, DeviceEventEmitter } from 'react-native';
+import PushNotification from 'react-native-push-notification';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Create a React Query client with default settings
+// Create React Query client.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
-      cacheTime: 1000 * 60 * 10, // Cache data for 10 minutes
-      refetchOnWindowFocus: false, // Don't fetch when app regains focus
-      retry: 1, // Only retry failed requests once
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
 
+// Use your Stripe publishable key.
 const STRIPE_PUBLISHABLE_KEY =
   Constants.expoConfig?.extra?.STRIPE_PUBLISHABLE_KEY ||
   'pk_live_51NK4ivCh7Bf0jit7JA4yDqJ5zSOiXXKerUU79MAYQGlgl5jmTPUSUbhSyUOFSrUsbFnL6osRuKgDcIsSC3sRWBlw00l9ItqB0H';
@@ -29,9 +34,6 @@ const App = () => {
     'Montserrat-Black': require('./assets/fonts/Montserrat-Black.ttf'),
     'Montserrat-Medium': require('./assets/fonts/Montserrat-Medium.ttf'),
     'Quicksand-Bold': require('./assets/fonts/Quicksand-Bold.ttf'),
-    'Montserrat-Black': require('./assets/fonts/Montserrat-Black.ttf'),
-    // 'Quicksand-Medium': require('./assets/fonts/Quicksand-Medium.ttf')
-
   });
 
   if (!fontsLoaded) {
@@ -50,11 +52,125 @@ const App = () => {
             timeout: 5,
           }}
         >
-          <AppNavigator />
+          <PushNotificationHandler>
+            <AppNavigator />
+          </PushNotificationHandler>
         </StripeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
+};
+
+// PushNotificationHandler now subscribes to a native event that passes the token.
+const PushNotificationHandler = ({ children }) => {
+  const { user, token } = require('./src/context/AuthContext').useAuth();
+  const [deviceToken, setDeviceToken] = useState(null);
+  const isConfigured = useRef(false);
+
+  // Listen to the native event "remoteNotificationsRegistered" for the token.
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('remoteNotificationsRegistered', (data) => {
+      if (data && data.deviceToken) {
+        const tokenString = data.deviceToken.replace(/[<\s>]/g, '');
+        console.log('Received native push token:', tokenString);
+        AsyncStorage.setItem('deviceToken', tokenString)
+          .then(() => setDeviceToken(tokenString))
+          .catch(err => console.error('AsyncStorage error:', err));
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Configure push notifications.
+  useEffect(() => {
+    if (isConfigured.current) return;
+    PushNotification.configure({
+      onNotification: (notification) => {
+        console.log('NOTIFICATION:', notification);
+        if (Platform.OS === 'ios') {
+          notification.finish(PushNotificationIOS.FetchResult.NoData);
+        }
+      },
+      popInitialNotification: true,
+      requestPermissions: Platform.OS === 'ios',
+    });
+
+    if (Platform.OS === 'android') {
+      PushNotification.createChannel(
+        {
+          channelId: 'default-channel',
+          channelName: 'Default channel',
+          channelDescription: 'Default notification channel',
+          playSound: true,
+          soundName: 'default',
+          importance: 4,
+          vibrate: true,
+        },
+        (created) => console.log(`Channel created: ${created}`)
+      );
+    }
+
+    isConfigured.current = true;
+    return () => {
+      PushNotification.unregister();
+    };
+  }, []);
+
+  // On mount, load any saved token, and if logged in, register it.
+  useEffect(() => {
+    const loadSavedToken = async () => {
+      try {
+        const savedToken = await AsyncStorage.getItem('deviceToken');
+        if (savedToken) {
+          console.log('Loaded saved token:', savedToken);
+          setDeviceToken(savedToken);
+          if (user && token) {
+            console.log('User is logged in, registering token with backend');
+            registerTokenWithBackend(savedToken);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved token:', error);
+      }
+    };
+    loadSavedToken();
+  }, [user, token]);
+
+  // When the user and token are available, register the device token.
+  useEffect(() => {
+    if (user && token && deviceToken) {
+      console.log('Both user and device token available, registering with backend');
+      registerTokenWithBackend(deviceToken);
+    }
+  }, [user, token, deviceToken]);
+
+  // Function to register token with backend.
+  const registerTokenWithBackend = (tokenString) => {
+    if (!user || !token) {
+      console.log('Cannot register device token - user not authenticated');
+      return;
+    }
+    console.log('Registering token with backend:', tokenString);
+    fetch('https://api.housetabz.com/api/users/device-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        deviceToken: tokenString,
+        deviceType: Platform.OS,
+      }),
+    })
+      .then(response => {
+        console.log('Registration response status:', response.status);
+        return response.text();
+      })
+      .then(text => console.log('Registration response:', text))
+      .catch(error => console.error('Registration error:', error));
+  };
+
+  return <>{children}</>;
 };
 
 export default App;
