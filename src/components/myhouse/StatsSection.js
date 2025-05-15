@@ -1,31 +1,59 @@
-// StatsSection.jsx
 import React from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFonts } from 'expo-font';
 
 const { width } = Dimensions.get("window");
 
-const StatsSection = ({ house }) => (
-  <View style={styles.statsContainer}>
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>
-        {house?.hsi >= 75 ? "Great" : "Needs Work"}
-      </Text>
-      <Text style={styles.statLabel}>House Status</Text>
-      <MaterialIcons
-        name={house?.hsi >= 75 ? "check-circle" : "warning"}
-        size={24}
-        color={house?.hsi >= 75 ? "#34d399" : "#f59e0b"}
-        style={styles.statIcon}
-      />
+const StatsSection = ({ house }) => {
+  // Load the Poppins font family
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
+  return (
+    <View style={styles.statsContainer}>
+      <View style={styles.statCard}>
+        <Text style={[
+          styles.statValue,
+          fontsLoaded && { fontFamily: 'Poppins-Bold' }
+        ]}>
+          {house?.hsi >= 75 ? "Great" : "Needs Work"}
+        </Text>
+        <Text style={[
+          styles.statLabel,
+          fontsLoaded && { fontFamily: 'Poppins-Medium' }
+        ]}>
+          House Status
+        </Text>
+        <MaterialIcons
+          name={house?.hsi >= 75 ? "check-circle" : "warning"}
+          size={24}
+          color={house?.hsi >= 75 ? "#34d399" : "#f59e0b"}
+          style={styles.statIcon}
+        />
+      </View>
+      <View style={styles.statCard}>
+        <Text style={[
+          styles.statValue,
+          fontsLoaded && { fontFamily: 'Poppins-Bold' }
+        ]}>
+          {house?.users?.length || 0}
+        </Text>
+        <Text style={[
+          styles.statLabel,
+          fontsLoaded && { fontFamily: 'Poppins-Medium' }
+        ]}>
+          Members
+        </Text>
+        <MaterialIcons name="group" size={24} color="#34d399" style={styles.statIcon} />
+      </View>
     </View>
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{house?.users?.length || 0}</Text>
-      <Text style={styles.statLabel}>Members</Text>
-      <MaterialIcons name="group" size={24} color="#34d399" style={styles.statIcon} />
-    </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   statsContainer: {

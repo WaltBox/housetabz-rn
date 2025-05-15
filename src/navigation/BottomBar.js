@@ -16,15 +16,14 @@ import DashboardScreen from '../screens/DashboardScreen';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import MakePaymentScreen from '../screens/MakePaymentScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
-import TakeOverScreen from '../screens/TakeOverScreen';
+import HouseServicesScreen from '../screens/HouseServicesScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
-
 
 const Tab = createBottomTabNavigator();
 const Dashboard = createStackNavigator();
 const MyHouse = createStackNavigator();
-const Market = createStackNavigator();
-const TakeOver = createStackNavigator();
+const Merchants = createStackNavigator();
+const HouseServices = createStackNavigator();
 const Payment = createStackNavigator();
 
 const DashboardStack = () => (
@@ -39,18 +38,17 @@ const MyHouseStack = () => (
   </MyHouse.Navigator>
 );
 
-const MarketplaceStack = () => (
-  <Market.Navigator screenOptions={{ headerShown: false }}>
-    <Market.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
-    <Market.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
- 
-  </Market.Navigator>
+const MerchantsStack = () => (
+  <Merchants.Navigator screenOptions={{ headerShown: false }}>
+    <Merchants.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+    <Merchants.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
+  </Merchants.Navigator>
 );
 
-const TakeOverStack = () => (
-  <TakeOver.Navigator screenOptions={{ headerShown: false }}>
-    <TakeOver.Screen name="TakeOverScreen" component={TakeOverScreen} />
-  </TakeOver.Navigator>
+const HouseServicesStack = () => (
+  <HouseServices.Navigator screenOptions={{ headerShown: false }}>
+    <HouseServices.Screen name="HouseServicesScreen" component={HouseServicesScreen} />
+  </HouseServices.Navigator>
 );
 
 const PaymentStack = () => (
@@ -66,7 +64,7 @@ const FloatingButton = () => {
     state?.routes?.[state.index]?.name || null
   );
 
-  const isMakePaymentScreen = currentRouteName === 'Make Payment';
+  const isMakePaymentScreen = currentRouteName === 'Pay Tab';
 
   const logo = isMakePaymentScreen
     ? require('../../assets/housetabzwinklogo.png')
@@ -75,7 +73,7 @@ const FloatingButton = () => {
   return (
     <TouchableOpacity
       style={styles.floatingButton}
-      onPress={() => navigation.navigate('Make Payment')}
+      onPress={() => navigation.navigate('Pay Tab')}
     >
       <Image source={logo} style={styles.logo} resizeMode="contain" />
     </TouchableOpacity>
@@ -93,10 +91,10 @@ const TabNavigator = () => (
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'My House') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Marketplace') {
-            iconName = focused ? 'cart' : 'cart-outline';
-          } else if (route.name === 'TakeOver') {
-            iconName = focused ? 'flash' : 'flash-outline';
+          } else if (route.name === 'Merchants') {
+            iconName = focused ? 'bag' : 'bag-outline';
+          } else if (route.name === 'HouseServices') {
+            iconName = focused ? 'wallet' : 'wallet-outline';
           }
           return iconName ? <Icon name={iconName} size={typeof size === 'number' ? size : 24} color="#34d399" /> : null;
         },
@@ -113,10 +111,10 @@ const TabNavigator = () => (
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardStack} />
+      <Tab.Screen name="HouseServices" component={HouseServicesStack} />
+      <Tab.Screen name="Pay Tab" component={PaymentStack} />
       <Tab.Screen name="My House" component={MyHouseStack} />
-      <Tab.Screen name="Make Payment" component={PaymentStack} />
-      <Tab.Screen name="Marketplace" component={MarketplaceStack} />
-      <Tab.Screen name="TakeOver" component={TakeOverStack} />
+      <Tab.Screen name="Merchants" component={MerchantsStack} />
     </Tab.Navigator>
 
     <FloatingButton />

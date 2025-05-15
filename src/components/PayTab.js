@@ -5,9 +5,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 import apiClient from '../config/api';
+import { useFonts } from 'expo-font';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const queryClient = useQueryClient();
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+  
   // Filter out charges already paid or processing
   const unpaidCharges = useMemo(() => 
     allCharges.filter(charge => charge.status !== 'paid' && charge.status !== 'processing'),
@@ -158,12 +167,11 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       
       const paymentRequest = {
         chargeIds: selectedCharges.map(charge => charge.id),
-        paymentMethodId: selectedPaymentMethod.id // Use the selected payment method instead of hardcoding
+        paymentMethodId: selectedPaymentMethod.id
       };
       
       console.log('Sending payment request with:', { ...paymentRequest, idempotencyKey });
       
-      // Use apiClient instead of axios
       const response = await apiClient.post(
         '/api/payments/batch',
         paymentRequest,
@@ -225,45 +233,72 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     return (
       <View style={styles.section}>
         <View style={[styles.sectionHeader, { borderLeftColor: color }]}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[
+            styles.sectionTitle,
+            fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+          ]}>
+            {title}
+          </Text>
           <View style={[styles.statusDot, { backgroundColor: color }]} />
         </View>
-        {chargesGroup.map(charge => (
-          <View key={charge.id} style={[styles.chargeItem, { borderLeftColor: color, borderLeftWidth: 4 }]}>
-            <View style={styles.chargeHeader}>
-              <View style={styles.chargeTitleContainer}>
-                <MaterialIcons name={charge.metadata?.icon || 'receipt'} size={18} color={color} style={styles.icon} />
-                <View style={styles.chargeTextContent}>
-                  <Text style={styles.chargeTitle}>{charge.name}</Text>
-                  <Text style={[styles.chargeSubtitle, { color }]}>
-                    {charge.daysLate ? `${charge.daysLate}d overdue` : `Due in ${charge.daysUntilDue}d`}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
-            </View>
-            <TouchableOpacity
+        {chargesGroup.map(charge => {
+          const isSelected = selectedCharges.some(c => c.id === charge.id);
+          return (
+            <TouchableOpacity 
+              key={charge.id} 
               style={[
-                styles.selectButton,
-                selectedCharges.some(c => c.id === charge.id) && styles.selectedButton
+                styles.chargeItem, 
+                isSelected && styles.selectedChargeItem
               ]}
               onPress={() => handleChargeSelectToggle(charge)}
+              activeOpacity={0.7}
               disabled={isProcessingPayment}
             >
-              <MaterialIcons
-                name={selectedCharges.some(c => c.id === charge.id) ? "check" : "add"}
-                size={18}
-                color={selectedCharges.some(c => c.id === charge.id) ? "#fff" : color}
-              />
-              <Text style={[
-                styles.selectButtonText,
-                selectedCharges.some(c => c.id === charge.id) && styles.selectedButtonText
-              ]}>
-                {selectedCharges.some(c => c.id === charge.id) ? 'Selected' : 'Select to Pay'}
-              </Text>
+              <View style={styles.chargeHeader}>
+                <View style={styles.chargeTitleContainer}>
+                
+                  <View style={styles.chargeTextContent}>
+                    <Text style={[
+                      styles.chargeTitle,
+                      isSelected && styles.selectedChargeText,
+                      fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                    ]}>
+                      {charge.name}
+                    </Text>
+                    <Text style={[
+                      styles.chargeSubtitle,
+                      isSelected ? styles.selectedChargeSubtitle : { color },
+                      fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                    ]}>
+                      {charge.daysLate ? `${charge.daysLate}d overdue` : `Due in ${charge.daysUntilDue}d`}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[
+                  styles.chargeAmount,
+                  isSelected && styles.selectedChargeText,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>
+                  ${Number(charge.amount).toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.selectIndicator}>
+                <Text style={[
+                  styles.selectText,
+                  isSelected && styles.selectedSelectText,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}>
+                  {isSelected ? 'SELECTED' : 'TAP TO ADD'}
+                </Text>
+                <MaterialIcons
+                  name={isSelected ? "check" : "add"}
+                  size={18}
+                  color={isSelected ? "#fff" : color}
+                />
+              </View>
             </TouchableOpacity>
-          </View>
-        ))}
+          );
+        })}
       </View>
     );
   };
@@ -274,27 +309,50 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         <View style={styles.headerTop}>
           <View style={styles.headerSplit}>
             <View style={styles.headerSection}>
-              <Text style={styles.headerLabel}>Total Due</Text>
-              <Text style={styles.headerAmount}>${totalBalance.toFixed(2)}</Text>
+              <Text style={[
+                styles.headerLabel,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                Total Due
+              </Text>
+              <Text style={[
+                styles.headerAmount,
+                fontsLoaded && { fontFamily: 'Poppins-Bold' }
+              ]}>
+                ${totalBalance.toFixed(2)}
+              </Text>
             </View>
             {selectedCharges.length > 0 && (
               <View style={styles.headerSection}>
-                <Text style={styles.headerLabel}>Selected</Text>
-                <Text style={[styles.headerAmount, styles.selectedAmount]}>
+                <Text style={[
+                  styles.headerLabel,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  Selected
+                </Text>
+                <Text style={[
+                  styles.headerAmount, 
+                  styles.selectedAmount,
+                  fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                ]}>
                   ${selectedTotal.toFixed(2)}
                 </Text>
               </View>
             )}
           </View>
           
-          {/* Add Payment Method Button - always visible */}
           <TouchableOpacity 
             style={styles.addPaymentMethodBtn}
             onPress={handleOpenPaymentMethodsModal}
             activeOpacity={0.7}
           >
             <MaterialIcons name="credit-card" size={18} color="#34d399" />
-            <Text style={styles.addPaymentMethodText}>Add Payment Method</Text>
+            <Text style={[
+              styles.addPaymentMethodText,
+              fontsLoaded && { fontFamily: 'Poppins-Medium' }
+            ]}>
+              Add Payment Method
+            </Text>
           </TouchableOpacity>
         </View>
         
@@ -310,7 +368,10 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Text style={styles.paymentButtonText}>
+              <Text style={[
+                styles.paymentButtonText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>
                 {selectedCharges.length ? 'Pay Selected' : 'Pay All'}
               </Text>
               <MaterialIcons name="chevron-right" size={20} color="#fff" />
@@ -326,8 +387,18 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         {localUnpaidCharges.length === 0 && (
           <View style={styles.emptyState}>
             <MaterialIcons name="check-circle" size={40} color="#34d399" />
-            <Text style={styles.emptyStateTitle}>All Caught Up!</Text>
-            <Text style={styles.emptyStateText}>No outstanding charges found</Text>
+            <Text style={[
+              styles.emptyStateTitle,
+              fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+            ]}>
+              All Caught Up!
+            </Text>
+            <Text style={[
+              styles.emptyStateText,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>
+              No outstanding charges found
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -351,15 +422,40 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#dff6f0' },
-  headerCard: { backgroundColor: '#dff6f0', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  headerTop: { marginBottom: 12 },
-  headerSplit: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  headerSection: { flex: 1 },
-  headerLabel: { fontSize: 14, color: '#64748b', marginBottom: 4, fontWeight: '500' },
-  headerAmount: { fontSize: 28, fontWeight: '700', color: '#1e293b', fontFamily: 'Quicksand-Bold' },
-  selectedAmount: { color: '#34d399' },
-  // New "Add Payment Method" button - lowkey style
+  container: { 
+    flex: 1, 
+    backgroundColor: '#dff6f0' 
+  },
+  headerCard: { 
+    backgroundColor: '#dff6f0', 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#f1f5f9' 
+  },
+  headerTop: { 
+    marginBottom: 12 
+  },
+  headerSplit: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: 12 
+  },
+  headerSection: { 
+    flex: 1 
+  },
+  headerLabel: { 
+    fontSize: 14, 
+    color: '#64748b', 
+    marginBottom: 4 
+  },
+  headerAmount: { 
+    fontSize: 24, 
+    fontWeight: '700', 
+    color: '#1e293b' 
+  },
+  selectedAmount: { 
+    color: '#34d399' 
+  },
   addPaymentMethodBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -367,8 +463,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',  // Very light green background
-    marginBottom: 4,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
   },
   addPaymentMethodText: {
     color: '#34d399',
@@ -376,51 +471,128 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 6,
   },
-  paymentButton: { backgroundColor: '#34d399', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  disabledButton: { backgroundColor: '#94e0c1', opacity: 0.7 },
-  paymentButtonText: { color: '#fff', fontSize: 16, fontWeight: '600', marginRight: 4 },
-  content: { flex: 1 },
-  section: { marginTop: 24, marginHorizontal: 24 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingLeft: 12, borderLeftWidth: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginRight: 8,fontFamily: 'Quicksand-Bold' },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  chargeItem: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#f1f5f9' },
-  chargeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  chargeTitleContainer: { flexDirection: 'row', flex: 1, marginRight: 12 },
-  icon: { marginRight: 8, marginTop: 2 },
-  chargeTextContent: { flex: 1 },
-  chargeTitle: { fontSize: 16, fontWeight: '600', color: '#1e293b', marginBottom: 4 },
-  chargeSubtitle: { fontSize: 13, fontWeight: '500' },
-  chargeAmount: { fontSize: 16, fontWeight: '600', color: '#1e293b', fontFamily: 'Quicksand-Bold' },
-  selectButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: '#f8fafc' },
-  selectedButton: { backgroundColor: '#34d399' },
-  selectButtonText: { fontSize: 13, fontWeight: '500', color: '#64748b', marginLeft: 4 },
-  selectedButtonText: { color: '#fff' },
-  emptyState: { alignItems: 'center', padding: 48 },
-  emptyStateTitle: { fontSize: 18, fontWeight: '600', color: '#1e293b', marginVertical: 8 },
-  emptyStateText: { color: '#64748b', fontSize: 14, textAlign: 'center' },
-  // Modified styles for payment method notice - no button in the notice anymore
-  noPaymentMethodContainer: {
-    backgroundColor: '#fff',
-    margin: 24,
-    padding: 20,
+  paymentButton: {
+    backgroundColor: '#34d399',
+    padding: 12,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    justifyContent: 'center'
   },
-  noPaymentMethodTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 12,
-    marginBottom: 4,
+  disabledButton: { 
+    backgroundColor: '#94e0c1', 
+    opacity: 0.7 
   },
-  noPaymentMethodText: {
-    fontSize: 14,
+  paymentButtonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginRight: 4 
+  },
+  content: { 
+    flex: 1 
+  },
+  section: { 
+    marginTop: 16, 
+    marginHorizontal: 16 
+  },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 12, 
+    paddingLeft: 8, 
+    borderLeftWidth: 3 
+  },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1e293b', 
+    marginRight: 8 
+  },
+  statusDot: { 
+    width: 6, 
+    height: 6, 
+    borderRadius: 3 
+  },
+  chargeItem: { 
+    backgroundColor: '#fff', 
+    borderRadius: 12, 
+    padding: 14, 
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: '#f1f5f9' 
+  },
+  selectedChargeItem: {
+    backgroundColor: '#34d399',
+    borderColor: '#34d399'
+  },
+  chargeHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: 8 
+  },
+  chargeTitleContainer: { 
+    flexDirection: 'row', 
+    flex: 1, 
+    marginRight: 8 
+  },
+  icon: { 
+    marginRight: 8, 
+    marginTop: 2 
+  },
+  chargeTextContent: { 
+    flex: 1 
+  },
+  chargeTitle: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1e293b', 
+    marginBottom: 2 
+  },
+  selectedChargeText: {
+    color: '#fff'
+  },
+  chargeSubtitle: { 
+    fontSize: 13 
+  },
+  selectedChargeSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)'
+  },
+  chargeAmount: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1e293b' 
+  },
+  selectIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4
+  },
+  selectText: {
+    fontSize: 12,
+    fontWeight: '500',
     color: '#64748b',
-    marginBottom: 4,
-    textAlign: 'center',
+    marginRight: 6
+  },
+  selectedSelectText: {
+    color: '#fff'
+  },
+  emptyState: { 
+    alignItems: 'center', 
+    padding: 40 
+  },
+  emptyStateTitle: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#1e293b', 
+    marginVertical: 8 
+  },
+  emptyStateText: { 
+    color: '#64748b', 
+    fontSize: 14, 
+    textAlign: 'center' 
   }
 });
 

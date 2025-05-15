@@ -15,6 +15,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import ProfileModal from './ProfileModal';
 import PaymentMethodsSettings from './PaymentMethodsSettings';
+import TermsOfServiceModal from './TermsOfServiceModal'; // Import the new modal component
 import { useNotifications } from '../context/NotificationContext';
 
 const SettingsModal = ({ onClose = () => {} }) => {
@@ -24,11 +25,10 @@ const SettingsModal = ({ onClose = () => {} }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [autopay, setAutopay] = useState(false);
   
-  // Profile Modal
+  // Modal visibility states
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
-  
-  // Payment Methods Modal 
   const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
+  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
 
   const SettingsSection = ({ title, children }) => (
     <View style={styles.section}>
@@ -76,6 +76,11 @@ const SettingsModal = ({ onClose = () => {} }) => {
     setIsPaymentMethodsVisible(true);
   };
 
+  // New handler to open the Terms modal
+  const handleOpenTermsModal = () => {
+    setIsTermsModalVisible(true);
+  };
+
   const handleSignOut = async () => {
     Alert.alert(
       'Sign Out',
@@ -96,42 +101,6 @@ const SettingsModal = ({ onClose = () => {} }) => {
         }
       ]
     );
-  };
-
-  const handleToggleNotifications = async (newValue) => {
-    try {
-      if (newValue) {
-        // Enable notifications
-        PushNotification.requestPermissions();
-        // You might want to re-register the token here
-      } else {
-        // Disable notifications
-        // Here you would update your backend to mark this device token as inactive
-        try {
-          // Assuming you have access to the device token and auth context
-          const { authToken } = useAuth();
-          
-          fetch('http://YOUR_LOCAL_IP:3004/api/users/device-token', {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({
-              deviceToken: 'YOUR_DEVICE_TOKEN' // You'll need to store this somewhere
-            })
-          });
-        } catch (error) {
-          console.error('Error updating notification preferences:', error);
-        }
-      }
-      
-      // Update the UI state
-      setNotifications(newValue);
-    } catch (error) {
-      console.error('Error toggling notifications:', error);
-      Alert.alert('Error', 'Could not update notification settings');
-    }
   };
   
   return (
@@ -182,13 +151,13 @@ const SettingsModal = ({ onClose = () => {} }) => {
 
           <SettingsSection title="Preferences">
           <SettingsRow
-    icon="notifications-none"
-    title="Push Notifications"
-    subtitle="App alerts and reminders"
-    type="switch"
-    value={notificationsEnabled}
-    onPress={toggleNotifications}
-  />
+            icon="notifications-none"
+            title="Push Notifications"
+            subtitle="App alerts and reminders"
+            type="switch"
+            value={notificationsEnabled}
+            onPress={toggleNotifications}
+          />
             <SettingsRow
               icon="mail-outline"
               title="Email Communications"
@@ -223,7 +192,7 @@ const SettingsModal = ({ onClose = () => {} }) => {
             <SettingsRow
               icon="description"
               title="Terms of Service"
-              onPress={() => Alert.alert('Navigate to Terms')}
+              onPress={handleOpenTermsModal} // Updated to use the modal
             />
             <SettingsRow
               icon="security"
@@ -260,6 +229,7 @@ const SettingsModal = ({ onClose = () => {} }) => {
         </ScrollView>
       </SafeAreaView>
 
+      {/* Modals */}
       <ProfileModal 
         visible={isProfileModalVisible}
         onClose={() => setIsProfileModalVisible(false)}
@@ -268,6 +238,12 @@ const SettingsModal = ({ onClose = () => {} }) => {
       <PaymentMethodsSettings 
         visible={isPaymentMethodsVisible}
         onClose={() => setIsPaymentMethodsVisible(false)}
+      />
+      
+      {/* New Terms of Service Modal */}
+      <TermsOfServiceModal
+        visible={isTermsModalVisible}
+        onClose={() => setIsTermsModalVisible(false)}
       />
     </>
   );

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Platform } from 'react-native';
 import { API_URL, API_ENDPOINTS } from '../config/api';
+import jwt_decode from 'jwt-decode';
 
 const AuthContext = createContext({});
 
@@ -11,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Load stored user on initial mount
   useEffect(() => {
     loadStoredUser();
   }, []);
@@ -23,12 +25,12 @@ export const AuthProvider = ({ children }) => {
         if (
           error.response && 
           error.response.status === 401 && 
-          error.response.data?.message === 'Token expired'
+          (error.response.data?.message === 'Token expired' || 
+           error.response.data?.error === 'Authentication failed')
         ) {
           console.log('Token expired, initiating logout');
-          
-          // Simply log the user out which will redirect to login
           await logout();
+          return new Promise(() => {}); // Break the error chain
         }
         
         return Promise.reject(error);
@@ -41,23 +43,49 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // Check if token is expired by decoding it
+  const isTokenExpired = (token) => {
+    try {
+      const decodedToken = jwt_decode(token);
+      const currentTime = Date.now() / 1000;
+      
+      // Check if token has expired
+      return decodedToken.exp < currentTime;
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      // If we can't decode the token, consider it expired for safety
+      return true;
+    }
+  };
+
   const loadStoredUser = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('userToken');
       const storedUser = await AsyncStorage.getItem('userData');
+      
       if (storedToken && storedUser) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
+        // Check token expiration locally
+        if (isTokenExpired(storedToken)) {
+          console.log('Stored token is expired, clearing auth state');
+          await logout();
+        } else {
+          // Token appears valid, restore session
+          console.log('Stored token appears valid, restoring session');
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          setUser(JSON.parse(storedUser));
+          setToken(storedToken);
+        }
       }
     } catch (error) {
       console.error('Error loading stored user:', error);
+      // On any error, clear auth state for safety
+      await logout();
     } finally {
       setLoading(false);
     }
   };
 
-  // Register device token (expects a plain string).
+  // Register device token (expects a plain string)
   const registerDeviceToken = async (deviceTokenData) => {
     if (!user || !token) {
       console.log('Cannot register device token - user not authenticated');
@@ -82,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login function. Device token registration is handled in PushNotificationHandler.
+  // Login function
   const login = async (email, password) => {
     try {
       console.log('Attempting login...', { email });
@@ -108,18 +136,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Logout function
   const logout = async () => {
     try {
+      console.log('Logging out user');
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('userData');
       delete axios.defaults.headers.common['Authorization'];
       setUser(null);
       setToken(null);
+      return true;
     } catch (error) {
       console.error('Logout error:', error);
+      return false;
     }
   };
 
+  // Register function
   const register = async (userData) => {
     try {
       const response = await axios.post(`${API_URL}${API_ENDPOINTS.register}`, userData);
@@ -139,6 +172,8 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
+
+  // Verify reset code
   const verifyResetCode = async (email, code) => {
     try {
       const response = await axios.post(`${API_URL}${API_ENDPOINTS.verifyResetCode}`, { 
@@ -151,6 +186,8 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
+
+  // Request password reset code
   const requestPasswordResetCode = async (email) => {
     try {
       console.log('Requesting password reset code for:', email);
@@ -180,6 +217,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user house
   const updateUserHouse = async (houseId) => {
     try {
       const response = await axios.put(`${API_URL}/api/users/${user.id}/house`, { houseId });
@@ -195,24 +233,23 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-    value={{
-      user,
-      token,
-      loading,
-      login,
-      logout,
-      register,
-      updateUserHouse,
-      registerDeviceToken,
-      isAuthenticated: !!user,
-      // Add these new methods:
-      verifyResetCode,
-      requestPasswordResetCode,
-      resetPasswordWithCode,
-    }}
-  >
-    {children}
-  </AuthContext.Provider>
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        logout,
+        register,
+        updateUserHouse,
+        registerDeviceToken,
+        isAuthenticated: !!user,
+        verifyResetCode,
+        requestPasswordResetCode,
+        resetPasswordWithCode,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 };
 

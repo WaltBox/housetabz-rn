@@ -1,205 +1,188 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import Svg, { Path, Defs, LinearGradient, Stop, Circle } from "react-native-svg";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Dimensions } from "react-native";
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Dimensions
+} from 'react-native';
+import Svg, {
+  Path,
+  Circle,
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  Stop
+} from 'react-native-svg';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get('window');
 
 const HSIComponent = ({ house, onInfoPress }) => {
-  // Get HSI score from statusIndex relation or fall back to legacy hsi field
-  const hsiScore = house?.statusIndex?.score ?? house?.hsi ?? 0;
-  const hsiProgress = hsiScore / 100;
-  
-  // Get balance from finance relation or fall back to legacy balance field
-  const houseBalance = house?.finance?.balance ?? house?.balance ?? 0;
-  
-  // Determine color based on HSI value
-  const getStatusColor = (value) => {
-    const numValue = parseInt(value);
-    if (numValue >= 80) return ["#34d399", "#4ade80"];
-    if (numValue >= 60) return ["#4ade80", "#a3e635"];
-    if (numValue >= 40) return ["#facc15", "#eab308"];
-    return ["#f87171", "#ef4444"];
-  };
-  
-  const [primaryColor, secondaryColor] = getStatusColor(hsiScore);
+  // Load the Poppins font family
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+  });
 
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians),
-    };
+  const score = house?.statusIndex?.score ?? house?.hsi ?? 0;
+  const pct = score / 100;
+
+  // Colors based on score - using more fintech-friendly gradients
+  const colors = 
+    score >= 80
+      ? ['#0C98E2', '#3BBCF7'] // Blue gradient for high scores
+      : score >= 60
+      ? ['#45C486', '#78E0A7'] // Green gradient for good scores
+      : score >= 40
+      ? ['#F7AF3C', '#FAC864'] // Amber gradient for medium scores
+      : ['#F76F40', '#FF9B71']; // Orange gradient for low scores (less alarming than red)
+
+  const polar = (cx, cy, r, deg) => {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   };
 
-  const generateSemiCircle = (progress) => {
-    const startAngle = 180;
-    const sweepAngle = 180 * progress;
-    const endAngle = startAngle + sweepAngle;
-    const start = polarToCartesian(50, 50, 40, startAngle);
-    const end = polarToCartesian(50, 50, 40, endAngle);
-    const largeArcFlag = sweepAngle >= 180 ? 1 : 0;
-    return `M ${start.x} ${start.y} A 40 40 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
+  const arc = (p) => {
+    const start = polar(50, 50, 40, 180);
+    const end = polar(50, 50, 40, 180 + 180 * p);
+    const large = p > 0.5 ? 1 : 0;
+    return `M ${start.x} ${start.y} A 40 40 0 ${large} 1 ${end.x} ${end.y}`;
   };
-  
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>House Status</Text>
-        <TouchableOpacity 
-          onPress={onInfoPress} 
-          style={styles.infoButton}
-          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-        >
-          <MaterialIcons name="info-outline" size={22} color="#64748b" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.wrapper}>
+      <Text style={[
+        styles.title,
+        fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+      ]}>
+        House Status Index
+      </Text>
       
-      <View style={styles.progressContainer}>
-        <Svg height="160" width="160" viewBox="0 0 100 100">
-          {/* Background blur effect */}
-          <Defs>
-            <LinearGradient id="semiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <Stop offset="0%" stopColor={primaryColor} stopOpacity="1" />
-              <Stop offset="100%" stopColor={secondaryColor} stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          
-          {/* Shadow Circle - subtle effect */}
-          <Circle
-            cx="50"
-            cy="50"
-            r="48"
-            fill="none"
-            stroke="rgba(203, 213, 225, 0.4)"
-            strokeWidth="1"
-          />
-          
-          {/* Background track */}
-          <Path
-            d={generateSemiCircle(1)}
-            stroke="#e2e8f0"
-            strokeWidth="12"
-            fill="none"
-          />
-          
-          {/* Progress arc */}
-          <Path
-            d={generateSemiCircle(hsiProgress)}
-            stroke="url(#semiGradient)"
-            strokeWidth="12"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </Svg>
-        
-        <View style={styles.valueContainer}>
-          <Text style={[styles.hsiText, { color: primaryColor }]}>{hsiScore}</Text>
-          <Text style={styles.hsiSubtext}>/100</Text>
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={onInfoPress}
+        activeOpacity={0.8}
+      >
+        <View style={styles.mainContent}>
+          <View style={styles.gaugeWrapper}>
+            <Svg width={150} height={90} viewBox="0 0 100 60">
+              <Defs>
+                <SvgLinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <Stop offset="0%" stopColor={colors[0]} />
+                  <Stop offset="100%" stopColor={colors[1]} />
+                </SvgLinearGradient>
+              </Defs>
+              
+              {/* Background track with more subtle color */}
+              <Path d={arc(1)} stroke="#E5E7EB" strokeWidth={12} fill="none" strokeLinecap="round" />
+              
+              {/* Foreground track with gradient */}
+              <Path
+                d={arc(pct)}
+                stroke="url(#grad)"
+                strokeWidth={12}
+                fill="none"
+                strokeLinecap="round"
+              />
+              
+              {/* Add subtle tick markers */}
+              {[0, 0.25, 0.5, 0.75, 1].map((tick, i) => (
+                <Circle 
+                  key={i}
+                  cx={polar(50, 50, 40, 180 + 180 * tick).x} 
+                  cy={polar(50, 50, 40, 180 + 180 * tick).y} 
+                  r="1.5" 
+                  fill="#D1D5DB" 
+                />
+              ))}
+            </Svg>
+            
+            <View style={styles.valueOverlay}>
+              <Text style={[
+                styles.scoreText,
+                fontsLoaded && { fontFamily: 'Poppins-Bold' }
+              ]}>
+                {score}
+              </Text>
+            </View>
+          </View>
         </View>
         
-        {/* Status indicator below the gauge */}
-        <View style={[styles.statusIndicator, { backgroundColor: `${primaryColor}20` }]}>
-          <View style={[styles.statusDot, { backgroundColor: primaryColor }]} />
-          <Text style={[styles.statusText, { color: primaryColor }]}>
-            {hsiProgress >= 0.8 ? 'Excellent' :
-             hsiProgress >= 0.6 ? 'Good' :
-             hsiProgress >= 0.4 ? 'Fair' : 'Needs Attention'}
+        <View style={styles.viewMoreFooter}>
+          <Text style={[
+            styles.viewMoreText,
+            fontsLoaded && { fontFamily: 'Poppins-Medium' }
+          ]}>
+            Learn about HSI
           </Text>
+          <MaterialIcons name="chevron-right" size={24} color="white" />
         </View>
-      </View>
-      
-      {/* Add house balance display */}
-      <View style={styles.balanceContainer}>
-        <Text style={styles.balanceLabel}>House Balance:</Text>
-        <Text style={styles.balanceValue}>${houseBalance.toFixed(2)}</Text>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginHorizontal: 24,
-    marginBottom: 24,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+  wrapper: {
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    letterSpacing: -0.5,
-    fontFamily: "Montserrat-Black",
-  },
-  infoButton: {
-    padding: 4,
-  },
-  progressContainer: {
-    alignItems: "center",
-    position: "relative",
-  },
-  valueContainer: {
-    position: "absolute",
-    top: "50%",
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  hsiText: {
-    fontSize: 40,
-    fontWeight: "800",
-    lineHeight: 46,
-  },
-  hsiSubtext: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#94a3b8",
-    marginBottom: 8,
-    marginLeft: 2,
-  },
-  statusIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginTop: 16,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  balanceContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    borderRadius: 12,
-  },
-  balanceLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  balanceValue: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#34d399",
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
   },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  mainContent: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  gaugeWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  valueOverlay: {
+    position: 'absolute',
+    alignItems: 'center',
+    bottom: 5,
+  },
+  scoreText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  viewMoreFooter: {
+    height: 48,
+    backgroundColor: '#34d399',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  viewMoreText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  }
 });
 
 export default HSIComponent;

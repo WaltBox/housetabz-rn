@@ -9,12 +9,11 @@ import {
   StatusBar,
   SafeAreaView,
   Platform,
-  TouchableWithoutFeedback,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFonts } from 'expo-font';
 
-const { height: screenHeight, width } = Dimensions.get("window");
-const MODAL_HEIGHT = screenHeight;
+const { height: screenHeight } = Dimensions.get("window");
 
 const ModalComponent = ({ 
   visible, 
@@ -23,82 +22,57 @@ const ModalComponent = ({
   title,
   hideCloseButton = false,
   fullScreen = false,
-  backgroundColor = "#dff6f0",
+  backgroundColor = "#f5f7fa",
   useBackArrow = true
 }) => {
-  // Ensure onClose is a function
+  // Load the Poppins font family
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
   const handleClose = () => {
-    console.log("Modal close button pressed");
-    if (onClose && typeof onClose === 'function') {
-      onClose();
-    }
+    if (onClose && typeof onClose === 'function') onClose();
   };
 
-  // Ensure background color is applied consistently
-  const bgColor = fullScreen ? backgroundColor : "white";
-  
   return (
     <Modal
       animationType="slide"
-      transparent={true}
+      transparent={!fullScreen}
       visible={visible}
       onRequestClose={handleClose}
     >
-      <StatusBar barStyle="dark-content" backgroundColor={backgroundColor} />
       <SafeAreaView style={[
-        styles.modalContainer, 
-        { backgroundColor: fullScreen ? backgroundColor : "rgba(0, 0, 0, 0.4)" }
+        styles.wrapper,
+        fullScreen && styles.fullscreen,
+        { backgroundColor: backgroundColor }
       ]}>
-        <View style={[
-          styles.modalContent, 
-          fullScreen && styles.fullScreenModal,
-          { backgroundColor: bgColor }
-        ]}>
-          {title && (
-            <View style={[
-              styles.header,
-              { backgroundColor: bgColor }
-            ]}>
-              {!hideCloseButton && useBackArrow && (
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleClose}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                >
-                  <MaterialIcons name="arrow-back" size={24} color="#1e293b" />
-                </TouchableOpacity>
-              )}
-              <Text style={[
-                styles.headerTitle,
-                useBackArrow && styles.headerWithBackButton
-              ]}>{title}</Text>
-              <View style={styles.placeholder} />
-            </View>
-          )}
-          
-          {!hideCloseButton && !useBackArrow && (
-            <TouchableOpacity
-              style={[
-                styles.closeButton,
-                fullScreen && styles.fullScreenCloseButton
-              ]}
-              onPress={handleClose}
-              activeOpacity={0.7}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <MaterialIcons name="close" size={24} color="#34d399" />
-            </TouchableOpacity>
-          )}
+        <StatusBar barStyle="dark-content" backgroundColor={backgroundColor} />
 
-          {/* Modal Content */}
-          <View style={[
-            styles.childrenContainer,
-            title && styles.childrenWithTitle,
-            { backgroundColor: bgColor }
-          ]}>
-            {children}
+        {title && (
+          <View style={styles.header}>
+            {!hideCloseButton && useBackArrow && (
+              <TouchableOpacity
+                onPress={handleClose}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                <MaterialIcons name="arrow-back" size={24} color="#1e293b" />
+              </TouchableOpacity>
+            )}
+            <Text style={[
+              styles.title,
+              fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+            ]}>
+              {title}
+            </Text>
+            <View style={{ width: 24 }} />
           </View>
+        )}
+
+        <View style={[styles.content, fullScreen && styles.fullscreenContent]}>
+          {children}
         </View>
       </SafeAreaView>
     </Modal>
@@ -106,81 +80,36 @@ const ModalComponent = ({
 };
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  wrapper: {
     flex: 1,
     justifyContent: "flex-end",
   },
-  modalContent: {
-    height: MODAL_HEIGHT,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 40,
-    paddingBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 20,
-  },
-  fullScreenModal: {
-    height: '100%',
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    paddingTop: 0,
+  fullscreen: {
+    justifyContent: "flex-start",
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#bfeee8',
-    marginBottom: 20,
+    borderBottomColor: '#e2e8f0',
+    justifyContent: 'space-between',
   },
-  headerTitle: {
+  title: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Quicksand-Bold',
     textAlign: 'center',
     flex: 1,
+    marginLeft: -24, // visually center title between back + placeholder
   },
-  headerWithBackButton: {
-    textAlign: 'center',
-    marginLeft: -24, // Offsets the back button width to center the title properly
-  },
-  backButton: {
-    padding: 8,
-    zIndex: 10,
-  },
-  placeholder: {
-    width: 40, // Same width as backButton for balanced spacing
-  },
-  closeButton: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    zIndex: 20,
-    backgroundColor: "#f8fafc",
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  fullScreenCloseButton: {
-    top: 12,
-    right: 12,
-  },
-  childrenContainer: {
-    paddingHorizontal: 20,
+  content: {
     flex: 1,
   },
-  childrenWithTitle: {
-    paddingTop: 10,
+  fullscreenContent: {
+    paddingHorizontal: 0,
   }
 });
 

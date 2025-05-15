@@ -1,4 +1,3 @@
-// HouseTabzScreen.jsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -11,6 +10,10 @@ import {
   ActivityIndicator,
   Share,
   Clipboard,
+  StatusBar,
+  SafeAreaView,
+  TouchableWithoutFeedback,
+  Platform
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -21,11 +24,10 @@ import ModalComponent from "../components/ModalComponent";
 import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
 import HouseServicesModal from "../modals/HouseServicesModal";
-
+import HSIModal from "../modals/HSIModal";
 // New components
 import HouseHeader from "../components/myhouse/HouseHeader";
 import HSIComponent from "../components/myhouse/HSIComponent";
-import StatsSection from "../components/myhouse/StatsSection";
 import Scoreboard from "../components/myhouse/Scoreboard";
 import ActionCards from "../components/myhouse/ActionCards";
 import InviteModalContent from "../components/myhouse/InviteModalContent";
@@ -45,6 +47,7 @@ const HouseTabzScreen = () => {
   const [isCurrentTabVisible, setIsCurrentTabVisible] = useState(false);
   const [isPaidTabVisible, setIsPaidTabVisible] = useState(false);
   const [isServicesVisible, setIsServicesVisible] = useState(false);
+  const [isHSIModalVisible, setIsHSIModalVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Tab navigation state
@@ -52,33 +55,25 @@ const HouseTabzScreen = () => {
 
   const getInviteLink = () => `https://housetabz.com/join/${user?.houseId}`;
 
-  const handleShare = async (shareType = 'default', houseData = null) => {
+  const handleShare = async (shareType = 'default') => {
     try {
-      let shareOptions = {
+      const shareOptions = {
         message: `Join my house on HouseTabz!\n${getInviteLink()}`,
         url: getInviteLink(),
         title: "Join my house on HouseTabz",
+        ...(shareType === 'email' && { subject: "Join my HouseTabz" }),
       };
-      
-      // You can customize the share options based on shareType
-      if (shareType === 'email') {
-        shareOptions.subject = "Join my HouseTabz";
-      } else if (shareType === 'message') {
-        // Custom options for messaging apps
-      }
-      
       const result = await Share.share(shareOptions);
       if (result.action === Share.sharedAction) {
         setShowInviteModal(false);
       }
-    } catch (error) {
-      console.error("Error sharing:", error);
+    } catch (err) {
+      console.error("Error sharing:", err);
     }
   };
 
   const copyToClipboard = (text = null) => {
-    const contentToCopy = text || getInviteLink();
-    Clipboard.setString(contentToCopy);
+    Clipboard.setString(text || getInviteLink());
     setInviteCopied(true);
     setTimeout(() => setInviteCopied(false), 2000);
   };
@@ -90,8 +85,8 @@ const HouseTabzScreen = () => {
         setLoading(false);
         return;
       }
-      const response = await apiClient.get(`/api/houses/${user.houseId}`);
-      setHouse(response.data);
+      const { data } = await apiClient.get(`/api/houses/${user.houseId}`);
+      setHouse(data);
       setError(null);
     } catch (err) {
       console.error("Error fetching house data:", err);
@@ -111,14 +106,18 @@ const HouseTabzScreen = () => {
     fetchHouseData();
   };
 
-  if (loading)
+  const handleHSIInfoPress = () => {
+    setIsHSIModalVisible(true);
+  };
+  if (loading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#34d399" />
       </View>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <View style={styles.centerContainer}>
         <MaterialIcons name="error-outline" size={48} color="#ef4444" />
@@ -128,8 +127,9 @@ const HouseTabzScreen = () => {
         </TouchableOpacity>
       </View>
     );
+  }
 
-  if (!user?.houseId)
+  if (!user?.houseId) {
     return (
       <View style={styles.centerContainer}>
         <MaterialIcons name="home" size={48} color="#64748b" />
@@ -137,170 +137,164 @@ const HouseTabzScreen = () => {
         <Text style={styles.subErrorText}>Join a house to view this screen</Text>
       </View>
     );
+  }
 
   return (
-    <View style={styles.container}>
-      {selectedTab === "house" ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#34d399"
-            />
-          }
-        >
-          <HouseHeader
-            houseName={house?.name}
-            onInvitePress={() => setShowInviteModal(true)}
-          />
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
+      <SafeAreaView style={styles.container}>
+        {selectedTab === "house" ? (
+          <>
+            {/* Header */}
+            <View style={styles.headerContainer}>
+              <HouseHeader
+                houseName={house?.name}
+                onInvitePress={() => setShowInviteModal(true)}
+              />
+            </View>
 
-<HSIComponent 
-  house={house} 
-  houseBalance={house?.finance?.balance} 
-  houseLedger={house?.finance?.ledger}
-  onInfoPress={() => setShowTooltip(true)} 
-/>
-          {/* <StatsSection house={house} /> */}
-
-          <Scoreboard 
-  house={house} 
-  houseFinance={house?.finance} 
-/>
-
-<ActionCards
-  houseBalance={house?.finance?.balance}
-  onCurrentTabPress={() => setIsCurrentTabVisible(true)}
-  onPaidTabPress={() => setIsPaidTabVisible(true)}
-  onServicesPress={() => setIsServicesVisible(true)}
-/>
-        </ScrollView>
-      ) : (
-        <View style={styles.billTakeoverContainer}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#1e293b', marginBottom: 20 }}>
-            Bill Takeover Feature
-          </Text>
-          <Text style={{ fontSize: 14, color: '#64748b' }}>
-            This feature is coming soon! You'll be able to take over bills from your roommates.
-          </Text>
-        </View>
-      )}
-      
-      {/* Current Tab Modal */}
-      <ModalComponent
-        visible={isCurrentTabVisible}
-        onClose={() => setIsCurrentTabVisible(false)}
-        fullScreen={true}
-        backgroundColor="#dff6f0"
-      >
-        <CurrentHouseTab 
-          house={house} 
-          onClose={() => setIsCurrentTabVisible(false)} 
-        />
-      </ModalComponent>
-      
-      {/* Paid Tab Modal */}
-      <ModalComponent
-        visible={isPaidTabVisible}
-        onClose={() => setIsPaidTabVisible(false)}
-        fullScreen={true}
-        backgroundColor="#dff6f0"
-      >
-        <PaidHouseTabz 
-          house={house} 
-          onClose={() => setIsPaidTabVisible(false)} 
-        />
-      </ModalComponent>
-      
-      {/* House Services Modal */}
-      <ModalComponent
-        visible={isServicesVisible}
-        onClose={() => setIsServicesVisible(false)}
-        fullScreen={true}
-        backgroundColor="#dff6f0"
-      >
-        <HouseServicesModal 
-          house={house} 
-          onClose={() => setIsServicesVisible(false)} 
-        />
-      </ModalComponent>
-
-      {/* HSI Info Tooltip */}
-      {showTooltip && (
-        <TouchableOpacity
-          style={styles.tooltipOverlay}
-          activeOpacity={1}
-          onPress={() => setShowTooltip(false)}
-        >
-          <View style={styles.tooltip}>
-            <Text style={styles.tooltipTitle}>House Status Index (HSI)</Text>
-            <Text style={styles.tooltipText}>
-              The HSI represents the health and activity of your house. Higher numbers indicate a more active and responsible house.
-            </Text>
-            <TouchableOpacity
-              style={styles.tooltipButton}
-              onPress={() => setShowTooltip(false)}
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor="#34d399"
+                />
+              }
             >
-              <Text style={styles.tooltipButtonText}>Got it</Text>
-            </TouchableOpacity>
+              {/* Section: HSI Component */}
+              <View style={styles.section}>
+              <HSIComponent
+    house={house}
+    onInfoPress={handleHSIInfoPress}
+  />
+  
+  {/* Add the HSIModal at the bottom of your component, alongside other modals */}
+  {isHSIModalVisible && (
+    <ModalComponent
+      visible={true}
+      onClose={() => setIsHSIModalVisible(false)}
+      fullScreen={true}
+      hideCloseButton={true}
+      backgroundColor="#dff6f0"
+      useBackArrow={false}
+    >
+      <HSIModal 
+        onClose={() => setIsHSIModalVisible(false)} 
+      />
+    </ModalComponent>
+  )}
+              </View>
+              
+              {/* Section: Scoreboard */}
+              <View style={styles.section}>
+                <Scoreboard
+                  house={house}
+                  houseFinance={house?.finance}
+                />
+              </View>
+              
+              {/* Section: Action Cards */}
+              <View style={styles.actionCardsSection}>
+                <ActionCards
+                  houseBalance={house?.finance?.balance}
+                  onCurrentTabPress={() => setIsCurrentTabVisible(true)}
+                  onPaidTabPress={() => setIsPaidTabVisible(true)}
+                />
+              </View>
+            </ScrollView>
+          </>
+        ) : (
+          <View style={styles.billTakeoverContainer}>
+            <Text style={styles.billTitle}>Bill Takeover Feature</Text>
+            <Text style={styles.billSubtitle}>
+              This feature is coming soon! You'll be able to take over bills from your roommates.
+            </Text>
           </View>
-        </TouchableOpacity>
-      )}
+        )}
 
-      {/* Invite Modal - Now using the same approach as tooltip */}
-      {showInviteModal && (
-        <TouchableOpacity
-          style={styles.tooltipOverlay}
-          activeOpacity={1}
-          onPress={() => setShowInviteModal(false)}
-        >
-          <View style={styles.tooltip}>
-            <InviteModalContent
-              houseId={user?.houseId}
-              onCopy={copyToClipboard}
-              onShare={handleShare}
-              onClose={() => setShowInviteModal(false)}
+        {/* Invite Modal */}
+        {showInviteModal && (
+          <TouchableWithoutFeedback onPress={() => setShowInviteModal(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalContainer}>
+                  <InviteModalContent
+                    houseId={user?.houseId}
+                    onCopy={copyToClipboard}
+                    onShare={handleShare}
+                    onClose={() => setShowInviteModal(false)}
+                  />
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        )}
+
+        {/* CurrentHouseTab Modal */}
+        {isCurrentTabVisible && (
+          <ModalComponent
+            visible={true}
+            onClose={() => setIsCurrentTabVisible(false)}
+            fullScreen={true}
+            hideCloseButton={true}
+            backgroundColor="#dff6f0"
+            useBackArrow={false}
+          >
+            <CurrentHouseTab 
+              onClose={() => setIsCurrentTabVisible(false)} 
+              house={house} 
             />
-          </View>
-        </TouchableOpacity>
-      )}
-    </View>
+          </ModalComponent>
+        )}
+
+        {/* PaidHouseTabz Modal */}
+        {isPaidTabVisible && (
+          <ModalComponent
+            visible={true}
+            onClose={() => setIsPaidTabVisible(false)}
+            fullScreen={true}
+            hideCloseButton={true}
+            backgroundColor="#dff6f0"
+            useBackArrow={false}
+          >
+            <PaidHouseTabz 
+              onClose={() => setIsPaidTabVisible(false)} 
+              house={house}
+            />
+          </ModalComponent>
+        )}
+
+        {/* HouseServices Modal */}
+        {isServicesVisible && (
+          <ModalComponent
+            visible={true}
+            onClose={() => setIsServicesVisible(false)}
+            fullScreen={true}
+            hideCloseButton={true}
+            backgroundColor="#dff6f0"
+            useBackArrow={false}
+          >
+            <HouseServicesModal 
+              onClose={() => setIsServicesVisible(false)} 
+              house={house}
+            />
+          </ModalComponent>
+        )}
+      </SafeAreaView>
+    </>
   );
 };
-
-const tabStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: '#f0fdfa',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedTab: {
-    borderBottomWidth: 3,
-    borderBottomColor: '#34d399',
-  },
-  tabText: {
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  selectedTabText: {
-    color: '#34d399',
-    fontWeight: '600',
-  },
-});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#dff6f0",
+  },
+  headerContainer: {
+    paddingBottom: 8,
     backgroundColor: "#dff6f0",
   },
   centerContainer: {
@@ -310,8 +304,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#dff6f0",
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 40,
+  },
+  section: {
+    marginBottom: 28,
+  },
+  actionCardsSection: {
+    marginBottom: 24,
+  },
+  billTakeoverContainer: {
+    flex: 1,
+    padding: 24,
+    backgroundColor: "#dff6f0",
+  },
+  billTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1e293b",
+    marginBottom: 12,
+  },
+  billSubtitle: {
+    fontSize: 14,
+    color: "#64748b",
   },
   errorText: {
     fontSize: 16,
@@ -336,12 +351,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
   },
-  billTakeoverContainer: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: "#dff6f0",
-  },
-  tooltipOverlay: {
+  modalOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -351,37 +361,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-    zIndex: 1000,
+    zIndex: 9000,
   },
-  tooltip: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 24,
+  modalContainer: {
     width: "100%",
     maxWidth: width - 48,
-  },
-  tooltipTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1e293b",
-    marginBottom: 12,
-  },
-  tooltipText: {
-    fontSize: 14,
-    color: "#64748b",
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  tooltipButton: {
-    backgroundColor: "#34d399",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-  },
-  tooltipButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
 

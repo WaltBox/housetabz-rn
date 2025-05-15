@@ -6,13 +6,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import PayTab from '../components/PayTab';
 import HistoryTab from '../components/HistoryTab';
-// Import apiClient instead of axios
 import apiClient from '../config/api';
+import { useFonts } from 'expo-font';
 
 const TABS = {
   PAY: 'pay',
@@ -26,6 +28,15 @@ const BillingScreen = () => {
   const [user, setUser] = useState(null);
   const [charges, setCharges] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+    'Montserrat-Black': require('../../assets/fonts/Montserrat-Black.ttf'), // Keep Montserrat
+  });
 
   // Fetch data when user ID changes or when refreshTrigger is updated
   useEffect(() => {
@@ -41,7 +52,6 @@ const BillingScreen = () => {
         console.error('No authenticated user found');
         return;
       }
-      // Use apiClient with relative path
       const response = await apiClient.get(`/api/users/${authUser.id}`);
       setUser(response.data);
     } catch (error) {
@@ -55,9 +65,7 @@ const BillingScreen = () => {
     try {
       if (!authUser?.id) return;
       
-      // Use the new endpoint for unpaid charges
       console.log('Fetching unpaid charges...');
-      // Use apiClient with relative path
       const response = await apiClient.get(`/api/users/${authUser.id}/charges/unpaid`);
       console.log(`Found ${response.data.length} unpaid charges`);
       setCharges(response.data);
@@ -67,7 +75,6 @@ const BillingScreen = () => {
       // Fallback to all charges endpoint
       try {
         console.log('Trying fallback to all charges...');
-        // Use apiClient with relative path
         const fallbackResponse = await apiClient.get(`/api/users/${authUser.id}/charges`);
         
         // Filter out paid and processing charges client-side
@@ -121,36 +128,57 @@ const BillingScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Tab Navigation */}
-      <View style={styles.tabBar}>
-        {Object.values(TABS).map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[
+            styles.headerTitle,
+            fontsLoaded && { fontFamily: 'Montserrat-Black' }
+          ]}>
+            Payments
+          </Text>
+        </View>
+        
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <View style={styles.tabIndicator} />
+          <View style={styles.tabsWrapper}>
+            {Object.values(TABS).map((tab) => (
+              <TouchableOpacity 
+                key={tab}
+                style={styles.tab}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.tabText, 
+                  activeTab === tab && styles.activeTabText,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Text>
+                {activeTab === tab && <View style={styles.activeIndicator} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-      {/* Render Selected Tab */}
-      {activeTab === TABS.PAY && (
-        <PayTab 
-          charges={charges} 
-          onChargesUpdated={handleChargesUpdated} 
-        />
-      )}
-      {activeTab === TABS.HISTORY && <HistoryTab />}
-    </View>
+        {/* Render Selected Tab */}
+        {activeTab === TABS.PAY && (
+          <PayTab 
+            charges={charges} 
+            onChargesUpdated={handleChargesUpdated} 
+          />
+        )}
+        {activeTab === TABS.HISTORY && <HistoryTab />}
+      </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
-  // General Container Styles
   container: {
     flex: 1,
     backgroundColor: '#dff6f0',
@@ -159,30 +187,62 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  // Tab Navigation
-  tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#dff6f0',
-    borderBottomWidth: 1,
-    borderBottomColor: 'white',
+  },
+  header: {
+    paddingTop: Platform.OS === 'android' ? 20 : 10,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#dff6f0",
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  tabContainer: {
+    position: 'relative',
+    paddingHorizontal: 0,
+    marginBottom: 16,
+    backgroundColor: "#dff6f0",
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#D1D5DB', // Light gray background for the full line
   },
   tab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
+    width: '30%', // Make tabs wider
+    paddingVertical: 10,
+    alignItems: 'center', // Center text horizontally
+    position: 'relative',
+    backgroundColor: 'transparent',
   },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#34d399',
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 0, // Position exactly on top of the gray line
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#1e293b',
+    zIndex: 1, // Ensure it's on top of the gray line
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#64748b',
     fontWeight: '500',
+    textAlign: 'center',
   },
   activeTabText: {
-    color: '#34d399',
+    color: '#1e293b',
+    fontWeight: '600',
   },
 });
 

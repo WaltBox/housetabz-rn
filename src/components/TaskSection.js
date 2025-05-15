@@ -78,8 +78,8 @@ const TaskSection = ({ tasks = [], billSubmissions = [], activeTaskIndex, taskCo
       style={styles.taskHeader}
     >
       <View style={styles.taskTitleGroup}>
-        <MaterialIcons name="rocket-launch" size={24} color="#22c55e" />
-        <Text style={styles.sectionTitle}>Tasks</Text>
+        <MaterialIcons name="checklist" size={24} color="#22c55e" />
+        <Text style={styles.sectionTitle}>To-Dos</Text>
       </View>
       
       <View style={styles.rightHeaderContent}>

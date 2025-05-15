@@ -1,5 +1,5 @@
 // src/screens/LoginScreen.js
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +30,9 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
   
+    // Dismiss keyboard first to prevent UI jumps
+    Keyboard.dismiss();
+    
     try {
       setLoading(true);
       await login(email, password);
@@ -51,19 +55,22 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+    <LinearGradient
+      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
+      style={styles.background}
     >
-      <LinearGradient
-        colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-        style={styles.background}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <Image
-          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <View style={styles.logoContainer}>
+          <Image
+            source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.title}>Welcome Back! 👋</Text>
@@ -79,6 +86,7 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoCorrect={false}
             />
           </View>
 
@@ -98,6 +106,7 @@ const LoginScreen = ({ navigation }) => {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -115,6 +124,7 @@ const LoginScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => navigation.navigate('ForgotPassword')}
+            activeOpacity={0.7}
           >
             <Text style={styles.smallLinkText}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -128,35 +138,36 @@ const LoginScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('Register')}
+            activeOpacity={0.7}
           >
             <Text style={styles.secondaryButtonText}>
               Create New Account
             </Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   background: {
     flex: 1,
-    width: '100%',
-    alignItems: 'center',
+  },
+  container: {
+    flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    padding: 30,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   logo: {
     width: 150,
     height: 150,
-    marginBottom: 20,
   },
   card: {
-    width: '100%',
     backgroundColor: '#fff',
     borderRadius: 25,
     padding: 30,
@@ -220,12 +231,14 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.7,
   },
+  linkButton: {
+    padding: 10,
+    alignItems: 'center',
+  },
   smallLinkText: {
     color: '#64748b',
-    textAlign: 'center',
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    marginTop: 15,
   },
   divider: {
     flexDirection: 'row',

@@ -1,4 +1,3 @@
-// InviteModalContent.jsx
 import React, { useState, useEffect } from "react";
 import { 
   View, 
@@ -87,7 +86,7 @@ const InviteModalContent = ({ houseId, onCopy, onShare, onClose }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header with Close button */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Invite Roommates</Text>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -176,15 +175,6 @@ const InviteModalContent = ({ houseId, onCopy, onShare, onClose }) => {
             <Text style={styles.shareOptionText}>More</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* Done button */}
-        <TouchableOpacity
-          style={styles.doneButton}
-          onPress={onClose}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.doneButtonText}>Got it</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -203,61 +193,69 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#1e293b",
+    letterSpacing: -0.5,
   },
   closeButton: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: "#f1f5f9",
   },
   content: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingVertical: 24,
   },
   codeContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   codeLabel: {
     fontSize: 12,
     fontWeight: "600",
     color: "#64748b",
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 1.2,
+    marginBottom: 10,
   },
   codeDisplay: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f0fdf4",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#dcfce7",
   },
   codeText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
     color: "#34d399",
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
   smallCopyButton: {
-    marginLeft: 8,
+    marginLeft: 12,
     padding: 6,
   },
   houseName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: "#1e293b",
   },
   inviteDescription: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#64748b",
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: "center",
+    lineHeight: 20,
   },
   messageContainer: {
     flexDirection: "row",
@@ -266,22 +264,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    padding: 12,
-    marginBottom: 20,
+    padding: 16,
+    marginBottom: 28,
   },
   messageText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: "#1e293b",
     marginRight: 12,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   copyButton: {
     borderRadius: 8,
     overflow: "hidden",
   },
   copyButtonView: {
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     backgroundColor: "#f1f5f9",
   },
@@ -291,36 +289,31 @@ const styles = StyleSheet.create({
   shareOptionsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: 20,
+    marginBottom: 8,
   },
   shareOption: {
     alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
   shareOptionCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: 10,
     backgroundColor: "#34d399",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   shareOptionText: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#1e293b",
-  },
-  doneButton: {
-    backgroundColor: "#34d399",
-    borderRadius: 8,
-    padding: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  doneButtonText: {
-    color: "white",
-    fontSize: 16,
     fontWeight: "600",
+    color: "#1e293b",
   },
   loadingContainer: {
     padding: 32,

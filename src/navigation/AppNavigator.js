@@ -13,16 +13,14 @@ import RegisterScreen from '../screens/RegisterScreen';
 
 // App Screens
 import LoadingScreen from '../screens/LoadingScreen';
-import HomeScreen from '../screens/HomeScreen';
 import MarketplaceScreen from '../screens/MarketplaceScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
-
-
-
 import DashboardScreen from '../screens/DashboardScreen';
+import HouseServicesScreen from '../screens/HouseServicesScreen';
 import InAppBrowser from '../screens/InAppBrowser';
 import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
 import TabNavigator from './BottomBar';
+import TermsOfService from '../components/TermsOfService';
 
 // Bill Takeover Screens
 import BillTakeoverScreen from '../screens/BillTakeOverScreen';
@@ -49,11 +47,9 @@ const MainStack = () => (
   <Stack.Navigator>
     <Stack.Group screenOptions={{ headerShown: false }}>
       <Stack.Screen name="TabNavigator" component={TabNavigator} />
-      <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      <Stack.Screen name="HouseServices" component={HouseServicesScreen} />
       <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
       <Stack.Screen name="InAppBrowser" component={InAppBrowser} />
-    
-     
       
       {/* Add Bill Takeover Screen */}
       <Stack.Screen name="BillTakeover" component={BillTakeoverScreen} />
