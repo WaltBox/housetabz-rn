@@ -19,6 +19,7 @@ import DashboardMiddleSection from '../components/dashboard/DashboardMiddleSecti
 import DashboardBottomSection from '../components/dashboard/DashboardBottomSection';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 import UrgentMessageModal from '../modals/UrgentMessageModal';
+import BillSubmissionModal from '../modals/BillSubmissionModal'; // Import BillSubmissionModal
 
 const LoadingScreen = ({ message = 'Loading...' }) => (
   <SafeAreaView style={styles.container}>
@@ -64,6 +65,10 @@ const DashboardScreen = () => {
   const [selectedPaymentTask, setSelectedPaymentTask] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isMessageModalVisible, setIsMessageModalVisible] = useState(false);
+  
+  // Add state for BillSubmissionModal
+  const [isBillSubmissionModalVisible, setIsBillSubmissionModalVisible] = useState(false);
+  const [selectedBillSubmission, setSelectedBillSubmission] = useState(null);
 
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
@@ -182,6 +187,7 @@ const DashboardScreen = () => {
       console.error(`Error handling message action (${action}):`, error);
     }
   };
+  
   // Task handling functions
   const handleTaskAction = async (data, action) => {
     try {
@@ -230,11 +236,36 @@ const DashboardScreen = () => {
     setIsPaymentModalVisible(false);
     setSelectedPaymentTask(null);
   };
+  
+  // Handle bill submission success
+  const handleBillSubmissionSuccess = (result) => {
+    // Handle the result from bill submission
+    console.log('Bill submission successful:', result);
+    // Refresh dashboard data
+    fetchDashboardData();
+    // Close the modal
+    setIsBillSubmissionModalVisible(false);
+    setSelectedBillSubmission(null);
+  };
 
-  // Navigation handlers
+  // Modified: Handle task press based on type
   const handleTaskPress = (task) => {
-    // When a task is clicked, show the payment modal
-    handleTaskAction(task, 'view');
+    // Check if it's a bill submission
+    const isBillSubmission = 
+      task.type === 'billSubmission' || // If already tagged as billSubmission
+      task.houseService || // If it has houseService property
+      task.metadata?.type === 'billSubmission' || // If it has metadata type
+      !task.serviceRequestBundle; // If it doesn't have serviceRequestBundle
+      
+    if (isBillSubmission) {
+      console.log('Opening bill submission modal for task:', task.id);
+      setSelectedBillSubmission(task);
+      setIsBillSubmissionModalVisible(true);
+    } else {
+      // It's a regular service request task
+      console.log('Opening service payment modal for task:', task.id);
+      handleTaskAction(task, 'view');
+    }
   };
   
   const handleViewAllTasks = () => {
@@ -315,6 +346,14 @@ const DashboardScreen = () => {
           setSelectedMessage(null);
         }}
         onAction={handleMessageAction}
+      />
+      
+      {/* Bill Submission Modal - Added */}
+      <BillSubmissionModal
+        visible={isBillSubmissionModalVisible}
+        onClose={() => setIsBillSubmissionModalVisible(false)}
+        billSubmission={selectedBillSubmission}
+        onSuccess={handleBillSubmissionSuccess}
       />
     </SafeAreaView>
   );

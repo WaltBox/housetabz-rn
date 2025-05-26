@@ -13,7 +13,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 
 // App Screens
 import LoadingScreen from '../screens/LoadingScreen';
-import MarketplaceScreen from '../screens/MarketplaceScreen';
+import PartnersScreen from '../screens/PartnersScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
 import DashboardScreen from '../screens/DashboardScreen';
 import HouseServicesScreen from '../screens/HouseServicesScreen';
@@ -48,7 +48,7 @@ const MainStack = () => (
     <Stack.Group screenOptions={{ headerShown: false }}>
       <Stack.Screen name="TabNavigator" component={TabNavigator} />
       <Stack.Screen name="HouseServices" component={HouseServicesScreen} />
-      <Stack.Screen name="Marketplace" component={MarketplaceScreen} />
+      <Stack.Screen name="Marketplace" component={PartnersScreen} />
       <Stack.Screen name="InAppBrowser" component={InAppBrowser} />
       
       {/* Add Bill Takeover Screen */}

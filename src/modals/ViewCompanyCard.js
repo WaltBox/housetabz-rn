@@ -216,7 +216,7 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
             const data = JSON.parse(event.nativeEvent.data);
             console.log('WebView Message:', data);
             
-            // Handle payment request messages
+            // Handle payment request messages - SIMPLIFIED (no pre-check)
             if (data.type === 'housetabz_payment_request') {
               console.log('Payment request received:', data.data);
               setPaymentData(data.data);
@@ -256,59 +256,82 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
 
       {/* Payment Modal */}
       {showPaymentModal && paymentData && (
-  <PaymentFlow
-    visible={showPaymentModal}
-    onClose={() => {
-      setShowPaymentModal(false);
-      // Send cancellation response back to WebView
-      if (webviewRef.current) {
-        webviewRef.current.injectJavaScript(`
-          window.dispatchEvent(new MessageEvent('message', {
-            data: JSON.stringify({
-              type: 'housetabz_payment_response',
-              status: 'cancel'
-            })
-          }));
-          true;
-        `);
-      }
-    }}
-    paymentData={paymentData}
-    onSuccess={(data) => {
-      // Send success response back to WebView
-      if (webviewRef.current) {
-        webviewRef.current.injectJavaScript(`
-          window.dispatchEvent(new MessageEvent('message', {
-            data: JSON.stringify({
-              type: 'housetabz_payment_response',
-              status: 'success',
-              data: ${JSON.stringify(data || {})}
-            })
-          }));
-          true;
-        `);
-      }
-      
-      // Close the modal
-      setShowPaymentModal(false);
-    }}
-    onError={(error) => {
-      // Send error response back to WebView
-      if (webviewRef.current) {
-        webviewRef.current.injectJavaScript(`
-          window.dispatchEvent(new MessageEvent('message', {
-            data: JSON.stringify({
-              type: 'housetabz_payment_response',
-              status: 'error',
-              message: ${JSON.stringify(error?.message || 'Payment request failed')}
-            })
-          }));
-          true;
-        `);
-      }
-    }}
-  />
-)}
+        <PaymentFlow
+          visible={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            // Send cancellation response back to WebView
+            if (webviewRef.current) {
+              webviewRef.current.injectJavaScript(`
+                window.dispatchEvent(new MessageEvent('message', {
+                  data: JSON.stringify({
+                    type: 'housetabz_payment_response',
+                    status: 'cancel'
+                  })
+                }));
+                true;
+              `);
+            }
+          }}
+          paymentData={paymentData}
+          onSuccess={(data) => {
+            // Handle different success types
+            let responseData = {};
+            let responseStatus = 'success';
+            
+            if (data.type === 'already_connected') {
+              responseStatus = 'already_connected';
+              responseData = {
+                serviceName: data.serviceName,
+                partnerName: data.partnerName,
+                status: data.status
+              };
+            } else if (data.type === 'reused_agreement') {
+              responseStatus = 'success';
+              responseData = {
+                agreementId: data.agreementId,
+                serviceName: data.serviceName,
+                message: data.message
+              };
+            } else {
+              responseStatus = 'success';
+              responseData = data;
+            }
+            
+            // Send response back to WebView
+            if (webviewRef.current) {
+              webviewRef.current.injectJavaScript(`
+                window.dispatchEvent(new MessageEvent('message', {
+                  data: JSON.stringify({
+                    type: 'housetabz_payment_response',
+                    status: '${responseStatus}',
+                    data: ${JSON.stringify(responseData)}
+                  })
+                }));
+                true;
+              `);
+            }
+            
+            // Close the modal
+            setShowPaymentModal(false);
+          }}
+          onError={(error) => {
+            // Send error response back to WebView
+            if (webviewRef.current) {
+              webviewRef.current.injectJavaScript(`
+                window.dispatchEvent(new MessageEvent('message', {
+                  data: JSON.stringify({
+                    type: 'housetabz_payment_response',
+                    status: 'error',
+                    message: ${JSON.stringify(error?.message || 'Payment request failed')}
+                  })
+                }));
+                true;
+              `);
+            }
+          }}
+        />
+      )}
     </View>
   );
 };

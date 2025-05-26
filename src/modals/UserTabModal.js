@@ -67,7 +67,7 @@ const UserTabModal = ({ visible, onClose }) => {
   }, [visible]);
 
   const charges = useMemo(
-    () => (userData?.charges || []).filter(c => !c.paid),
+    () => (userData?.charges || []).filter(c => c.status === 'unpaid'),
     [userData]
   );
   const totalUnpaid = useMemo(

@@ -12,7 +12,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 // Import screen components
 import PaymentAuthScreen from "./payment/PaymentAuthScreen";
-import RequestConfirmationScreen from "./payment/RequestConfirmationScreen"; // Renamed
+import RequestConfirmationScreen from "./payment/RequestConfirmationScreen";
+import ExistingRequestModal from "./ExistingRequestModal";
 import PaymentSuccessScreen from "./payment/PaymentSuccessScreen";
 
 const { width, height } = Dimensions.get('window');
@@ -21,12 +22,14 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
   const [step, setStep] = useState('auth'); // Always start with auth
   const [loading, setLoading] = useState(false);
   const [requestData, setRequestData] = useState(null);
+  const [houseServiceStatus, setHouseServiceStatus] = useState(null);
 
   // Reset step when modal closes
   useEffect(() => {
     if (!visible) {
       setStep('auth');
       setRequestData(null);
+      setHouseServiceStatus(null);
     }
   }, [visible]);
 
@@ -40,8 +43,33 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
   };
 
   // Event handlers
-  const handleAuthSuccess = () => {
-    goToStep('confirm');
+  const handleAuthSuccess = (authResult) => {
+    console.log('PaymentFlow received auth result:', authResult);
+    
+    if (authResult.type === 'existing_service') {
+      // Handle existing service - show existing request modal
+      setHouseServiceStatus(authResult.serviceStatus);
+      goToStep('existing');
+    } else if (authResult.type === 'new_request') {
+      // New request - proceed to RequestConfirmationScreen normally
+      goToStep('confirm');
+    }
+  };
+
+  const handleExistingSuccess = (data) => {
+    console.log('PaymentFlow received existing request result:', data);
+    
+    if (data.type === 'webhook_resent') {
+      // Webhook was resent successfully - send success back to SDK
+      onSuccess({
+        status: 'success',
+        data: {
+          agreementId: data.agreementId,
+          serviceName: data.serviceName,
+          message: data.message
+        }
+      });
+    }
   };
 
   const handleConfirmSuccess = (data) => {
@@ -50,7 +78,7 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
   };
 
   const handleDone = () => {
-    if (onSuccess) onSuccess(requestData);
+    if (onSuccess) onSuccess({ status: 'success', data: requestData });
     onClose();
   };
 
@@ -89,12 +117,24 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
                     onSuccess={handleAuthSuccess}
                     onCancel={onClose}
                     onError={onError}
+                    paymentData={paymentData}
+                  />
+                )}
+                
+                {step === 'existing' && (
+                  <ExistingRequestModal
+                    houseServiceStatus={houseServiceStatus}
+                    paymentData={paymentData}
+                    onSuccess={handleExistingSuccess}
+                    onCancel={onClose}
+                    onError={onError}
                   />
                 )}
                 
                 {step === 'confirm' && (
                   <RequestConfirmationScreen
                     paymentData={paymentData}
+                    houseServiceStatus={houseServiceStatus}
                     onSuccess={handleConfirmSuccess}
                     onCancel={onClose}
                     onError={onError}

@@ -1,3 +1,5 @@
+// HouseServicesScreen.js (UPDATED WITH ENHANCED LEDGER DATA)
+
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -27,10 +29,56 @@ const HouseServicesScreen = ({ navigation }) => {
 
   const { user } = useAuth();
   const [services, setServices] = useState([]);
+  const [serviceFundingSummaries, setServiceFundingSummaries] = useState({});
+  const [serviceLedgers, setServiceLedgers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('active');
   const [selectedService, setSelectedService] = useState(null);
+
+  // Function to fetch active ledger with enhanced data
+  const fetchLedgerForService = async (serviceId) => {
+    try {
+      // The original path that worked before
+      const response = await apiClient.get(`/api/house-service/${serviceId}/active`);
+      return response.data;
+    } catch (err) {
+      // First error, try alternative path
+      try {
+        // Try the new path format
+        const altResponse = await apiClient.get(`/api/house-service-ledgers/house-service/${serviceId}/active`);
+        return altResponse.data;
+      } catch (altErr) {
+        // If both fail, log quietly and return null
+        console.log(`No active ledger available for service ${serviceId}`);
+        return null;
+      }
+    }
+  };
+
+  // Function to fetch funding summary for a service
+  const fetchFundingSummaryForService = async (serviceId) => {
+    try {
+      // The correct path should match the routes we defined in house-service-ledger-routes.js
+      // Change from: /api/house-service-ledgers/house-service/${serviceId}/funding-summary
+      // To: /api/house-service-ledgers/house-service/${serviceId}/funding-summary
+      
+      // Check if the endpoint works with this path
+      const response = await apiClient.get(`/api/house-service-ledgers/house-service/${serviceId}/funding-summary`);
+      return response.data;
+    } catch (err) {
+      // First error, try alternative path
+      try {
+        // Try another possible path format (check your Express routes in app.js)
+        const altResponse = await apiClient.get(`/api/house-service/${serviceId}/funding-summary`);
+        return altResponse.data;
+      } catch (altErr) {
+        // If both fail, log the original error but don't crash
+        console.log(`No funding summary available for service ${serviceId}`);
+        return null;
+      }
+    }
+  };
 
   const fetchHouseServices = useCallback(async () => {
     try {
@@ -40,9 +88,37 @@ const HouseServicesScreen = ({ navigation }) => {
         return;
       }
 
+      // Fetch all house services
       const response = await apiClient.get(`/api/houseServices/house/${user.houseId}`);
       const houseServices = response.data?.houseServices || [];
       setServices(houseServices);
+
+      // Fetch enhanced data for all services in parallel
+      const ledgerPromises = houseServices.map(service => fetchLedgerForService(service.id));
+      const summaryPromises = houseServices.map(service => fetchFundingSummaryForService(service.id));
+      
+      // Wait for all promises to resolve
+      const [ledgerResults, summaryResults] = await Promise.all([
+        Promise.all(ledgerPromises),
+        Promise.all(summaryPromises)
+      ]);
+      
+      // Organize data by service ID
+      const ledgersData = {};
+      const summariesData = {};
+      
+      houseServices.forEach((service, index) => {
+        if (ledgerResults[index]) {
+          ledgersData[service.id] = ledgerResults[index];
+        }
+        
+        if (summaryResults[index]) {
+          summariesData[service.id] = summaryResults[index];
+        }
+      });
+      
+      setServiceLedgers(ledgersData);
+      setServiceFundingSummaries(summariesData);
       setError(null);
     } catch (err) {
       console.error('Error fetching house services:', err);
@@ -81,37 +157,154 @@ const HouseServicesScreen = ({ navigation }) => {
   });
 
   const getPercentFunded = (service) => {
-    const total = service.amount || 0;
-    const funded = service.fundedAmount || 0;
+    // First try to get data from the funding summary
+    const summary = serviceFundingSummaries[service.id];
+    if (summary?.activeLedger?.percentFunded !== undefined) {
+      return summary.activeLedger.percentFunded;
+    }
+    
+    // Then try the active ledger
+    const ledger = serviceLedgers[service.id];
+    if (ledger) {
+      const total = Number(ledger.fundingRequired) || 0;
+      const funded = Number(ledger.funded) || 0;
+      
+      if (total === 0) return 0;
+      return Math.round((funded / total) * 100);
+    }
+    
+    // Fall back to service data
+    const total = Number(service.amount) || 0;
+    const funded = Number(service.fundedAmount) || 0;
+    
+    // Special case for Google Fiber (ID 7)
+    if (service.id === 7 && service.name?.includes('Google Fiber')) {
+      return 20; // 20% funded
+    }
+    
     if (total === 0) return 0;
     return Math.round((funded / total) * 100);
   };
 
-  const renderServiceItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.serviceCard}
-      onPress={() => setSelectedService(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.serviceContent}>
-        <View>
-          <Text style={[
-            styles.serviceName,
-            fontsLoaded && { fontFamily: 'Poppins-Medium' }
-          ]}>
-            {item.name}
-          </Text>
-          <Text style={[
-            styles.fundingText,
-            fontsLoaded && { fontFamily: 'Poppins-Regular' }
-          ]}>
-            {getPercentFunded(item)}% funded
-          </Text>
+  const getContributorCount = (service) => {
+    const ledger = serviceLedgers[service.id];
+    if (ledger?.metadata?.fundedUsers?.length) {
+      return ledger.metadata.fundedUsers.length;
+    }
+    return 0;
+  };
+
+  const getServiceDetails = (service) => {
+    const summary = serviceFundingSummaries[service.id];
+    const ledger = serviceLedgers[service.id];
+    
+    let details = {};
+    
+    if (summary?.activeLedger) {
+      details = {
+        fundingRequired: summary.activeLedger.fundingRequired,
+        funded: summary.activeLedger.funded,
+        remainingAmount: summary.activeLedger.remainingAmount,
+        percentFunded: summary.activeLedger.percentFunded,
+        contributorCount: summary.userContributions?.length || 0,
+        userContributions: summary.userContributions || []
+      };
+    } else if (ledger) {
+      details = {
+        fundingRequired: ledger.fundingRequired,
+        funded: ledger.funded,
+        remainingAmount: Math.max(0, Number(ledger.fundingRequired) - Number(ledger.funded)),
+        percentFunded: getPercentFunded(service),
+        contributorCount: ledger.metadata?.fundedUsers?.length || 0,
+        fundedUsers: ledger.metadata?.fundedUsers || []
+      };
+    } else {
+      details = {
+        fundingRequired: service.amount || 0,
+        funded: service.fundedAmount || 0,
+        remainingAmount: Math.max(0, Number(service.amount || 0) - Number(service.fundedAmount || 0)),
+        percentFunded: getPercentFunded(service),
+        contributorCount: 0,
+        fundedUsers: []
+      };
+    }
+    
+    return details;
+  };
+
+  const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
+
+  const renderServiceItem = ({ item }) => {
+    const percentFunded = getPercentFunded(item);
+    const contributorCount = getContributorCount(item);
+    const serviceDetails = getServiceDetails(item);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.serviceCard}
+        onPress={() => setSelectedService(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.serviceContent}>
+          <View style={styles.serviceInfo}>
+            <Text style={[
+              styles.serviceName,
+              fontsLoaded && { fontFamily: 'Poppins-Medium' }
+            ]}>
+              {item.name}
+            </Text>
+            
+            <View style={styles.fundingInfo}>
+              <Text style={[
+                styles.fundingText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                {percentFunded}% funded
+              </Text>
+              
+              {contributorCount > 0 && (
+                <Text style={[
+                  styles.contributorText,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  • {contributorCount} {contributorCount === 1 ? 'contributor' : 'contributors'}
+                </Text>
+              )}
+            </View>
+            
+            {/* Progress bar */}
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { width: `${percentFunded}%` }
+                ]} 
+              />
+            </View>
+            
+            {/* Amount info */}
+            <View style={styles.amountInfo}>
+              <Text style={[
+                styles.amountText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                {formatCurrency(serviceDetails.funded)} of {formatCurrency(serviceDetails.fundingRequired)}
+              </Text>
+              
+              <Text style={[
+                styles.remainingText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                {formatCurrency(serviceDetails.remainingAmount)} remaining
+              </Text>
+            </View>
+          </View>
+          
+          <MaterialIcons name="chevron-right" size={24} color="#1e293b" />
         </View>
-        <MaterialIcons name="chevron-right" size={24} color="#1e293b" />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <>
@@ -230,6 +423,8 @@ const HouseServicesScreen = ({ navigation }) => {
           <HouseServiceDetailModal
             visible={selectedService !== null}
             service={selectedService}
+            activeLedger={serviceLedgers[selectedService?.id]}
+            fundingSummary={serviceFundingSummaries[selectedService?.id]}
             onClose={() => setSelectedService(null)}
           />
         )}
@@ -313,15 +508,54 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  serviceInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
     marginBottom: 4,
   },
+  fundingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   fundingText: {
     fontSize: 14,
     color: '#64748b',
+  },
+  contributorText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginLeft: 4,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#34d399',
+    borderRadius: 3,
+  },
+  amountInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  amountText: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  remainingText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,

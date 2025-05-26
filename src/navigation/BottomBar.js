@@ -15,7 +15,7 @@ import TopBar from './TopBar';
 import DashboardScreen from '../screens/DashboardScreen';
 import MyHouseScreen from '../screens/MyHouseScreen';
 import MakePaymentScreen from '../screens/MakePaymentScreen';
-import MarketplaceScreen from '../screens/MarketplaceScreen';
+import PartnersScreen from '../screens/PartnersScreen';
 import HouseServicesScreen from '../screens/HouseServicesScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
 
@@ -40,7 +40,7 @@ const MyHouseStack = () => (
 
 const MerchantsStack = () => (
   <Merchants.Navigator screenOptions={{ headerShown: false }}>
-    <Merchants.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+    <Merchants.Screen name="PartnersScreen" component={PartnersScreen} />
     <Merchants.Screen name="ViewCompanyCard" component={ViewCompanyCard} options={{ title: 'Company Details' }} />
   </Merchants.Navigator>
 );

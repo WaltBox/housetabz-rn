@@ -35,19 +35,18 @@ const BillCard = ({ bill, onPress }) => {
   const total = unpaidAmount + paidAmount;
   const progress = total > 0 ? (paidAmount / total) * 100 : 0;
   const { label: dueLabel, color: dueColor } = getDueDateStatus(bill.dueDate);
-
+  
+  // Use brand color for progress
   const getProgressColor = () => {
-    if (progress < 25) return '#ef4444';
-    if (progress < 50) return '#f59e0b';
-    if (progress < 75) return '#3b82f6';
-    return '#34d399';
+    // Use the brand color
+    return '#34d399'; // Brand color
   };
 
   const color = getProgressColor();
 
   return (
     <TouchableOpacity style={styles.billCard} onPress={onPress} activeOpacity={0.8}>
-      {/* Roof-style progress bar */}
+      {/* Subtle progress indicator */}
       <View style={styles.progressBarContainer}>
         <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: color }]} />
       </View>
@@ -59,10 +58,13 @@ const BillCard = ({ bill, onPress }) => {
           </View>
         </View>
         <View style={styles.bottomRow}>
-          <Text style={styles.dueDate}>{dueLabel}</Text>
-          <View style={[styles.percentBadge, { backgroundColor: color + '20' }]}> 
-            <Text style={[styles.percentText, { color }]}>{progress.toFixed(0)}% Funded</Text>
-          </View>
+          <Text style={[styles.dueDate, { color: dueColor }]}>{dueLabel}</Text>
+          {/* Only show progress indicator if there's been some payment */}
+          {progress > 0 && (
+            <View style={[styles.percentBadge, { backgroundColor: 'rgba(52, 211, 153, 0.15)' }]}> 
+              <Text style={[styles.percentText, { color: '#34d399' }]}>{progress.toFixed(0)}% Paid</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -73,6 +75,7 @@ const CurrentHouseTab = ({ house, onClose }) => {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalUnpaid, setTotalUnpaid] = useState(0);
+  const [error, setError] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -85,17 +88,18 @@ const CurrentHouseTab = ({ house, onClose }) => {
 
     const load = async () => {
       try {
+        setError(false);
         const res = await apiClient.get(`/api/houses/${house.id}/bills`);
         const data = res.data.bills || res.data;
+        const houseBalance = res.data.houseBalance || 0;
+        
         setBills(data);
-        const sum = data.reduce((sAcc, bill) => {
-          const ch = bill.Charges || bill.charges || [];
-          const pend = ch.filter(c => c.status === 'pending' || c.status === 'unpaid');
-          return sAcc + pend.reduce((cAcc, c) => cAcc + Number(c.amount), 0);
-        }, 0);
-        setTotalUnpaid(sum);
+        setTotalUnpaid(houseBalance);
       } catch (e) {
         console.error(e);
+        setError(true);
+        setBills([]);
+        setTotalUnpaid(0);
       } finally {
         setLoading(false);
       }
@@ -109,11 +113,41 @@ const CurrentHouseTab = ({ house, onClose }) => {
     // Navigate to bill details or open action sheet
   };
 
-  // Filter bills that have pending charges
-  const pendingBills = bills.filter(bill => {
-    const ch = bill.Charges || bill.charges || [];
-    return ch.some(c => c.status === 'pending' || c.status === 'unpaid');
+  // Only show bills that are not paid (more explicit filtering)
+  // Make sure to handle case differences and trim whitespace
+  const unpaidBills = bills.filter(bill => {
+    // Get the status and normalize it (lowercase and trim)
+    const status = (bill.status || '').toLowerCase().trim();
+    // Only include if status is pending or partial_paid, exclude paid bills
+    return status === 'pending' || status === 'partial_paid';
   });
+
+  console.log('Bills filtered:', bills.length, 'total,', unpaidBills.length, 'unpaid');
+
+  const retryLoading = () => {
+    setLoading(true);
+    // Trigger the useEffect to reload data
+    const load = async () => {
+      try {
+        const res = await apiClient.get(`/api/houses/${house.id}/bills`);
+        const data = res.data.bills || res.data;
+        const houseBalance = res.data.houseBalance || 0;
+        
+        setBills(data);
+        setTotalUnpaid(houseBalance);
+        setError(false);
+      } catch (e) {
+        console.error(e);
+        setError(true);
+        setBills([]);
+        setTotalUnpaid(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (house?.id) load();
+  };
 
   return (
     <>
@@ -136,18 +170,30 @@ const CurrentHouseTab = ({ house, onClose }) => {
             <View style={styles.loading}>
               <ActivityIndicator size="large" color="#34d399" />
             </View>
+          ) : error ? (
+            <View style={styles.error}>
+              <MaterialIcons name="error-outline" size={48} color="#ef4444" />
+              <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
+              <Text style={styles.errorText}>We couldn't load your bills at this time.</Text>
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={retryLoading}
+              >
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>Total Unpaid</Text>
+                <Text style={styles.summaryLabel}>You Currently Owe</Text>
                 <Text style={styles.summaryAmount}>${totalUnpaid.toFixed(2)}</Text>
               </View>
 
-              <Text style={styles.billsHeader}>Pending Bills</Text>
+              <Text style={styles.billsHeader}>Your Charges</Text>
 
               <FlatList
-                data={pendingBills}
-                keyExtractor={item => item.id.toString()}
+                data={unpaidBills}
+                keyExtractor={item => item.id?.toString() || Math.random().toString()}
                 renderItem={({ item }) => (
                   <BillCard 
                     bill={item} 
@@ -160,7 +206,7 @@ const CurrentHouseTab = ({ house, onClose }) => {
                   <View style={styles.empty}>
                     <MaterialIcons name="check-circle" size={48} color="#34d399" />
                     <Text style={styles.emptyTitle}>All Caught Up!</Text>
-                    <Text style={styles.emptyText}>No pending bills.</Text>
+                    <Text style={styles.emptyText}>You have no unpaid bills.</Text>
                   </View>
                 )}
               />
@@ -175,7 +221,7 @@ const CurrentHouseTab = ({ house, onClose }) => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#dff6f0' 
+    backgroundColor: '#dff6f0' // Restoring original brand color
   },
   header: {
     flexDirection: 'row', 
@@ -203,15 +249,21 @@ const styles = StyleSheet.create({
 
   summaryCard: {
     backgroundColor: '#ffffff', 
-    borderRadius: 12, 
+    borderRadius: 16, 
     marginHorizontal: 16,
     padding: 20, 
-    marginBottom: 12, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, 
-    shadowRadius: 4, 
-    elevation: 2, 
+    marginBottom: 16, 
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06, 
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 2
+      }
+    }),
     alignItems: 'flex-start'
   },
   summaryLabel: { 
@@ -230,33 +282,41 @@ const styles = StyleSheet.create({
   billsHeader: {
     marginHorizontal: 16,
     marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 8,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#1e293b'
   },
 
   billCard: {
     backgroundColor: '#ffffff', 
-    borderRadius: 12, 
+    borderRadius: 16, 
     marginHorizontal: 16,
-    marginVertical: 4, 
+    marginVertical: 6, 
     overflow: 'hidden',
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 1 }, 
-    shadowOpacity: 0.05,
-    shadowRadius: 3, 
-    elevation: 1
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 1 }, 
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 1
+      }
+    })
   },
   progressBarContainer: {
-    height: 4,
-    backgroundColor: '#e5e7eb',
+    height: 3,
+    backgroundColor: '#f1f5f9',
   },
   progressBar: { 
-    height: '100%' 
+    height: '100%',
+    borderTopRightRadius: 1.5,
+    borderBottomRightRadius: 1.5,
   },
   cardContent: { 
-    padding: 12 
+    padding: 16 
   },
   row: { 
     flexDirection: 'row', 
@@ -267,7 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4
+    marginTop: 6
   },
   billName: { 
     fontSize: 16, 
@@ -283,18 +343,47 @@ const styles = StyleSheet.create({
     color: '#1e293b' 
   },
   percentBadge: { 
-    paddingHorizontal: 8, 
-    paddingVertical: 2, 
-    borderRadius: 10 
+    paddingHorizontal: 10, 
+    paddingVertical: 3, 
+    borderRadius: 12
   },
   percentText: { 
     fontSize: 12, 
     fontWeight: '600' 
   },
   dueDate: { 
-    fontSize: 12, 
-    fontWeight: '500',
-    color: '#94a3b8'  // Lighter gray (slate-400)
+    fontSize: 13, 
+    fontWeight: '500'
+  },
+
+  error: { 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 32, 
+    paddingHorizontal: 32 
+  },
+  errorTitle: { 
+    fontSize: 18, 
+    fontWeight: '600', 
+    color: '#1e293b', 
+    marginTop: 12 
+  },
+  errorText: { 
+    fontSize: 14, 
+    color: '#64748b', 
+    marginTop: 6, 
+    textAlign: 'center',
+    marginBottom: 16
+  },
+  retryButton: {
+    backgroundColor: '#34d399',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: '600'
   },
 
   empty: { 

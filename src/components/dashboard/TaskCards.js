@@ -37,10 +37,12 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
     'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
   });
   
-  // Combine tasks and bill submissions if needed
-  const allTasks = [...tasks, ...billSubmissions];
+  console.log('Tasks:', tasks.length, 'Bill Submissions:', billSubmissions.length);
   
-  if (!allTasks || allTasks.length === 0) return null;
+  // Check if we have any content to show
+  const hasContent = (tasks && tasks.length > 0) || (billSubmissions && billSubmissions.length > 0);
+  
+  if (!hasContent) return null;
 
   return (
     <View style={styles.container}>
@@ -55,12 +57,26 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH + 12} // Add the margin to snap properly
       >
-        {allTasks.map((task, idx) => (
+        {/* Render Tasks */}
+        {tasks.map((task, idx) => (
           <TaskCard 
-            key={`${task.type || 'task'}-${task.id || idx}`} 
-            task={task} 
+            key={`task-${task.id || idx}`} 
+            task={task}
+            type="task"
             isAlternate={idx % 2 === 1}
             onPress={() => onTaskPress?.(task)}
+            fontsLoaded={fontsLoaded}
+          />
+        ))}
+        
+        {/* Render Bill Submissions */}
+        {billSubmissions.map((submission, idx) => (
+          <TaskCard 
+            key={`bill-${submission.id || idx}`} 
+            task={submission}
+            type="billSubmission"
+            isAlternate={(tasks.length + idx) % 2 === 1}
+            onPress={() => onTaskPress?.(submission)}
             fontsLoaded={fontsLoaded}
           />
         ))}
@@ -70,16 +86,18 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
 };
 
 // Separate TaskCard component to handle requester fetching
-const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
+const TaskCard = ({ task, type = "task", isAlternate, onPress, fontsLoaded }) => {
   const [requesterUsername, setRequesterUsername] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Determine the service name based on whether it's a takeOverRequest or stagedRequest
+  // Determine the service name based on the type and structure
   const getServiceName = () => {
-    if (task.type === 'billSubmission') {
-      return 'Bill Submission';
+    // For bill submissions
+    if (type === 'billSubmission') {
+      return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
     }
-
+    
+    // For regular tasks
     if (!task.serviceRequestBundle) {
       return 'Task';
     }
@@ -121,28 +139,60 @@ const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
       }
     };
 
-    if (task.serviceRequestBundle?.userId) {
+    if (type === 'task' && task.serviceRequestBundle?.userId) {
       fetchRequesterUsername();
     } else {
       setLoading(false);
     }
-  }, [task]);
+  }, [task, type]);
 
   // Get card icon based on task type
   const getIcon = () => {
-    if (task.type === 'take_over_request') {
-      return 'swap-horiz';
-    }
-    if (task.type === 'staged_request') {
-      return 'shopping-cart';
-    }
-    if (task.type === 'billSubmission') {
+    if (type === 'billSubmission') {
       return 'receipt';
     }
-    return 'check-circle-outline';
+    
+    // For service requests, get appropriate icon based on type
+    const serviceBundle = task.serviceRequestBundle || {};
+    const serviceRequest = serviceBundle.takeOverRequest || serviceBundle.stagedRequest || {};
+    const serviceType = serviceRequest.serviceType?.toLowerCase() || '';
+    
+    switch (serviceType) {
+      case 'cleaning':
+        return 'cleaning-services';
+      case 'energy':
+        return 'electric-bolt';
+      case 'internet':
+        return 'wifi';
+      case 'water':
+        return 'water-drop';
+      case 'take_over_request':
+        return 'swap-horiz';
+      case 'staged_request':
+        return 'shopping-cart';
+      default:
+        return 'check-circle-outline';
+    }
   };
 
   const serviceName = getServiceName();
+
+  // Format due date for bill submissions
+  const formatDueDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Get additional bill submission details
+  const getSubmissionDetails = () => {
+    if (type === 'billSubmission' && task.dueDate) {
+      return `Due: ${formatDueDate(task.dueDate)}`;
+    }
+    return null;
+  };
+
+  const submissionDetails = getSubmissionDetails();
 
   return (
     <View style={styles.cardWrapper}>
@@ -152,7 +202,7 @@ const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
           isAlternate ? styles.cardInnerAlternate : null
         ]}
         activeOpacity={0.8}
-        onPress={onPress}
+        onPress={() => onPress(task)}
       >
         {/* Inner border inset */}
         <View 
@@ -169,6 +219,17 @@ const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
             color={isAlternate ? COLORS.green : "#FFFFFF"} 
           />
           <View style={styles.titleContainer}>
+            {/* Category Label */}
+            <Text 
+              style={[
+                styles.categoryLabel,
+                isAlternate ? styles.categoryLabelAlternate : null,
+                fontsLoaded && { fontFamily: 'Poppins-Medium' }
+              ]}
+            >
+              {type === 'billSubmission' ? 'BILL SUBMISSION' : 'SERVICE REQUEST'}
+            </Text>
+            
             <Text 
               style={[
                 styles.taskTitle,
@@ -182,6 +243,17 @@ const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
             
             {loading ? (
               <ActivityIndicator size="small" color={isAlternate ? COLORS.green : "#FFFFFF"} />
+            ) : submissionDetails ? (
+              <Text 
+                style={[
+                  styles.requesterText,
+                  isAlternate ? styles.requesterTextAlternate : null,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}
+                numberOfLines={1}
+              >
+                {submissionDetails}
+              </Text>
             ) : requesterUsername ? (
               <Text 
                 style={[
@@ -205,7 +277,7 @@ const TaskCard = ({ task, isAlternate, onPress, fontsLoaded }) => {
               fontsLoaded && { fontFamily: 'Poppins-Medium' }
             ]}
           >
-            CLICK TO VIEW
+            {type === 'billSubmission' ? 'SUBMIT NOW' : 'CLICK TO VIEW'}
           </Text>
           <MaterialIcons 
             name="chevron-right" 
@@ -279,6 +351,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 4,
+  },
+  // Category label style
+  categoryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  // Alternate category label style
+  categoryLabelAlternate: {
+    color: COLORS.green,
   },
   // Alternate task title style (dark text)
   taskTitleAlternate: {

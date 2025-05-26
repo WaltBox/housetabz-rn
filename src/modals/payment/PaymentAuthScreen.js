@@ -11,13 +11,49 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
+import apiClient from "../../config/api";
 
-const PaymentAuthScreen = ({ onSuccess, onCancel, onError }) => {
-  const { login } = useAuth();
+const PaymentAuthScreen = ({ onSuccess, onCancel, onError, paymentData }) => {
+  const { login, user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Helper function to check house service status
+  const checkHouseServiceStatus = async (apiKey, houseId) => {
+    try {
+      console.log('🔍 Checking house service status after auth for:', { apiKey, houseId });
+      
+      // First get partner ID from API key
+      const partnerLookup = await apiClient.get('/api/partners/by-api-key', { 
+        params: { apiKey } 
+      });
+      
+      console.log('🔍 Partner lookup response:', partnerLookup.data);
+      
+      if (!partnerLookup.data.success) {
+        throw new Error('Invalid API key');
+      }
+      
+      const partnerId = partnerLookup.data.partnerId;
+      console.log('🔍 Found partnerId:', partnerId);
+      
+      // Check house service status
+      console.log('🔍 Making house service status request with:', { partnerId, houseId });
+      const response = await apiClient.post('/api/sdk/check-house-service-status', {
+        partnerId,
+        houseId
+      });
+      
+      console.log('🔍 House service status response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error checking house service status:', error);
+      console.error('❌ Error details:', error.response?.data);
+      return { exists: false }; // Default to allowing new connection on error
+    }
+  };
 
   const handleLogin = async () => {
     if (!email) {
@@ -26,11 +62,59 @@ const PaymentAuthScreen = ({ onSuccess, onCancel, onError }) => {
     }
     setLoading(true);
     setError(null);
+    
     try {
-      await login(email, password);
-      onSuccess();
+      // Step 1: Authenticate user
+      console.log('🔐 Starting authentication...');
+      const loginResult = await login(email, password);
+      console.log('✅ Authentication successful:', loginResult);
+      
+      // Get user from context after successful login
+      const currentUser = user;
+      console.log('🔍 Current user from context:', currentUser);
+      
+      // Step 2: Check if house already has this service
+      if (paymentData && paymentData.apiKey && currentUser && currentUser.houseId) {
+        console.log('🏠 Checking house service status after authentication...');
+        console.log('🏠 Payment data:', paymentData);
+        console.log('🏠 User house ID:', currentUser.houseId);
+        
+        const statusCheck = await checkHouseServiceStatus(paymentData.apiKey, currentUser.houseId);
+        
+        if (statusCheck.exists) {
+          console.log('🎯 Service already exists:', statusCheck);
+          
+          // SIMPLIFIED: Always show ExistingRequestModal regardless of status
+          console.log('🔄 Existing service found, showing existing request modal');
+          onSuccess({
+            type: 'existing_service',
+            serviceStatus: statusCheck
+          });
+          return;
+        } else {
+          console.log('🆕 No existing service found');
+        }
+      } else {
+        console.log('⚠️ Skipping status check - missing data:', {
+          hasPaymentData: !!paymentData,
+          hasApiKey: !!(paymentData && paymentData.apiKey),
+          hasUser: !!currentUser,
+          hasHouseId: !!(currentUser && currentUser.houseId),
+          houseId: currentUser?.houseId
+        });
+      }
+      
+      // Step 3: No existing service found - proceed with normal flow
+      console.log('📝 Proceeding to RequestConfirmationScreen');
+      onSuccess({
+        type: 'new_request',
+        message: 'Proceeding to confirmation screen'
+      });
+      
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+      console.error('❌ Error during authentication or status check:', err);
+      console.error('❌ Error response:', err.response?.data);
+      setError(err.response?.data?.message || err.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -134,11 +218,10 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     textAlign: "center",
     marginBottom: 8,
-    // Use your preferred font here for overall title aside from the HouseTabz part.
     fontFamily: "System",
   },
   housetabz: {
-    fontFamily: "Montserrat-Black", // Ensure this font is properly loaded in your project.
+    fontFamily: "Montserrat-Black",
     color: "#34d399",
   },
   subtitle: {
@@ -173,7 +256,7 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "#34d399",
-    borderRadius: 50, // Increased to create a pill shape
+    borderRadius: 50,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 16,
@@ -230,20 +313,6 @@ const styles = StyleSheet.create({
   getAppButtonText: {
     color: "#34d399",
     fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "System",
-  },
-  createAccountContainer: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  createAccountText: {
-    fontSize: 14,
-    color: "#64748b",
-    fontFamily: "System",
-  },
-  createAccountHighlight: {
-    color: "#34d399",
     fontWeight: "600",
     fontFamily: "System",
   },
