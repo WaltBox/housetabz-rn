@@ -10,7 +10,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Platform, DeviceEventEmitter } from 'react-native';
 import PushNotification from 'react-native-push-notification';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Remove AsyncStorage import - we're using Keychain now
+import { useAuth } from './src/context/AuthContext';
+import { keychainHelpers, KEYCHAIN_SERVICES } from './src/utils/keychainHelpers'; // Add this import
 
 // Create React Query client.
 const queryClient = new QueryClient({
@@ -63,7 +65,7 @@ const App = () => {
 
 // PushNotificationHandler now subscribes to a native event that passes the token.
 const PushNotificationHandler = ({ children }) => {
-  const { user, token } = require('./src/context/AuthContext').useAuth();
+  const { user, token } = useAuth();
   const [deviceToken, setDeviceToken] = useState(null);
   const isConfigured = useRef(false);
 
@@ -73,9 +75,9 @@ const PushNotificationHandler = ({ children }) => {
       if (data && data.deviceToken) {
         const tokenString = data.deviceToken.replace(/[<\s>]/g, '');
         console.log('Received native push token:', tokenString);
-        AsyncStorage.setItem('deviceToken', tokenString)
+        keychainHelpers.setSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN, tokenString)
           .then(() => setDeviceToken(tokenString))
-          .catch(err => console.error('AsyncStorage error:', err));
+          .catch(err => console.error('Keychain error:', err)); // Updated error message
       }
     });
     return () => subscription.remove();
@@ -120,9 +122,10 @@ const PushNotificationHandler = ({ children }) => {
   useEffect(() => {
     const loadSavedToken = async () => {
       try {
-        const savedToken = await AsyncStorage.getItem('deviceToken');
+        // Use Keychain instead of AsyncStorage
+        const savedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN);
         if (savedToken) {
-          console.log('Loaded saved token:', savedToken);
+          console.log('Loaded saved device token from Keychain:', savedToken);
           setDeviceToken(savedToken);
           if (user && token) {
             console.log('User is logged in, registering token with backend');
@@ -130,7 +133,7 @@ const PushNotificationHandler = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Error loading saved token:', error);
+        console.error('Error loading saved token from Keychain:', error);
       }
     };
     loadSavedToken();

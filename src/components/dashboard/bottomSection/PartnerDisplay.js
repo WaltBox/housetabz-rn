@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+
   },
   coverContainer: {
     width: CARD_SIZE,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white', // White border
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,

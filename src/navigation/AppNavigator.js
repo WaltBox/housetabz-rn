@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,9 @@ import VerifyResetCodeScreen from '../screens/ResetPassword/VerifyResetCodeScree
 import ResetPasswordSuccessScreen from '../screens/ResetPassword/ResetPasswordSuccessScreen';
 import SetNewPasswordScreen from '../screens/ResetPassword/SetNewPasswordScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+
+// Onboarding Screens
+import PaymentMethodOnboardingScreen from '../screens/PaymentMethodOnboardingScreen';
 
 // App Screens
 import LoadingScreen from '../screens/LoadingScreen';
@@ -78,8 +81,18 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// New stack for house setup (for users who have no houseId)
-const HouseStack = () => (
+// Payment method onboarding (mandatory)
+const PaymentOnboardingStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen 
+      name="PaymentMethodOnboarding" 
+      component={PaymentMethodOnboardingScreen} 
+    />
+  </Stack.Navigator>
+);
+
+// House setup onboarding (after payment method is added)
+const HouseOnboardingStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen 
       name="HouseOptionsScreen" 
@@ -97,18 +110,51 @@ const HouseStack = () => (
 );
 
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, hasPaymentMethods, checkPaymentMethods } = useAuth();
+  const [checkingPayments, setCheckingPayments] = useState(false);
 
-  if (loading) {
+  // Check payment methods when user becomes available (for app startup)
+  useEffect(() => {
+    const checkPaymentsOnStartup = async () => {
+      if (user && hasPaymentMethods === null && !checkingPayments) {
+        console.log('Checking payment methods on app startup...');
+        setCheckingPayments(true);
+        try {
+          const result = await checkPaymentMethods();
+          console.log('Payment methods check result:', result);
+        } catch (error) {
+          console.error('Error checking payment methods on startup:', error);
+        } finally {
+          setCheckingPayments(false);
+        }
+      }
+    };
+
+    checkPaymentsOnStartup();
+  }, [user, hasPaymentMethods, checkingPayments]);
+
+  // Show loading screen while initial auth load or payment check is happening
+  if (loading || (user && hasPaymentMethods === null)) {
+    console.log('Showing loading screen. Loading:', loading, 'User:', !!user, 'HasPaymentMethods:', hasPaymentMethods);
     return <LoadingScreen />;
   }
+
+  console.log('AppNavigator decision - User:', !!user, 'HasPaymentMethods:', hasPaymentMethods, 'HouseId:', user?.houseId);
 
   return (
     <NavigationContainer>
       {user ? (
-        // If the user exists, check if they've joined/created a house.
-        // If not, show the HouseStack so they can choose an option.
-        user.houseId ? <MainStack /> : <HouseStack />
+        // Check payment methods first
+        hasPaymentMethods === false ? (
+          // No payment methods - force payment method setup
+          <PaymentOnboardingStack />
+        ) : hasPaymentMethods === true ? (
+          // Has payment methods, now check house status
+          user.houseId ? <MainStack /> : <HouseOnboardingStack />
+        ) : (
+          // Still checking or undefined - show loading
+          <LoadingScreen />
+        )
       ) : (
         <AuthStack />
       )}

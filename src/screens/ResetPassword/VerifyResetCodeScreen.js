@@ -8,11 +8,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 
 const VerifyResetCodeScreen = ({ route, navigation }) => {
   const { email } = route.params;
@@ -23,6 +23,15 @@ const VerifyResetCodeScreen = ({ route, navigation }) => {
   
   // Create refs for each input
   const inputRefs = useRef([]);
+
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Montserrat-Black': require('../../../assets/fonts/Montserrat-Black.ttf'),
+    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
   
   // Set up refs when component mounts
   useEffect(() => {
@@ -100,21 +109,22 @@ const VerifyResetCodeScreen = ({ route, navigation }) => {
   };
   
   return (
-    <LinearGradient
-      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-      style={styles.background}
-    >
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={styles.content}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <Image
-          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        
-        <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButton}
@@ -122,17 +132,30 @@ const VerifyResetCodeScreen = ({ route, navigation }) => {
             <Icon name="chevron-left" size={28} color="#1e293b" />
           </TouchableOpacity>
           
-          <Text style={styles.title}>Verify Your Email</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[
+            styles.title,
+            fontsLoaded && { fontFamily: 'Poppins-Bold' }
+          ]}>Verify Your Email</Text>
+          <Text style={[
+            styles.description,
+            fontsLoaded && { fontFamily: 'Poppins-Regular' }
+          ]}>
             Enter the 6-digit code sent to {email}
           </Text>
-          
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.mainSection}>
+          {/* Code Input */}
           <View style={styles.codeContainer}>
             {code.map((digit, index) => (
               <TextInput
                 key={index}
                 ref={ref => inputRefs.current[index] = ref}
-                style={styles.codeInput}
+                style={[
+                  styles.codeInput,
+                  fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                ]}
                 value={digit}
                 onChangeText={(text) => handleCodeChange(text, index)}
                 onKeyPress={(e) => handleKeyPress(e, index)}
@@ -142,176 +165,269 @@ const VerifyResetCodeScreen = ({ route, navigation }) => {
               />
             ))}
           </View>
-          
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]}
+
+          {error ? (
+            <Text style={[
+              styles.errorText,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>{error}</Text>
+          ) : null}
+
+          {/* Verify Button */}
+          <TouchableOpacity
+            style={[styles.verifyButton, loading && styles.buttonDisabled]}
             onPress={handleVerify}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <View style={styles.loadingContent}>
+                <ActivityIndicator size="small" color="white" />
+                <Text style={[
+                  styles.buttonText,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>Verifying...</Text>
+              </View>
             ) : (
-              <LinearGradient
-                colors={['#34d399', '#10b981']}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>Verify Code</Text>
-                <Icon name="check-circle-outline" size={20} color="white" />
-              </LinearGradient>
+              <Text style={[
+                styles.buttonText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Verify Code</Text>
             )}
           </TouchableOpacity>
-          
+
+          {/* Resend Code */}
           <View style={styles.linkRow}>
-            <Text style={styles.linkText}>Didn't receive the code? </Text>
+            <Text style={[
+              styles.linkText,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>Didn't receive the code? </Text>
             <TouchableOpacity 
               onPress={handleResendCode}
               disabled={loading}
             >
-              <Text style={styles.linkButtonText}>Resend</Text>
+              <Text style={[
+                styles.linkButtonText,
+                fontsLoaded && { fontFamily: 'Poppins-Medium' }
+              ]}>Resend</Text>
             </TouchableOpacity>
           </View>
           
-          <TouchableOpacity 
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={[
+              styles.dividerText,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          
+          <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => navigation.navigate('ForgotPassword')}
             disabled={loading}
           >
-            <Text style={styles.secondaryButtonText}>Try Different Email</Text>
-            <Icon name="email-edit-outline" size={18} color="#1e293b" />
+            <Text style={[
+              styles.secondaryButtonText,
+              fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+            ]}>Try Different Email</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: '100%',
-  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
+    backgroundColor: 'white',
   },
-  logo: {
+  circle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#dff6f0',
+    top: -50,
+    right: -50,
+    opacity: 0.6,
+  },
+  circle2: {
+    position: 'absolute',
     width: 150,
     height: 150,
-    marginBottom: 20,
+    borderRadius: 75,
+    backgroundColor: '#34d399',
+    bottom: 100,
+    left: -75,
+    opacity: 0.1,
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+  circle3: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#dff6f0',
+    top: 200,
+    left: 50,
+    opacity: 0.3,
+  },
+  circle4: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34d399',
+    top: 120,
+    right: 20,
+    opacity: 0.2,
+  },
+  circle5: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#dff6f0',
+    bottom: 200,
+    right: -30,
+    opacity: 0.4,
+  },
+  circle6: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#34d399',
+    top: 300,
+    left: -60,
+    opacity: 0.08,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 50,
+    zIndex: 1,
+  },
+  header: {
+    alignItems: 'center',
     position: 'relative',
+    marginBottom: 40,
   },
   backButton: {
     position: 'absolute',
-    top: 15,
-    left: 15,
+    top: 0,
+    left: 0,
     zIndex: 1,
   },
   title: {
     fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
     marginTop: 20,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#64748b',
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  mainSection: {
+    alignItems: 'center',
+    flex: 1,
   },
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: 32,
+    width: '100%',
+    paddingHorizontal: 10,
   },
   codeInput: {
     width: 45,
-    height: 55,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
-    textAlign: 'center',
-    color: '#1e293b',
-  },
-  button: {
     height: 56,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 15,
-  },
-  buttonGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    marginRight: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: '#1f2937',
   },
   errorText: {
     color: '#ef4444',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+  },
+  verifyButton: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#34d399',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginBottom: 20,
   },
   linkText: {
-    color: '#64748b',
+    color: '#6b7280',
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
   },
   linkButtonText: {
     color: '#34d399',
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
+    fontWeight: '500',
   },
-  secondaryButton: {
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginTop: 25,
+    marginVertical: 20,
+    width: '100%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  dividerText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    marginHorizontal: 16,
+  },
+  secondaryButton: {
+    borderWidth: 2,
+    borderColor: '#34d399',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginTop: 8,
   },
   secondaryButtonText: {
-    color: '#1e293b',
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    color: '#34d399',
+    fontWeight: '600',
   },
 });
 

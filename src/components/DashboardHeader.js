@@ -21,7 +21,7 @@
 //     paddingVertical: 12,
 //     backgroundColor: '#dff6f0',
 //     borderBottomWidth: 0, // Removed the border
-//     elevation: 0, // Removed elevation shadow
+//     : 0, // Removed  shadow
 //   },
 //   headerTitle: {
 //     fontSize: 22,

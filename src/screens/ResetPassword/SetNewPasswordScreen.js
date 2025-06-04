@@ -8,11 +8,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 
 const SetNewPasswordScreen = ({ route, navigation }) => {
   const { email, code } = route.params;
@@ -21,6 +21,15 @@ const SetNewPasswordScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { resetPasswordWithCode } = useAuth();
+
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Montserrat-Black': require('../../../assets/fonts/Montserrat-Black.ttf'),
+    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
   
   const handleResetPassword = async () => {
     // Validation
@@ -55,21 +64,22 @@ const SetNewPasswordScreen = ({ route, navigation }) => {
   };
   
   return (
-    <LinearGradient
-      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-      style={styles.background}
-    >
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={styles.content}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <Image
-          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        
-        <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButton}
@@ -77,154 +87,237 @@ const SetNewPasswordScreen = ({ route, navigation }) => {
             <Icon name="chevron-left" size={28} color="#1e293b" />
           </TouchableOpacity>
           
-          <Text style={styles.title}>Set New Password</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[
+            styles.title,
+            fontsLoaded && { fontFamily: 'Poppins-Bold' }
+          ]}>Set New Password</Text>
+          <Text style={[
+            styles.description,
+            fontsLoaded && { fontFamily: 'Poppins-Regular' }
+          ]}>
             Create a new password for your account
           </Text>
-          
-          <View style={styles.inputContainer}>
-            <Icon name="lock-outline" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="New Password"
-              placeholderTextColor="#9ca3af"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.mainSection}>
+          {/* Input Fields */}
+          <View style={styles.inputSection}>
+            <View style={styles.inputContainer}>
+              <Icon name="lock-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="New Password"
+                placeholderTextColor="#9ca3af"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Icon name="lock-check-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="Confirm New Password"
+                placeholderTextColor="#9ca3af"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
           </View>
-          
-          <View style={styles.inputContainer}>
-            <Icon name="lock-check-outline" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm New Password"
-              placeholderTextColor="#9ca3af"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
-          
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]}
+
+          {error ? (
+            <Text style={[
+              styles.errorText,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>{error}</Text>
+          ) : null}
+
+          {/* Reset Password Button */}
+          <TouchableOpacity
+            style={[styles.resetButton, loading && styles.buttonDisabled]}
             onPress={handleResetPassword}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <View style={styles.loadingContent}>
+                <ActivityIndicator size="small" color="white" />
+                <Text style={[
+                  styles.buttonText,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>Resetting...</Text>
+              </View>
             ) : (
-              <LinearGradient
-                colors={['#34d399', '#10b981']}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>Reset Password</Text>
-                <Icon name="lock-reset" size={20} color="white" />
-              </LinearGradient>
+              <Text style={[
+                styles.buttonText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Reset Password</Text>
             )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: '100%',
-  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
+    backgroundColor: 'white',
   },
-  logo: {
+  circle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#dff6f0',
+    top: -50,
+    right: -50,
+    opacity: 0.6,
+  },
+  circle2: {
+    position: 'absolute',
     width: 150,
     height: 150,
-    marginBottom: 20,
+    borderRadius: 75,
+    backgroundColor: '#34d399',
+    bottom: 100,
+    left: -75,
+    opacity: 0.1,
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+  circle3: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#dff6f0',
+    top: 200,
+    left: 50,
+    opacity: 0.3,
+  },
+  circle4: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34d399',
+    top: 120,
+    right: 20,
+    opacity: 0.2,
+  },
+  circle5: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#dff6f0',
+    bottom: 200,
+    right: -30,
+    opacity: 0.4,
+  },
+  circle6: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#34d399',
+    top: 300,
+    left: -60,
+    opacity: 0.08,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 50,
+    zIndex: 1,
+  },
+  header: {
+    alignItems: 'center',
     position: 'relative',
+    marginBottom: 60,
   },
   backButton: {
     position: 'absolute',
-    top: 15,
-    left: 15,
+    top: 0,
+    left: 0,
     zIndex: 1,
   },
   title: {
     fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
     marginTop: 20,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#64748b',
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  mainSection: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  inputSection: {
+    width: '100%',
+    marginBottom: 24,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    marginBottom: 20,
-    paddingHorizontal: 15,
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  icon: {
-    marginRight: 10,
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
+    height: 56,
     fontSize: 16,
     color: '#374151',
-    fontFamily: 'Inter-Regular',
-  },
-  button: {
-    height: 56,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 15,
-  },
-  buttonGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    marginRight: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
   },
   errorText: {
     color: '#ef4444',
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+  },
+  resetButton: {
+    width: '100%',
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#34d399',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

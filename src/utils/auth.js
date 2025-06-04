@@ -1,19 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { keychainHelpers } from './keychainHelpers';
 
 export const getAuthToken = async () => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    return token;
-  } catch (error) {
-    console.error('Error getting auth token:', error);
-    return null;
-  }
+  return await keychainHelpers.getAuthToken();
 };
 
 export const setAuthToken = async (token) => {
-  try {
-    await AsyncStorage.setItem('userToken', token);
-  } catch (error) {
-    console.error('Error saving auth token:', error);
-  }
+  return await keychainHelpers.setAuthToken(token);
 };

@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green,
     borderRadius: 14,
     overflow: 'hidden',
-    elevation: 2,
+
   },
   // Alternate card style (mint white background)
   cardInnerAlternate: {

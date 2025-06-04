@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor:'#ffffff', borderRadius:12, marginHorizontal:16,
     padding:20, marginBottom:12, shadowColor:'#000', shadowOffset:{width:0,height:2},
-    shadowOpacity:0.1, shadowRadius:4, elevation:2, alignItems:'flex-start'
+    shadowOpacity:0.1, shadowRadius:4, alignItems:'flex-start'
   },
   summaryLabel: { fontSize:14, color:'#64748b', marginBottom:4 },
   summaryAmount: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor:'#ffffff', borderRadius:12, marginHorizontal:16,
     marginVertical:4, paddingVertical:8, paddingHorizontal:12,
     shadowColor:'#000', shadowOffset:{width:0,height:1}, shadowOpacity:0.05,
-    shadowRadius:3, elevation:1,
+    shadowRadius:3, 
   },
   chargeRow: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
   chargeText: { flex:1 },

@@ -103,7 +103,7 @@ const TabNavigator = () => (
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: { 
           backgroundColor: '#dff6f0',
-          elevation: 0,
+         
           shadowOpacity: 0,
           borderTopWidth: 2,
           borderTopColor: 'white',
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,
     shadowRadius: 4,
-    elevation: 5,
+
   },
   logo: {
     width: 50,

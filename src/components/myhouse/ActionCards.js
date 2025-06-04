@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
-    elevation: 8,
+ 
     shadowColor: "#0d9488",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
-    elevation: 8,
     shadowColor: "#6d28d9",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

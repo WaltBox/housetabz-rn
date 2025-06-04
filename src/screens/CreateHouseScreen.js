@@ -7,15 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  ScrollView,
-  Image,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-// Import apiClient instead of axios
+import { useFonts } from 'expo-font';
 import apiClient from '../config/api';
 
 const CreateHouseScreen = ({ navigation }) => {
@@ -28,6 +25,15 @@ const CreateHouseScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const { user, updateUserHouse } = useAuth();
 
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Montserrat-Black': require('../../assets/fonts/Montserrat-Black.ttf'),
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
   const handleCreateHouse = async () => {
     if (!houseData.name || !houseData.city || !houseData.state || !houseData.zip_code) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
@@ -37,7 +43,6 @@ const CreateHouseScreen = ({ navigation }) => {
     try {
       setLoading(true);
       const payload = { ...houseData, creator_id: user.id };
-      // Use apiClient with relative path
       const response = await apiClient.post('/api/houses', payload);
       const createdHouse = response.data.house;
       
@@ -60,172 +65,275 @@ const CreateHouseScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient
-      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-      style={styles.background}
-    >
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={styles.content}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButton}
           >
             <Icon name="chevron-left" size={28} color="#1e293b" />
           </TouchableOpacity>
+          
+          <Text style={[
+            styles.title,
+            fontsLoaded && { fontFamily: 'Poppins-Bold' }
+          ]}>Create New House</Text>
+          <Text style={[
+            styles.description,
+            fontsLoaded && { fontFamily: 'Poppins-Regular' }
+          ]}>
+            Set up your house
+          </Text>
+        </View>
 
-          <Text style={styles.title}>Create New House</Text>
-          <Text style={styles.subtitle}>Set up your household headquarters</Text>
+        {/* Main Content */}
+        <View style={styles.mainSection}>
+          {/* Input Fields */}
+          <View style={styles.inputSection}>
+            <View style={styles.inputContainer}>
+              <Icon name="home-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="House Name"
+                placeholderTextColor="#9ca3af"
+                value={houseData.name}
+                onChangeText={(text) => setHouseData({ ...houseData, name: text })}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Icon name="home-outline" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="House Name"
-              placeholderTextColor="#9ca3af"
-              value={houseData.name}
-              onChangeText={(text) => setHouseData({ ...houseData, name: text })}
-            />
+            <View style={styles.inputContainer}>
+              <Icon name="city-variant-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="City"
+                placeholderTextColor="#9ca3af"
+                value={houseData.city}
+                onChangeText={(text) => setHouseData({ ...houseData, city: text })}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Icon name="map-marker-radius" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="State (e.g., TX)"
+                placeholderTextColor="#9ca3af"
+                value={houseData.state}
+                onChangeText={(text) => setHouseData({ ...houseData, state: text.toUpperCase() })}
+                maxLength={2}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Icon name="numeric" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="Zip Code"
+                placeholderTextColor="#9ca3af"
+                value={houseData.zip_code}
+                onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
+                keyboardType="number-pad"
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Icon name="city-variant-outline" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="City"
-              placeholderTextColor="#9ca3af"
-              value={houseData.city}
-              onChangeText={(text) => setHouseData({ ...houseData, city: text })}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Icon name="map-marker-radius" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="State (e.g., TX)"
-              placeholderTextColor="#9ca3af"
-              value={houseData.state}
-              onChangeText={(text) => setHouseData({ ...houseData, state: text.toUpperCase() })}
-              maxLength={2}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Icon name="numeric" size={20} color="#4b5563" style={styles.icon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Zip Code"
-              placeholderTextColor="#9ca3af"
-              value={houseData.zip_code}
-              onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
-              keyboardType="number-pad"
-            />
-          </View>
-
+          {/* Create House Button */}
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.createButton, loading && styles.buttonDisabled]}
             onPress={handleCreateHouse}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <View style={styles.loadingContent}>
+                <ActivityIndicator size="small" color="white" />
+                <Text style={[
+                  styles.buttonText,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>Creating house...</Text>
+              </View>
             ) : (
-              <LinearGradient
-                colors={['#34d399', '#10b981']}
-                style={styles.buttonGradient}
-              >
-                <Text style={styles.buttonText}>Create House</Text>
-                <Icon name="home-plus" size={24} color="white" />
-              </LinearGradient>
+              <Text style={[
+                styles.buttonText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Create House</Text>
             )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 20,
+    backgroundColor: 'white',
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+  circle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#dff6f0',
+    top: -50,
+    right: -50,
+    opacity: 0.6,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#34d399',
+    bottom: 100,
+    left: -75,
+    opacity: 0.1,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#dff6f0',
+    top: 200,
+    left: 50,
+    opacity: 0.3,
+  },
+  circle4: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34d399',
+    top: 120,
+    right: 20,
+    opacity: 0.2,
+  },
+  circle5: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#dff6f0',
+    bottom: 200,
+    right: -30,
+    opacity: 0.4,
+  },
+  circle6: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#34d399',
+    top: 300,
+    left: -60,
+    opacity: 0.08,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 50,
+    zIndex: 1,
+  },
+  header: {
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 60,
   },
   backButton: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 0,
+    left: 0,
     zIndex: 1,
   },
   title: {
     fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
+    marginTop: 20,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#64748b',
+    color: '#6b7280',
     textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  mainSection: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  inputSection: {
+    width: '100%',
     marginBottom: 32,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    marginBottom: 20,
-    paddingHorizontal: 15,
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  icon: {
-    marginRight: 10,
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
+    height: 56,
     fontSize: 16,
     color: '#374151',
-    fontFamily: 'Inter-Regular',
   },
-  button: {
+  createButton: {
+    width: '100%',
     height: 56,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 15,
-  },
-  buttonGradient: {
-    flex: 1,
-    flexDirection: 'row',
+    borderRadius: 16,
+    backgroundColor: '#34d399',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 12,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '700',
+    color: 'white',
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

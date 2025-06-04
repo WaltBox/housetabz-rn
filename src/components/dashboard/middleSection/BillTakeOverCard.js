@@ -88,7 +88,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -101,7 +100,7 @@ const styles = StyleSheet.create({
     left: 16,
     width: '50%',
     zIndex: 50,
-    elevation: 50,
+  
   },
   description: {
     fontSize: 16,
@@ -135,7 +134,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH * .55,
     height: CARD_HEIGHT * 1.12,
     zIndex: 10,
-    elevation: 10,
+
   },
 });
 

@@ -4,115 +4,184 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 
 const ResetPasswordSuccessScreen = ({ navigation }) => {
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Montserrat-Black': require('../../../assets/fonts/Montserrat-Black.ttf'),
+    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
   return (
-    <LinearGradient
-      colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-      style={styles.background}
-    >
-      <View style={styles.container}>
-        <Image
-          source={{ uri: 'https://housetabz-assets.s3.us-east-1.amazonaws.com/assets/housetabzlogo-update.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        
-        <View style={styles.card}>
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
+      <View style={styles.content}>
+        {/* Success Icon */}
+        <View style={styles.successSection}>
           <View style={styles.successIconContainer}>
             <Icon name="check-circle" size={80} color="#34d399" />
           </View>
           
-          <Text style={styles.title}>Password Reset Successful</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[
+            styles.title,
+            fontsLoaded && { fontFamily: 'Poppins-Bold' }
+          ]}>Password Reset Successful</Text>
+          <Text style={[
+            styles.description,
+            fontsLoaded && { fontFamily: 'Poppins-Regular' }
+          ]}>
             Your password has been reset successfully. You can now log in with your new password.
           </Text>
-          
-          <TouchableOpacity 
-            style={styles.button}
+        </View>
+
+        {/* Button Section */}
+        <View style={styles.buttonSection}>
+          <TouchableOpacity
+            style={styles.loginButton}
             onPress={() => navigation.navigate('Login')}
           >
-            <LinearGradient
-              colors={['#34d399', '#10b981']}
-              style={styles.buttonGradient}
-            >
-              <Text style={styles.buttonText}>Return to Login</Text>
-              <Icon name="login" size={20} color="white" />
-            </LinearGradient>
+            <Text style={[
+              styles.buttonText,
+              fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+            ]}>Return to Login</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: '100%',
-  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
+    backgroundColor: 'white',
   },
-  logo: {
+  circle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#dff6f0',
+    top: -50,
+    right: -50,
+    opacity: 0.6,
+  },
+  circle2: {
+    position: 'absolute',
     width: 150,
     height: 150,
-    marginBottom: 20,
+    borderRadius: 75,
+    backgroundColor: '#34d399',
+    bottom: 100,
+    left: -75,
+    opacity: 0.1,
   },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 30,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+  circle3: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#dff6f0',
+    top: 200,
+    left: 50,
+    opacity: 0.3,
+  },
+  circle4: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34d399',
+    top: 120,
+    right: 20,
+    opacity: 0.2,
+  },
+  circle5: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#dff6f0',
+    bottom: 200,
+    right: -30,
+    opacity: 0.4,
+  },
+  circle6: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#34d399',
+    top: 300,
+    left: -60,
+    opacity: 0.08,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingTop: 80,
+    paddingBottom: 50,
+    justifyContent: 'space-between',
+    zIndex: 1,
+  },
+  successSection: {
     alignItems: 'center',
+    paddingVertical: 40,
   },
   successIconContainer: {
-    marginBottom: 20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0fdf4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
   },
   title: {
     fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#64748b',
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
   },
-  button: {
-    height: 56,
-    borderRadius: 14,
-    overflow: 'hidden',
+  buttonSection: {
+    alignItems: 'center',
+  },
+  loginButton: {
     width: '100%',
-  },
-  buttonGradient: {
-    flex: 1,
-    flexDirection: 'row',
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#34d399',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    marginRight: 10,
+    fontWeight: '700',
+    color: 'white',
   },
 });
 

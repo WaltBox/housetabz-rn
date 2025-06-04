@@ -1,24 +1,27 @@
 // src/context/NotificationContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import PushNotification from 'react-native-push-notification';
 import { useAuth } from './AuthContext';
+import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
 
 const NotificationContext = createContext({});
+
+// Additional Keychain service for notification preferences
+const NOTIFICATION_PREFERENCES = 'housetabz_notification_prefs';
 
 export const NotificationProvider = ({ children }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const { user, token } = useAuth();
   
-  // Load notification preferences
+  // Load notification preferences from Keychain
   useEffect(() => {
     const loadPreferences = async () => {
       try {
-        const storedPref = await AsyncStorage.getItem('notificationsEnabled');
+        const storedPref = await keychainHelpers.getSecureData(NOTIFICATION_PREFERENCES);
         setNotificationsEnabled(storedPref === 'true');
       } catch (error) {
-        console.error('Error loading notification preferences:', error);
+        console.error('Error loading notification preferences from Keychain:', error);
       }
     };
     
@@ -37,24 +40,22 @@ export const NotificationProvider = ({ children }) => {
           }
         }
         
-        // Re-register any stored token
-        const savedTokenString = await AsyncStorage.getItem('deviceToken');
-        if (savedTokenString && user && token) {
-          const savedToken = JSON.parse(savedTokenString);
+        // Re-register any stored token from Keychain
+        const savedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN);
+        if (savedToken && user && token) {
           registerTokenWithBackend(savedToken);
         }
       } else {
         // Disable notifications - mark token as inactive
-        const savedTokenString = await AsyncStorage.getItem('deviceToken');
-        if (savedTokenString && user && token) {
-          const savedToken = JSON.parse(savedTokenString);
+        const savedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN);
+        if (savedToken && user && token) {
           deregisterTokenWithBackend(savedToken);
         }
       }
       
-      // Update state and storage
+      // Update state and storage in Keychain
       setNotificationsEnabled(value);
-      await AsyncStorage.setItem('notificationsEnabled', value ? 'true' : 'false');
+      await keychainHelpers.setSecureData(NOTIFICATION_PREFERENCES, value ? 'true' : 'false');
       return true;
     } catch (error) {
       console.error('Error toggling notifications:', error);
@@ -73,7 +74,7 @@ export const NotificationProvider = ({ children }) => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        deviceToken: deviceToken.token || deviceToken,
+        deviceToken: deviceToken,
         deviceType: Platform.OS,
       }),
     })
@@ -99,7 +100,7 @@ export const NotificationProvider = ({ children }) => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        deviceToken: deviceToken.token || deviceToken,
+        deviceToken: deviceToken,
       }),
     })
     .then(response => {
@@ -107,6 +108,10 @@ export const NotificationProvider = ({ children }) => {
         throw new Error('Failed to deregister device token');
       }
       console.log('Device deregistered from push notifications');
+    })
+    .then(() => {
+      // Also remove the device token from Keychain when deregistering
+      keychainHelpers.removeSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN);
     })
     .catch(error => {
       console.error('Error deregistering push token from backend:', error);

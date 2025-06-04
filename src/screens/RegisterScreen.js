@@ -14,11 +14,13 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFonts } from 'expo-font';
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
   });
@@ -26,8 +28,17 @@ const RegisterScreen = ({ navigation }) => {
   
   const { register } = useAuth();
 
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Montserrat-Black': require('../../assets/fonts/Montserrat-Black.ttf'),
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
   const handleRegister = async () => {
-    if (!formData.email || !formData.password || !formData.username) {
+    if (!formData.email || !formData.password || !formData.username || !formData.phoneNumber) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
@@ -37,11 +48,18 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
+    // Very basic phone number validation - just check it's not empty
+    if (formData.phoneNumber.trim().length < 6) {
+      Alert.alert('Validation Error', 'Please enter a valid phone number');
+      return;
+    }
+
     setLoading(true);
     try {
       await register({
         username: formData.username,
         email: formData.email,
+        phoneNumber: formData.phoneNumber,
         password: formData.password,
       });
     } catch (error) {
@@ -55,235 +73,344 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <LinearGradient
-        colors={['#dff6f0', '#b2ece5', '#8ae4db']}
-        style={styles.background}
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.content}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.card}>
-            {/* Header Section */}
-            <TouchableOpacity 
-              onPress={() => navigation.goBack()} 
-              style={styles.backButton}
-            >
-              <Icon name="chevron-left" size={28} color="#1e293b" />
-            </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[
+              styles.title,
+              fontsLoaded && { fontFamily: 'Poppins-Bold' }
+            ]}>Create Your Account</Text>
+            <Text style={[
+              styles.description,
+              fontsLoaded && { fontFamily: 'Poppins-Regular' }
+            ]}>
+              Join HouseTabz and share your expenses.
+            </Text>
+          </View>
 
-            <Text style={styles.title}>Create Your Account</Text>
-            <Text style={styles.subtitle}>Join HouseTabz to manage your household</Text>
+          {/* Main Content */}
+          <View style={styles.mainSection}>
+            {/* Input Fields */}
+            <View style={styles.inputSection}>
+              <View style={styles.inputContainer}>
+                <Icon name="account-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+                <TextInput
+                  style={[
+                    styles.input,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}
+                  placeholder="Username"
+                  placeholderTextColor="#9ca3af"
+                  value={formData.username}
+                  onChangeText={(text) => setFormData({ ...formData, username: text })}
+                  autoCapitalize="none"
+                />
+              </View>
 
-            {/* Username Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="account-outline" size={20} color="#4b5563" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="#9ca3af"
-                value={formData.username}
-                onChangeText={(text) => setFormData({ ...formData, username: text })}
-                autoCapitalize="none"
-              />
+              <View style={styles.inputContainer}>
+                <Icon name="email-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+                <TextInput
+                  style={[
+                    styles.input,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}
+                  placeholder="Email address"
+                  placeholderTextColor="#9ca3af"
+                  value={formData.email}
+                  onChangeText={(text) => setFormData({ ...formData, email: text })}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Icon name="phone-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+                <TextInput
+                  style={[
+                    styles.input,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}
+                  placeholder="Phone number"
+                  placeholderTextColor="#9ca3af"
+                  value={formData.phoneNumber}
+                  onChangeText={(text) => setFormData({ ...formData, phoneNumber: text })}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Icon name="lock-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+                <TextInput
+                  style={[
+                    styles.input,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}
+                  placeholder="Password"
+                  placeholderTextColor="#9ca3af"
+                  value={formData.password}
+                  onChangeText={(text) => setFormData({ ...formData, password: text })}
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Icon name="lock-check-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+                <TextInput
+                  style={[
+                    styles.input,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}
+                  placeholder="Confirm Password"
+                  placeholderTextColor="#9ca3af"
+                  value={formData.confirmPassword}
+                  onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+                  secureTextEntry
+                />
+              </View>
             </View>
 
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="email-outline" size={20} color="#4b5563" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                placeholderTextColor="#9ca3af"
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="lock-outline" size={20} color="#4b5563" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#9ca3af"
-                value={formData.password}
-                onChangeText={(text) => setFormData({ ...formData, password: text })}
-                secureTextEntry
-              />
-            </View>
-
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="lock-check-outline" size={20} color="#4b5563" style={styles.icon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor="#9ca3af"
-                value={formData.confirmPassword}
-                onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
-                secureTextEntry
-              />
-            </View>
-
-            {/* Register Button */}
+            {/* Create Account Button */}
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.registerButton, loading && styles.buttonDisabled]}
               onPress={handleRegister}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <View style={styles.loadingContent}>
+                  <ActivityIndicator size="small" color="white" />
+                  <Text style={[
+                    styles.buttonText,
+                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                  ]}>Creating account...</Text>
+                </View>
               ) : (
-                <LinearGradient
-                  colors={['#34d399', '#10b981']}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.buttonText}>Create Account</Text>
-                  <Icon name="account-plus" size={20} color="white" />
-                </LinearGradient>
+                <Text style={[
+                  styles.buttonText,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>Create Account</Text>
               )}
             </TouchableOpacity>
-
-            {/* Divider */}
+            
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Already registered?</Text>
+              <Text style={[
+                styles.dividerText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>Already have an account?</Text>
               <View style={styles.dividerLine} />
             </View>
-
-            {/* Login CTA */}
+            
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={styles.loginButton}
               onPress={() => navigation.navigate('Login')}
             >
-              <Text style={styles.secondaryButtonText}>Sign In Instead</Text>
-              <Icon name="login" size={18} color="#1e293b" />
+              <Text style={[
+                styles.loginText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Sign In Instead</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </LinearGradient>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'white',
   },
-  background: {
+  circle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#dff6f0',
+    top: -50,
+    right: -50,
+    opacity: 0.6,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#34d399',
+    bottom: 100,
+    left: -75,
+    opacity: 0.1,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#dff6f0',
+    top: 200,
+    left: 50,
+    opacity: 0.3,
+  },
+  circle4: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34d399',
+    top: 120,
+    right: 20,
+    opacity: 0.2,
+  },
+  circle5: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#dff6f0',
+    bottom: 200,
+    right: -30,
+    opacity: 0.4,
+  },
+  circle6: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#34d399',
+    top: 300,
+    left: -60,
+    opacity: 0.08,
+  },
+  content: {
     flex: 1,
-    width: '100%',
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    zIndex: 1,
   },
-  scrollContainer: {
+  scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingBottom: 50,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 25,
-    marginHorizontal: 30,
-    padding: 30,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+  header: {
+    alignItems: 'center',
+    position: 'relative',
   },
   backButton: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 0,
+    left: 0,
     zIndex: 1,
   },
   title: {
     fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
     marginTop: 20,
   },
-  subtitle: {
+  description: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#64748b',
+    color: '#6b7280',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  mainSection: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  inputSection: {
+    width: '100%',
     marginBottom: 32,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    marginBottom: 20,
-    paddingHorizontal: 15,
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  icon: {
-    marginRight: 10,
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 50,
+    height: 56,
     fontSize: 16,
     color: '#374151',
-    fontFamily: 'Inter-Regular',
   },
-  button: {
+  registerButton: {
+    width: '100%',
     height: 56,
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 15,
-  },
-  buttonGradient: {
-    flex: 1,
-    flexDirection: 'row',
+    borderRadius: 16,
+    backgroundColor: '#34d399',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    marginBottom: 16,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    marginRight: 10,
+    fontWeight: '700',
+    color: 'white',
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 25,
+    marginVertical: 20,
+    width: '100%',
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#e5e7eb',
   },
   dividerText: {
-    color: '#94a3b8',
-    fontFamily: 'Inter-Medium',
-    marginHorizontal: 10,
     fontSize: 14,
+    color: '#9ca3af',
+    marginHorizontal: 16,
   },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    paddingVertical: 14,
+  loginButton: {
+    borderWidth: 2,
+    borderColor: '#34d399',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginTop: 8,
   },
-  secondaryButtonText: {
-    color: '#1e293b',
+  loginText: {
     fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    color: '#34d399',
+    fontWeight: '600',
   },
 });
 

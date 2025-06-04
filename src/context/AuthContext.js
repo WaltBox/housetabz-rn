@@ -1,91 +1,252 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
-import { Platform } from 'react-native';
-import { API_URL, API_ENDPOINTS } from '../config/api';
-import jwt_decode from 'jwt-decode';
+import { Platform, View, Text } from 'react-native';
+import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
+import apiClient, { API_URL, API_ENDPOINTS } from '../config/api'; // Import your apiClient
+import jwtDecode from 'jwt-decode';
 
 const AuthContext = createContext({});
+
+// Add token refresh lock to prevent race conditions
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasPaymentMethods, setHasPaymentMethods] = useState(null);
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Load stored user on initial mount
   useEffect(() => {
     loadStoredUser();
   }, []);
 
-  // Setup axios interceptor for token expiration
+  // Setup axios interceptor for automatic token refresh
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
+    const interceptor = apiClient.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (
-          error.response && 
-          error.response.status === 401 && 
-          (error.response.data?.message === 'Token expired' || 
-           error.response.data?.error === 'Authentication failed')
-        ) {
-          console.log('Token expired, initiating logout');
-          await logout();
-          return new Promise(() => {}); // Break the error chain
+        console.log('=== INTERCEPTOR TRIGGERED ===');
+        console.log('Status:', error.response?.status);
+        console.log('Error message:', error.response?.data?.message);
+        console.log('URL:', error.config?.url);
+        
+        const originalRequest = error.config;
+        
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          // If already refreshing, queue this request
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            }).then(token => {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              return apiClient(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          originalRequest._retry = true;
+          isRefreshing = true;
+          
+          try {
+            console.log('Token expired, attempting refresh...');
+            const newToken = await refreshToken();
+            processQueue(null, newToken);
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            return apiClient(originalRequest);
+          } catch (refreshError) {
+            console.log('Token refresh failed, logging out');
+            processQueue(refreshError, null);
+            await logout();
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
+          }
         }
         
         return Promise.reject(error);
       }
     );
     
-    // Clean up interceptor on unmount
     return () => {
-      axios.interceptors.response.eject(interceptor);
+      apiClient.interceptors.response.eject(interceptor);
     };
   }, []);
 
   // Check if token is expired by decoding it
   const isTokenExpired = (token) => {
     try {
-      const decodedToken = jwt_decode(token);
+      const decodedToken = jwtDecode(token);
       const currentTime = Date.now() / 1000;
-      
-      // Check if token has expired
       return decodedToken.exp < currentTime;
     } catch (error) {
       console.error('Error decoding token:', error);
-      // If we can't decode the token, consider it expired for safety
       return true;
+    }
+  };
+
+  // Refresh token function
+  const refreshToken = async () => {
+    try {
+      const storedRefreshToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN);
+      if (!storedRefreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await apiClient.post('/api/auth/refresh', {
+        refreshToken: storedRefreshToken
+      });
+
+      const { token: newAccessToken, refreshToken: newRefreshToken, data } = response.data;
+      
+      // Store new tokens in Keychain
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN, newAccessToken);
+      if (newRefreshToken) {
+        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN, newRefreshToken);
+      }
+      
+      // Update apiClient default header and state
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+      setToken(newAccessToken);
+      
+      // Update user data if provided
+      if (data?.user) {
+        setUser(data.user);
+        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(data.user));
+      }
+      
+      return newAccessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      await logout();
+      throw error;
     }
   };
 
   const loadStoredUser = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem('userToken');
-      const storedUser = await AsyncStorage.getItem('userData');
+      console.log('=== DEBUG: loadStoredUser started ===');
+      setDebugInfo('Loading from Keychain...');
       
-      if (storedToken && storedUser) {
-        // Check token expiration locally
-        if (isTokenExpired(storedToken)) {
-          console.log('Stored token is expired, clearing auth state');
-          await logout();
+      const storedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN);
+      const storedUserData = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.USER_DATA);
+      const storedRefreshToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN);
+      
+      console.log('Keychain - token exists:', !!storedToken);
+      console.log('Keychain - user exists:', !!storedUserData);
+      console.log('Keychain - refresh token exists:', !!storedRefreshToken);
+      
+      setDebugInfo(`Keychain: Access=${!!storedToken}, User=${!!storedUserData}, Refresh=${!!storedRefreshToken}`);
+      
+      if (storedToken && storedUserData) {
+        const isExpired = isTokenExpired(storedToken);
+        console.log('Access token is expired:', isExpired);
+        setDebugInfo(`Token expired: ${isExpired}. ${isExpired ? 'Refreshing...' : 'Restoring...'}`);
+        
+        if (isExpired) {
+          console.log('Token expired, checking for refresh token...');
+          
+          if (storedRefreshToken) {
+            console.log('Refresh token found, attempting refresh...');
+            try {
+              setDebugInfo('Calling refresh API...');
+              await refreshToken();
+              console.log('✅ Token refreshed successfully on app startup');
+              setDebugInfo('✅ Refreshed from Keychain!');
+              return;
+            } catch (error) {
+              console.log('❌ Refresh failed on startup:', error.message);
+              setDebugInfo(`❌ Refresh failed: ${error.message}`);
+              await logout();
+            }
+          } else {
+            console.log('❌ No refresh token available, logging out');
+            setDebugInfo('❌ No refresh token');
+            await logout();
+          }
         } else {
-          // Token appears valid, restore session
-          console.log('Stored token appears valid, restoring session');
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          setUser(JSON.parse(storedUser));
+          // Token still valid, restore session
+          console.log('✅ Token still valid, restoring session');
+          setDebugInfo('✅ Restored from Keychain');
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          setUser(JSON.parse(storedUserData));
           setToken(storedToken);
         }
+      } else {
+        console.log('❌ No stored tokens/user found in Keychain');
+        setDebugInfo('❌ No Keychain data');
       }
     } catch (error) {
-      console.error('Error loading stored user:', error);
-      // On any error, clear auth state for safety
+      console.error('❌ Error in loadStoredUser:', error);
+      setDebugInfo(`❌ Error: ${error.message}`);
       await logout();
     } finally {
       setLoading(false);
+      // Clear debug info after 5 seconds
+      setTimeout(() => setDebugInfo(''), 5000);
     }
   };
 
-  // Register device token (expects a plain string)
+  // Manual payment method check function
+  const checkPaymentMethods = async () => {
+    // Get token from state or fallback to storage
+    let currentToken = token;
+    if (!currentToken) {
+      try {
+        console.log('Token not in state, checking storage...');
+        currentToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN);
+        console.log('Token from storage:', currentToken ? 'Found' : 'Not found');
+      } catch (error) {
+        console.log('Could not retrieve token from storage:', error);
+      }
+    }
+  
+    if (!currentToken) {
+      console.log('No token available for payment method check');
+      setHasPaymentMethods(false);
+      return false;
+    }
+  
+    try {
+      console.log('Checking payment methods with token...');
+      const response = await apiClient.get('/api/payment-methods');
+  
+      console.log('Payment methods response:', response.data);
+      
+      let hasPayments = false;
+      
+      if (response.data.paymentMethods) {
+        hasPayments = response.data.paymentMethods.length > 0;
+      } else if (response.data.message === "You need a card on file") {
+        hasPayments = false;
+      } else {
+        hasPayments = false;
+      }
+      
+      console.log('Has payment methods:', hasPayments);
+      setHasPaymentMethods(hasPayments);
+      return hasPayments;
+    } catch (error) {
+      console.error('Error checking payment methods:', error);
+      setHasPaymentMethods(false);
+      return false;
+    }
+  };
+
+  // Register device token
   const registerDeviceToken = async (deviceTokenData) => {
     if (!user || !token) {
       console.log('Cannot register device token - user not authenticated');
@@ -98,7 +259,7 @@ export const AuthProvider = ({ children }) => {
     }
     console.log('Registering device token with backend:', tokenString);
     try {
-      const response = await axios.post(`${API_URL}/api/users/device-token`, {
+      const response = await apiClient.post('/api/users/device-token', {
         deviceToken: tokenString,
         deviceType: Platform.OS,
       });
@@ -115,18 +276,36 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('Attempting login...', { email });
       console.log('Using API URL:', API_URL);
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.login}`, { email, password });
+      const response = await apiClient.post(API_ENDPOINTS.login, { email, password });
       console.log('Login response:', response.data);
-      const { token: authToken, data } = response.data;
+      
+      const { token: authToken, refreshToken: refToken, data } = response.data;
+      console.log('=== DEBUG LOGIN TOKENS ===');
+      console.log('Access token received:', !!authToken);
+      console.log('Refresh token received:', !!refToken);
+      console.log('User data received:', !!data?.user);
+      
       if (!authToken || !data?.user) {
         throw new Error('Invalid response structure from server');
       }
+      
       const loggedInUser = data.user;
-      await AsyncStorage.setItem('userToken', authToken);
-      await AsyncStorage.setItem('userData', JSON.stringify(loggedInUser));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      
+      // Store tokens in Keychain (secure storage)
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN, authToken);
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(loggedInUser));
+      
+      if (refToken) {
+        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN, refToken);
+        console.log('✅ Refresh token stored in Keychain');
+      } else {
+        console.log('❌ No refresh token to store');
+      }
+      
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       setUser(loggedInUser);
       setToken(authToken);
+      setHasPaymentMethods(null);
       console.log('Login successful:', loggedInUser);
       return true;
     } catch (error) {
@@ -140,11 +319,12 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       console.log('Logging out user');
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('userData');
-      delete axios.defaults.headers.common['Authorization'];
+      // Clear all auth data from Keychain
+      await keychainHelpers.clearAllAuthData();
+      delete apiClient.defaults.headers.common['Authorization'];
       setUser(null);
       setToken(null);
+      setHasPaymentMethods(null);
       return true;
     } catch (error) {
       console.error('Logout error:', error);
@@ -155,17 +335,25 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const register = async (userData) => {
     try {
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.register}`, userData);
+      const response = await apiClient.post(API_ENDPOINTS.register, userData);
       const { data } = response.data;
-      const { token: authToken, user: registeredUser } = data;
+      const { token: authToken, refreshToken: refToken, user: registeredUser } = data;
       if (!authToken || !registeredUser) {
         throw new Error('Invalid registration response');
       }
-      await AsyncStorage.setItem('userToken', authToken);
-      await AsyncStorage.setItem('userData', JSON.stringify(registeredUser));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      
+      // Store tokens in Keychain
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN, authToken);
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(registeredUser));
+      
+      if (refToken) {
+        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN, refToken);
+      }
+      
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       setUser(registeredUser);
       setToken(authToken);
+      setHasPaymentMethods(false);
       return response.data;
     } catch (error) {
       console.error('Registration error:', error);
@@ -173,10 +361,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Function to refresh payment method status
+  const refreshPaymentMethods = async () => {
+    return await checkPaymentMethods();
+  };
+
   // Verify reset code
   const verifyResetCode = async (email, code) => {
     try {
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.verifyResetCode}`, { 
+      const response = await apiClient.post(API_ENDPOINTS.verifyResetCode, { 
         email, 
         code 
       });
@@ -191,7 +384,7 @@ export const AuthProvider = ({ children }) => {
   const requestPasswordResetCode = async (email) => {
     try {
       console.log('Requesting password reset code for:', email);
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.requestResetCode}`, { email });
+      const response = await apiClient.post(API_ENDPOINTS.requestResetCode, { email });
       console.log('Reset code request successful');
       return response.data;
     } catch (error) {
@@ -204,7 +397,7 @@ export const AuthProvider = ({ children }) => {
   const resetPasswordWithCode = async (email, code, newPassword) => {
     try {
       console.log('Attempting to reset password with code');
-      const response = await axios.post(`${API_URL}${API_ENDPOINTS.resetPassword}`, { 
+      const response = await apiClient.post(API_ENDPOINTS.resetPassword, { 
         email, 
         code, 
         newPassword 
@@ -220,10 +413,10 @@ export const AuthProvider = ({ children }) => {
   // Update user house
   const updateUserHouse = async (houseId) => {
     try {
-      const response = await axios.put(`${API_URL}/api/users/${user.id}/house`, { houseId });
+      const response = await apiClient.put(`/api/users/${user.id}/house`, { houseId });
       const updatedUser = response.data.user;
       setUser(updatedUser);
-      await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(updatedUser));
       return true;
     } catch (error) {
       console.error('Error updating user house:', error);
@@ -232,24 +425,31 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        login,
-        logout,
-        register,
-        updateUserHouse,
-        registerDeviceToken,
-        isAuthenticated: !!user,
-        verifyResetCode,
-        requestPasswordResetCode,
-        resetPasswordWithCode,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <View style={{ flex: 1 }}>
+    
+      <AuthContext.Provider
+        value={{
+          user,
+          token,
+          loading,
+          hasPaymentMethods,
+          login,
+          logout,
+          register,
+          updateUserHouse,
+          registerDeviceToken,
+          checkPaymentMethods,
+          refreshPaymentMethods,
+          refreshToken,
+          isAuthenticated: !!user,
+          verifyResetCode,
+          requestPasswordResetCode,
+          resetPasswordWithCode,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </View>
   );
 };
 

@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
       },
       android: {
-        elevation: 2
+    
       }
     }),
     alignItems: 'flex-start'
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
         shadowRadius: 5,
       },
       android: {
-        elevation: 1
+ 
       }
     })
   },

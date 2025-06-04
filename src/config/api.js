@@ -1,7 +1,7 @@
 // src/config/api.js
 import { Platform } from 'react-native';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
 
 // Development URLs
 const DEV_URLS = {
@@ -38,11 +38,12 @@ const apiClient = axios.create({
   }
 });
 
-// Add a request interceptor to attach auth token
+// Add a request interceptor to attach auth token from Keychain
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      // Get token from Keychain instead of AsyncStorage
+      const token = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

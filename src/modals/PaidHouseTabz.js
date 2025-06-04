@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
-    elevation: 10,
+   
   },
   emptyTitle: {
     fontSize: 24,

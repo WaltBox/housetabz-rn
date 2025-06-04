@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 1,
+
   },
   billName: {
     fontSize: 16,
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 1,
+ 
   },
   reminderInput: {
     fontSize: 16,

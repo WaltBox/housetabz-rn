@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 3,
+   
   },
   headerTitle: {
     fontSize: 22,
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+   
   },
   providerLogo: {
     width: '100%',            // ← fill entire circle
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 1,
+   
   },
   benefitRow: { flexDirection: 'row', alignItems: 'center' },
   benefitIconContainer: {
