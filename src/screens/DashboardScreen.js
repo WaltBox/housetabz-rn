@@ -19,16 +19,10 @@ import DashboardMiddleSection from '../components/dashboard/DashboardMiddleSecti
 import DashboardBottomSection from '../components/dashboard/DashboardBottomSection';
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 import UrgentMessageModal from '../modals/UrgentMessageModal';
-import BillSubmissionModal from '../modals/BillSubmissionModal'; // Import BillSubmissionModal
+import BillSubmissionModal from '../modals/BillSubmissionModal';
 
-const LoadingScreen = ({ message = 'Loading...' }) => (
-  <SafeAreaView style={styles.container}>
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#34d399" />
-      <Text style={styles.loadingText}>{message}</Text>
-    </View>
-  </SafeAreaView>
-);
+// Import the new skeleton component
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 
 const ErrorScreen = ({ error = 'Something went wrong', onRetry }) => (
   <SafeAreaView style={styles.container}>
@@ -56,7 +50,7 @@ const DashboardScreen = () => {
   const [urgentMessages, setUrgentMessages] = useState([]);
   
   // UI states
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -278,8 +272,15 @@ const DashboardScreen = () => {
     console.log('View all messages pressed');
   };
 
-  if (isLoading) return <LoadingScreen message="Loading dashboard..." />;
-  if (error)     return <ErrorScreen error={error} onRetry={fetchDashboardData} />;
+  // Show skeleton while loading (not refreshing)
+  if (isLoading && !refreshing) {
+    return <DashboardSkeleton />;
+  }
+
+  // Show error screen
+  if (error) {
+    return <ErrorScreen error={error} onRetry={fetchDashboardData} />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -363,8 +364,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#dff6f0' },
   scrollContent: { paddingTop: 8, paddingBottom: 12 },
   sectionContainer: { marginBottom: 8 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
-  loadingText: { marginTop: 16, fontSize: 16, color: '#64748b', fontWeight: '500' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   errorText: { marginTop: 16, marginBottom: 24, fontSize: 16, color: '#ef4444', textAlign: 'center' },
   retryButton: { backgroundColor: '#34d399', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },

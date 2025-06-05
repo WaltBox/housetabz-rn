@@ -1,4 +1,4 @@
-// HouseServicesScreen.js (UPDATED WITH ENHANCED LEDGER DATA)
+// HouseServicesScreen.js (UPDATED WITH SKELETON)
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -10,13 +10,17 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
+  RefreshControl
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import apiClient from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import HouseServiceDetailModal from '../modals/HouseServiceDetailModal';
+
+// Import the skeleton component
+import HouseServicesSkeleton from '../components/skeletons/HouseServicesSkeleton';
 
 const HouseServicesScreen = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
@@ -32,6 +36,7 @@ const HouseServicesScreen = ({ navigation }) => {
   const [serviceFundingSummaries, setServiceFundingSummaries] = useState({});
   const [serviceLedgers, setServiceLedgers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('active');
   const [selectedService, setSelectedService] = useState(null);
@@ -60,16 +65,12 @@ const HouseServicesScreen = ({ navigation }) => {
   const fetchFundingSummaryForService = async (serviceId) => {
     try {
       // The correct path should match the routes we defined in house-service-ledger-routes.js
-      // Change from: /api/house-service-ledgers/house-service/${serviceId}/funding-summary
-      // To: /api/house-service-ledgers/house-service/${serviceId}/funding-summary
-      
-      // Check if the endpoint works with this path
       const response = await apiClient.get(`/api/house-service-ledgers/house-service/${serviceId}/funding-summary`);
       return response.data;
     } catch (err) {
       // First error, try alternative path
       try {
-        // Try another possible path format (check your Express routes in app.js)
+        // Try another possible path format
         const altResponse = await apiClient.get(`/api/house-service/${serviceId}/funding-summary`);
         return altResponse.data;
       } catch (altErr) {
@@ -87,6 +88,9 @@ const HouseServicesScreen = ({ navigation }) => {
         setIsLoading(false);
         return;
       }
+
+      setError(null);
+      if (!refreshing) setIsLoading(true);
 
       // Fetch all house services
       const response = await apiClient.get(`/api/houseServices/house/${user.houseId}`);
@@ -125,6 +129,7 @@ const HouseServicesScreen = ({ navigation }) => {
       setError('Failed to load house services. Please try again.');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, [user?.houseId]);
 
@@ -132,8 +137,9 @@ const HouseServicesScreen = ({ navigation }) => {
     let isMounted = true;
 
     const loadData = async () => {
-      if (isMounted) setIsLoading(true);
-      await fetchHouseServices();
+      if (isMounted) {
+        await fetchHouseServices();
+      }
     };
 
     loadData();
@@ -149,6 +155,11 @@ const HouseServicesScreen = ({ navigation }) => {
       unsubscribe();
     };
   }, [navigation, fetchHouseServices]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchHouseServices();
+  };
 
   const filteredServices = services.filter(service => {
     if (activeTab === 'active') return service.status === 'active';
@@ -306,6 +317,11 @@ const HouseServicesScreen = ({ navigation }) => {
     );
   };
 
+  // Show skeleton while loading (not refreshing)
+  if (isLoading && !refreshing) {
+    return <HouseServicesSkeleton />;
+  }
+
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
@@ -352,11 +368,7 @@ const HouseServicesScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1e293b" />
-          </View>
-        ) : error ? (
+        {error ? (
           <View style={styles.errorContainer}>
             <MaterialIcons name="error-outline" size={48} color="#ef4444" />
             <Text style={[
@@ -383,7 +395,7 @@ const HouseServicesScreen = ({ navigation }) => {
           </View>
         ) : (
           <>
-            {filteredServices.length === 0 && (
+            {filteredServices.length === 0 && !isLoading && (
               <View style={styles.emptyContainer}>
                 <MaterialIcons 
                   name={activeTab === 'active' ? 'home' : 'pending-actions'} 
@@ -414,6 +426,13 @@ const HouseServicesScreen = ({ navigation }) => {
                 renderItem={renderServiceItem}
                 contentContainerStyle={styles.servicesList}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#34d399"
+                  />
+                }
               />
             )}
           </>
@@ -501,7 +520,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
- 
+    elevation: 1,
   },
   serviceContent: {
     flexDirection: 'row',
@@ -556,12 +575,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: "#dff6f0",
   },
   errorContainer: {
     flex: 1,

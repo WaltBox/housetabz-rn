@@ -32,6 +32,9 @@ import Scoreboard from "../components/myhouse/Scoreboard";
 import ActionCards from "../components/myhouse/ActionCards";
 import InviteModalContent from "../components/myhouse/InviteModalContent";
 
+// Import the skeleton component
+import HouseTabzSkeleton from "../components/skeletons/HouseTabzSkeleton";
+
 const { width } = Dimensions.get("window");
 
 const HouseTabzScreen = () => {
@@ -85,6 +88,10 @@ const HouseTabzScreen = () => {
         setLoading(false);
         return;
       }
+
+      setError(null);
+      if (!refreshing) setLoading(true);
+
       const { data } = await apiClient.get(`/api/houses/${user.houseId}`);
       setHouse(data);
       setError(null);
@@ -109,33 +116,33 @@ const HouseTabzScreen = () => {
   const handleHSIInfoPress = () => {
     setIsHSIModalVisible(true);
   };
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#34d399" />
-      </View>
-    );
+
+  // Show skeleton while loading (not refreshing)
+  if (loading && !refreshing) {
+    return <HouseTabzSkeleton />;
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
         <MaterialIcons name="error-outline" size={48} color="#ef4444" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchHouseData}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!user?.houseId) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={styles.centerContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
         <MaterialIcons name="home" size={48} color="#64748b" />
         <Text style={styles.errorText}>No House Assigned</Text>
         <Text style={styles.subErrorText}>Join a house to view this screen</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -166,26 +173,26 @@ const HouseTabzScreen = () => {
             >
               {/* Section: HSI Component */}
               <View style={styles.section}>
-              <HSIComponent
-    house={house}
-    onInfoPress={handleHSIInfoPress}
-  />
-  
-  {/* Add the HSIModal at the bottom of your component, alongside other modals */}
-  {isHSIModalVisible && (
-    <ModalComponent
-      visible={true}
-      onClose={() => setIsHSIModalVisible(false)}
-      fullScreen={true}
-      hideCloseButton={true}
-      backgroundColor="#dff6f0"
-      useBackArrow={false}
-    >
-      <HSIModal 
-        onClose={() => setIsHSIModalVisible(false)} 
-      />
-    </ModalComponent>
-  )}
+                <HSIComponent
+                  house={house}
+                  onInfoPress={handleHSIInfoPress}
+                />
+                
+                {/* HSI Modal */}
+                {isHSIModalVisible && (
+                  <ModalComponent
+                    visible={true}
+                    onClose={() => setIsHSIModalVisible(false)}
+                    fullScreen={true}
+                    hideCloseButton={true}
+                    backgroundColor="#dff6f0"
+                    useBackArrow={false}
+                  >
+                    <HSIModal 
+                      onClose={() => setIsHSIModalVisible(false)} 
+                    />
+                  </ModalComponent>
+                )}
               </View>
               
               {/* Section: Scoreboard */}

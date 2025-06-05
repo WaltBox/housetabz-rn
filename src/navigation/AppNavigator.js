@@ -15,7 +15,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import PaymentMethodOnboardingScreen from '../screens/PaymentMethodOnboardingScreen';
 
 // App Screens
-import LoadingScreen from '../screens/LoadingScreen';
+import HouseTabzLoadingScreen from '../components/HouseTabzLoadingScreen'; // Changed this line
 import PartnersScreen from '../screens/PartnersScreen';
 import ViewCompanyCard from '../modals/ViewCompanyCard';
 import DashboardScreen from '../screens/DashboardScreen';
@@ -136,7 +136,7 @@ const AppNavigator = () => {
   // Show loading screen while initial auth load or payment check is happening
   if (loading || (user && hasPaymentMethods === null)) {
     console.log('Showing loading screen. Loading:', loading, 'User:', !!user, 'HasPaymentMethods:', hasPaymentMethods);
-    return <LoadingScreen />;
+    return <HouseTabzLoadingScreen message="Setting up your account..." />;
   }
 
   console.log('AppNavigator decision - User:', !!user, 'HasPaymentMethods:', hasPaymentMethods, 'HouseId:', user?.houseId);
@@ -153,7 +153,7 @@ const AppNavigator = () => {
           user.houseId ? <MainStack /> : <HouseOnboardingStack />
         ) : (
           // Still checking or undefined - show loading
-          <LoadingScreen />
+          <HouseTabzLoadingScreen message="Checking payment methods..." />
         )
       ) : (
         <AuthStack />

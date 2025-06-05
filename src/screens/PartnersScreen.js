@@ -11,6 +11,7 @@ import {
   Animated,
   ActivityIndicator,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import CompanyCardComponent from "../components/CompanyCardComponent";
@@ -19,6 +20,9 @@ import SpecialDeals from "../components/SpecialDeals";
 import { useAuth } from "../context/AuthContext";
 import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "../config/api";
+
+// Import the skeleton component
+import PartnersSkeleton from "../components/skeletons/PartnersSkeleton";
 
 const { width } = Dimensions.get("window");
 const CARD_GUTTER = 16;
@@ -29,26 +33,43 @@ const PartnersScreen = () => {
   const [partners, setPartners] = useState([]);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [dealsCount, setDealsCount] = useState(0);
   const cardScale = useState(new Animated.Value(1))[0];
 
   useEffect(() => {
-    loadPartners();
-    loadDealsCount();
+    loadData();
   }, []);
 
+  const loadData = async () => {
+    try {
+      setError(null);
+      if (!refreshing) setLoading(true);
+      
+      // Load partners and deals in parallel
+      const [partnersResult, dealsResult] = await Promise.all([
+        loadPartners(),
+        loadDealsCount()
+      ]);
+      
+    } catch (err) {
+      console.error('Error loading partners data:', err);
+      setError("Couldn't load partners. Pull to retry.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   const loadPartners = async () => {
-    setLoading(true);
-    setError(null);
     try {
       const { data } = await apiClient.get("/api/partners");
       setPartners(Array.isArray(data) ? data : []);
+      return data;
     } catch (e) {
-      console.error(e);
-      setError("Couldn’t load partners. Pull to retry.");
-    } finally {
-      setLoading(false);
+      console.error('Partners loading error:', e);
+      throw e;
     }
   };
 
@@ -56,9 +77,17 @@ const PartnersScreen = () => {
     try {
       const res = await apiClient.get("/api/deals");
       setDealsCount(res.data.deals.length);
+      return res.data.deals.length;
     } catch (e) {
       console.error("Deals count error:", e);
+      // Don't throw for deals count - it's not critical
+      return 0;
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
   const onCardPress = (p) => {
@@ -103,25 +132,18 @@ const PartnersScreen = () => {
   );
 
   const renderBody = () => {
-    if (loading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#34d399" />
-          <Text style={styles.loadingText}>Loading partners…</Text>
-        </View>
-      );
-    }
     if (error) {
       return (
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={32} color="#ef4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadPartners}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
             <Text style={styles.retryText}>Refresh</Text>
           </TouchableOpacity>
         </View>
       );
     }
+    
     return (
       <View style={styles.grid}>
         {partners.map((p) => (
@@ -139,10 +161,25 @@ const PartnersScreen = () => {
     );
   };
 
+  // Show skeleton while loading (not refreshing)
+  if (loading && !refreshing) {
+    return <PartnersSkeleton />;
+  }
+
   return (
     <View style={styles.container}>
       {renderHeader()}
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#34d399"
+          />
+        }
+      >
         {dealsCount > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -197,7 +234,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   gradient: {
-    paddingVertical: 24,    // increased for taller banner
+    paddingVertical: 24,
     paddingHorizontal: 24,
     borderBottomRightRadius: 40,
   },
@@ -210,7 +247,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 28,           // reduced from 28
+    fontSize: 28,
     fontWeight: "900",
     color: "#fff",
     letterSpacing: -0.5,
@@ -271,16 +308,6 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
     paddingHorizontal: CARD_GUTTER,
-  },
-  loadingContainer: {
-    height: 200,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#64748b",
-    fontSize: 16,
   },
   errorContainer: {
     margin: 16,

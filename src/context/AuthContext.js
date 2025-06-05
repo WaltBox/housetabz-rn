@@ -1,10 +1,94 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { Platform, View, Text } from 'react-native';
 import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
-import apiClient, { API_URL, API_ENDPOINTS } from '../config/api'; // Import your apiClient
+import apiClient, { API_URL, API_ENDPOINTS } from '../config/api';
 import jwtDecode from 'jwt-decode';
 
 const AuthContext = createContext({});
+
+// In-memory token cache to avoid repeated Keychain access
+let tokenCache = {
+  accessToken: null,
+  refreshToken: null,
+  lastUpdated: null,
+  expiresAt: null
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Helper to check if cache is valid
+const isCacheValid = () => {
+  return tokenCache.lastUpdated && 
+         tokenCache.accessToken && 
+         (Date.now() - tokenCache.lastUpdated) < CACHE_DURATION;
+};
+
+// Helper to get cached or fresh token
+const getCachedToken = async () => {
+  // Return cached token if valid
+  if (isCacheValid()) {
+    console.log('Using cached token');
+    return tokenCache.accessToken;
+  }
+  
+  // Cache expired or empty, fetch from Keychain
+  console.log('Fetching token from Keychain');
+  try {
+    const storedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN);
+    const storedRefreshToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN);
+    
+    if (storedToken) {
+      // Update cache
+      tokenCache = {
+        accessToken: storedToken,
+        refreshToken: storedRefreshToken,
+        lastUpdated: Date.now(),
+        expiresAt: getTokenExpiry(storedToken)
+      };
+      
+      return storedToken;
+    }
+  } catch (error) {
+    console.error('Error getting token from Keychain:', error);
+  }
+  
+  return null;
+};
+
+// Helper to update cache when tokens change
+const updateTokenCache = (accessToken, refreshToken = null) => {
+  tokenCache = {
+    accessToken,
+    refreshToken: refreshToken || tokenCache.refreshToken,
+    lastUpdated: Date.now(),
+    expiresAt: getTokenExpiry(accessToken)
+  };
+  
+  console.log('Token cache updated');
+};
+
+// Helper to clear cache
+const clearTokenCache = () => {
+  tokenCache = {
+    accessToken: null,
+    refreshToken: null,
+    lastUpdated: null,
+    expiresAt: null
+  };
+  
+  console.log('Token cache cleared');
+};
+
+// Helper to get token expiry
+const getTokenExpiry = (token) => {
+  try {
+    if (!token) return null;
+    const decoded = jwtDecode(token);
+    return decoded.exp * 1000; // Convert to milliseconds
+  } catch (error) {
+    return null;
+  }
+};
 
 // Add token refresh lock to prevent race conditions
 let isRefreshing = false;
@@ -33,9 +117,29 @@ export const AuthProvider = ({ children }) => {
     loadStoredUser();
   }, []);
 
-  // Setup axios interceptor for automatic token refresh
+  // Setup optimized axios interceptor
   useEffect(() => {
-    const interceptor = apiClient.interceptors.response.use(
+    const interceptor = apiClient.interceptors.request.use(
+      async (config) => {
+        try {
+          // Use cached token instead of hitting Keychain every time
+          const cachedToken = await getCachedToken();
+          if (cachedToken) {
+            config.headers['Authorization'] = `Bearer ${cachedToken}`;
+          }
+          return config;
+        } catch (error) {
+          console.error('Error adding auth token to request:', error);
+          return config;
+        }
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor for automatic token refresh
+    const responseInterceptor = apiClient.interceptors.response.use(
       (response) => response,
       async (error) => {
         console.log('=== INTERCEPTOR TRIGGERED ===');
@@ -82,7 +186,8 @@ export const AuthProvider = ({ children }) => {
     );
     
     return () => {
-      apiClient.interceptors.response.eject(interceptor);
+      apiClient.interceptors.request.eject(interceptor);
+      apiClient.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
@@ -101,7 +206,9 @@ export const AuthProvider = ({ children }) => {
   // Refresh token function
   const refreshToken = async () => {
     try {
-      const storedRefreshToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN);
+      const storedRefreshToken = tokenCache.refreshToken || 
+                                await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN);
+      
       if (!storedRefreshToken) {
         throw new Error('No refresh token available');
       }
@@ -118,6 +225,9 @@ export const AuthProvider = ({ children }) => {
         await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN, newRefreshToken);
       }
       
+      // Update cache immediately
+      updateTokenCache(newAccessToken, newRefreshToken);
+      
       // Update apiClient default header and state
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
       setToken(newAccessToken);
@@ -131,6 +241,7 @@ export const AuthProvider = ({ children }) => {
       return newAccessToken;
     } catch (error) {
       console.error('Token refresh failed:', error);
+      clearTokenCache(); // Clear cache on refresh failure
       await logout();
       throw error;
     }
@@ -152,6 +263,9 @@ export const AuthProvider = ({ children }) => {
       setDebugInfo(`Keychain: Access=${!!storedToken}, User=${!!storedUserData}, Refresh=${!!storedRefreshToken}`);
       
       if (storedToken && storedUserData) {
+        // Initialize cache with stored tokens
+        updateTokenCache(storedToken, storedRefreshToken);
+        
         const isExpired = isTokenExpired(storedToken);
         console.log('Access token is expired:', isExpired);
         setDebugInfo(`Token expired: ${isExpired}. ${isExpired ? 'Refreshing...' : 'Restoring...'}`);
@@ -188,10 +302,12 @@ export const AuthProvider = ({ children }) => {
       } else {
         console.log('❌ No stored tokens/user found in Keychain');
         setDebugInfo('❌ No Keychain data');
+        clearTokenCache(); // Clear cache if no stored data
       }
     } catch (error) {
       console.error('❌ Error in loadStoredUser:', error);
       setDebugInfo(`❌ Error: ${error.message}`);
+      clearTokenCache(); // Clear cache on error
       await logout();
     } finally {
       setLoading(false);
@@ -202,18 +318,9 @@ export const AuthProvider = ({ children }) => {
 
   // Manual payment method check function
   const checkPaymentMethods = async () => {
-    // Get token from state or fallback to storage
-    let currentToken = token;
-    if (!currentToken) {
-      try {
-        console.log('Token not in state, checking storage...');
-        currentToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.ACCESS_TOKEN);
-        console.log('Token from storage:', currentToken ? 'Found' : 'Not found');
-      } catch (error) {
-        console.log('Could not retrieve token from storage:', error);
-      }
-    }
-  
+    // Get token from cache first, then state, then fallback to storage
+    let currentToken = await getCachedToken() || token;
+    
     if (!currentToken) {
       console.log('No token available for payment method check');
       setHasPaymentMethods(false);
@@ -221,7 +328,7 @@ export const AuthProvider = ({ children }) => {
     }
   
     try {
-      console.log('Checking payment methods with token...');
+      console.log('Checking payment methods with cached token...');
       const response = await apiClient.get('/api/payment-methods');
   
       console.log('Payment methods response:', response.data);
@@ -302,6 +409,9 @@ export const AuthProvider = ({ children }) => {
         console.log('❌ No refresh token to store');
       }
       
+      // Update cache immediately after login
+      updateTokenCache(authToken, refToken);
+      
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       setUser(loggedInUser);
       setToken(authToken);
@@ -321,6 +431,10 @@ export const AuthProvider = ({ children }) => {
       console.log('Logging out user');
       // Clear all auth data from Keychain
       await keychainHelpers.clearAllAuthData();
+      
+      // Clear cache
+      clearTokenCache();
+      
       delete apiClient.defaults.headers.common['Authorization'];
       setUser(null);
       setToken(null);
@@ -349,6 +463,9 @@ export const AuthProvider = ({ children }) => {
       if (refToken) {
         await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.REFRESH_TOKEN, refToken);
       }
+      
+      // Update cache immediately after registration
+      updateTokenCache(authToken, refToken);
       
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
       setUser(registeredUser);
@@ -426,7 +543,6 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <View style={{ flex: 1 }}>
-    
       <AuthContext.Provider
         value={{
           user,
@@ -445,6 +561,13 @@ export const AuthProvider = ({ children }) => {
           verifyResetCode,
           requestPasswordResetCode,
           resetPasswordWithCode,
+          // Expose cache utilities for debugging
+          debugInfo,
+          getCachedToken,
+          clearTokenCache: () => {
+            clearTokenCache();
+            setDebugInfo('Cache cleared manually');
+          }
         }}
       >
         {children}

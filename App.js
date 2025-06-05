@@ -1,6 +1,5 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
-import AppLoading from 'expo-app-loading';
 import { useFonts } from 'expo-font';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider } from './src/context/AuthContext'; 
@@ -10,11 +9,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Platform, DeviceEventEmitter } from 'react-native';
 import PushNotification from 'react-native-push-notification';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
-// Remove AsyncStorage import - we're using Keychain now
 import { useAuth } from './src/context/AuthContext';
-import { keychainHelpers, KEYCHAIN_SERVICES } from './src/utils/keychainHelpers'; // Add this import
+import { keychainHelpers, KEYCHAIN_SERVICES } from './src/utils/keychainHelpers';
 
-// Create React Query client.
+// Import custom loading screen
+import HouseTabzLoadingScreen from './src/components/HouseTabzLoadingScreen';
+
+// Create React Query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,7 +27,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Use your Stripe publishable key.
+// Use your Stripe publishable key
 const STRIPE_PUBLISHABLE_KEY =
   Constants.expoConfig?.extra?.STRIPE_PUBLISHABLE_KEY ||
   'pk_live_51NK4ivCh7Bf0jit7JA4yDqJ5zSOiXXKerUU79MAYQGlgl5jmTPUSUbhSyUOFSrUsbFnL6osRuKgDcIsSC3sRWBlw00l9ItqB0H';
@@ -38,38 +39,53 @@ const App = () => {
     'Quicksand-Bold': require('./assets/fonts/Quicksand-Bold.ttf'),
   });
 
+  // Show custom loading screen while fonts load
   if (!fontsLoaded) {
-    return <AppLoading />;
+    return <HouseTabzLoadingScreen message="Loading fonts..." />;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StripeProvider
-          publishableKey={STRIPE_PUBLISHABLE_KEY}
-          merchantIdentifier="merchant.com.housetabz"
-          urlScheme="housetabz"
-          threeDSecureParams={{
-            backgroundColor: "#fff",
-            timeout: 5,
-          }}
-        >
-          <PushNotificationHandler>
-            <AppNavigator />
-          </PushNotificationHandler>
-        </StripeProvider>
+        <AppContent />
       </AuthProvider>
     </QueryClientProvider>
   );
 };
 
-// PushNotificationHandler now subscribes to a native event that passes the token.
+// Separate component to access useAuth hook
+const AppContent = () => {
+  const { loading } = useAuth();
+
+  // Show custom loading screen while auth is loading
+  if (loading) {
+    return <HouseTabzLoadingScreen message="Setting up your account..." />;
+  }
+
+  return (
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.housetabz"
+      urlScheme="housetabz"
+      threeDSecureParams={{
+        backgroundColor: "#fff",
+        timeout: 5,
+      }}
+    >
+      <PushNotificationHandler>
+        <AppNavigator />
+      </PushNotificationHandler>
+    </StripeProvider>
+  );
+};
+
+// PushNotificationHandler component
 const PushNotificationHandler = ({ children }) => {
   const { user, token } = useAuth();
   const [deviceToken, setDeviceToken] = useState(null);
   const isConfigured = useRef(false);
 
-  // Listen to the native event "remoteNotificationsRegistered" for the token.
+  // Listen to the native event "remoteNotificationsRegistered" for the token
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('remoteNotificationsRegistered', (data) => {
       if (data && data.deviceToken) {
@@ -77,13 +93,13 @@ const PushNotificationHandler = ({ children }) => {
         console.log('Received native push token:', tokenString);
         keychainHelpers.setSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN, tokenString)
           .then(() => setDeviceToken(tokenString))
-          .catch(err => console.error('Keychain error:', err)); // Updated error message
+          .catch(err => console.error('Keychain error:', err));
       }
     });
     return () => subscription.remove();
   }, []);
 
-  // Configure push notifications.
+  // Configure push notifications
   useEffect(() => {
     if (isConfigured.current) return;
     PushNotification.configure({
@@ -118,11 +134,10 @@ const PushNotificationHandler = ({ children }) => {
     };
   }, []);
 
-  // On mount, load any saved token, and if logged in, register it.
+  // On mount, load any saved token, and if logged in, register it
   useEffect(() => {
     const loadSavedToken = async () => {
       try {
-        // Use Keychain instead of AsyncStorage
         const savedToken = await keychainHelpers.getSecureData(KEYCHAIN_SERVICES.DEVICE_TOKEN);
         if (savedToken) {
           console.log('Loaded saved device token from Keychain:', savedToken);
@@ -139,7 +154,7 @@ const PushNotificationHandler = ({ children }) => {
     loadSavedToken();
   }, [user, token]);
 
-  // When the user and token are available, register the device token.
+  // When the user and token are available, register the device token
   useEffect(() => {
     if (user && token && deviceToken) {
       console.log('Both user and device token available, registering with backend');
@@ -147,7 +162,7 @@ const PushNotificationHandler = ({ children }) => {
     }
   }, [user, token, deviceToken]);
 
-  // Function to register token with backend.
+  // Function to register token with backend
   const registerTokenWithBackend = (tokenString) => {
     if (!user || !token) {
       console.log('Cannot register device token - user not authenticated');
