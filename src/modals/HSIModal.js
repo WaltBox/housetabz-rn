@@ -21,7 +21,7 @@ const HSIModal = ({ onClose }) => {
         >
           <MaterialIcons name="close" size={24} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>House Status Index (HSI)</Text>
+        <Text style={styles.headerTitle}>Financial Health</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -31,49 +31,106 @@ const HSIModal = ({ onClose }) => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.iconContainer}>
-          <MaterialIcons name="trending-up" size={56} color="#14B8A6" />
+          <MaterialIcons name="account-balance" size={56} color="#14B8A6" />
         </View>
         
         <View style={styles.divider} />
 
         <Text style={styles.paragraph}>
-          The HSI reflects your household's financial responsibility. It determines how much HouseTabz is willing to front on behalf of your house and influences the service fees your house pays to balance risk.
+          House Status Index affects both Advance Allowance and service fees. Better payment history = higher score = more coverage and lower fees.
         </Text>
+
+        {/* HSI Section */}
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="trending-up" size={20} color="#14B8A6" />
+          <Text style={styles.sectionTitle}>House Status Index (HSI)</Text>
+        </View>
 
         <View style={styles.infoCard}>
           <View style={styles.infoIconWrapper}>
             <MaterialIcons name="schedule" size={24} color="#14B8A6" />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>On-Time Payments Impact</Text>
+            <Text style={styles.infoTitle}>Payment History</Text>
             <Text style={styles.infoText}>
-              When everyone pays on time, your HSI goes up. Late payments cause it to go down.
+              On-time payments raise HSI. Late payments lower it.
             </Text>
           </View>
         </View>
 
         <View style={styles.infoCard}>
           <View style={styles.infoIconWrapper}>
-            <MaterialIcons name="credit-card" size={24} color="#14B8A6" />
+            <MaterialIcons name="percent" size={24} color="#14B8A6" />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Better Fronting Terms</Text>
+            <Text style={styles.infoTitle}>Affects Service Fees</Text>
             <Text style={styles.infoText}>
-              A higher HSI means HouseTabz can offer larger fronting amounts with lower service fees.
+              Higher HSI = lower service fees.
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.infoCard}>
           <View style={styles.infoIconWrapper}>
-            <MaterialIcons name="group" size={24} color="#14B8A6" />
+            <MaterialIcons name="account-balance-wallet" size={24} color="#14B8A6" />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Collective Responsibility</Text>
+            <Text style={styles.infoTitle}>Affects Advance Allowance</Text>
             <Text style={styles.infoText}>
-              Every roommate's payment behavior affects the entire household's HSI score.
+              Higher HSI = more coverage available.
             </Text>
           </View>
+        </View>
+
+        {/* Advance Allowance Section */}
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="account-balance-wallet" size={20} color="#14B8A6" />
+          <Text style={styles.sectionTitle}>Advance Allowance</Text>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoIconWrapper}>
+            <MaterialIcons name="paid" size={24} color="#14B8A6" />
+          </View>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>We Cover Missed Payments</Text>
+            <Text style={styles.infoText}>
+              HouseTabz advances missed individual payments to keep services active.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoIconWrapper}>
+            <MaterialIcons name="sync" size={24} color="#14B8A6" />
+          </View>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Higher HSI = More Coverage</Text>
+            <Text style={styles.infoText}>
+              Better payment history means higher allowance.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoIconWrapper}>
+            <MaterialIcons name="refresh" size={24} color="#14B8A6" />
+          </View>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Repay When Ready</Text>
+            <Text style={styles.infoText}>
+              Pay back advances on your schedule.
+            </Text>
+          </View>
+        </View>
+
+        {/* Connection Callout */}
+        <View style={styles.connectionCard}>
+          <MaterialIcons name="link" size={24} color="#0891b2" style={styles.connectionIcon} />
+          <Text style={styles.connectionTitle}>The Connection</Text>
+          <Text style={styles.connectionText}>
+            Higher HSI = more coverage + lower fees. Keep paying on time to improve your house's financial health.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -140,6 +197,19 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     marginHorizontal: 8,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginLeft: 8,
+  },
   infoCard: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
@@ -172,6 +242,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#475569',
+  },
+  connectionCard: {
+    backgroundColor: 'rgba(8, 145, 178, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 12,
+    width: '100%',
+    borderWidth: 2,
+    borderColor: '#0891b2',
+    alignItems: 'center',
+  },
+  connectionIcon: {
+    marginBottom: 8,
+  },
+  connectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0891b2',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  connectionText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#0f172a',
+    textAlign: 'center',
   },
 });
 

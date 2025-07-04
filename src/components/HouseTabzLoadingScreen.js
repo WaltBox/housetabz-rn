@@ -4,24 +4,17 @@ import {
   View,
   Text,
   StyleSheet,
-  StatusBar,
-  ActivityIndicator
+  StatusBar
 } from 'react-native';
 
-const HouseTabzLoadingScreen = ({ message = 'Loading...' }) => {
+const HouseTabzLoadingScreen = ({ message }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       
-      {/* Simple centered content */}
+      {/* Just the HouseTabz text, centered */}
       <View style={styles.content}>
         <Text style={styles.appName}>HouseTabz</Text>
-        <ActivityIndicator 
-          size="large" 
-          color="#34d399" 
-          style={styles.loader}
-        />
-        <Text style={styles.loadingMessage}>{message}</Text>
       </View>
     </View>
   );
@@ -42,16 +35,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#34d399', // Your main HouseTabz color
     fontFamily: 'Montserrat-Black',
-    marginBottom: 30,
-  },
-  loader: {
-    marginBottom: 20,
-  },
-  loadingMessage: {
-    fontSize: 16,
-    color: '#64748b',
-    fontWeight: '500',
-    textAlign: 'center',
   },
 });
 

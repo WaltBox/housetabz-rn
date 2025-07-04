@@ -14,6 +14,7 @@ import {
   Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import apiClient from '../config/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +22,14 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [amount, setAmount] = useState('');
+  
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
   
   // Reset amount when modal opens with a new submission
   useEffect(() => {
@@ -117,24 +126,38 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
         <SafeAreaView style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Submit Bill Amount</Text>
+            <View style={styles.headerContent}>
+              <Text style={[
+                styles.headerTitle,
+                fontsLoaded && { fontFamily: 'Poppins-Bold' }
+              ]}>Submit Bill Amount</Text>
+              <Text style={[
+                styles.headerSubtitle,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>{serviceName}</Text>
+            </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <MaterialIcons name="close" size={28} color="#64748b" />
+              <MaterialIcons name="close" size={24} color="#6b7280" />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            {/* Bill Service Details Card */}
+            {/* Bill Details Card */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{serviceName}</Text>
-              <Text style={styles.cardSubtitle}>Monthly Variable Bill</Text>
-              
-              {/* Due Date Badge */}
-              <View style={styles.dueDateContainer}>
-                <MaterialIcons name="event" size={18} color="#64748b" />
-                <Text style={styles.dueDateText}>
-                  Due: {formatDueDate(billSubmission?.dueDate)}
-                </Text>
+              <View style={styles.billHeader}>
+                <View style={styles.serviceIcon}>
+                  <MaterialIcons name="receipt-long" size={24} color="#34d399" />
+                </View>
+                <View style={styles.billInfo}>
+                  <Text style={[
+                    styles.serviceName,
+                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                  ]}>{serviceName}</Text>
+                  <Text style={[
+                    styles.billType,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}>Monthly bill</Text>
+                </View>
                 {isOverdue() && (
                   <View style={styles.overdueBadge}>
                     <Text style={styles.overdueText}>OVERDUE</Text>
@@ -142,70 +165,80 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
                 )}
               </View>
               
-              {/* Divider */}
-              <View style={styles.divider} />
-              
-              {/* Bill Amount Input */}
-              <View style={styles.amountSection}>
-                <Text style={styles.amountLabel}>Enter Bill Amount</Text>
-                <View style={styles.amountInputContainer}>
-                  <Text style={styles.currencySymbol}>$</Text>
-                  <TextInput
-                    style={styles.amountInput}
-                    value={amount}
-                    onChangeText={handleAmountChange}
-                    placeholder="0.00"
-                    keyboardType="decimal-pad"
-                    autoFocus={true}
-                  />
-                </View>
+              <View style={styles.dueDateRow}>
+                <MaterialIcons name="schedule" size={18} color="#6b7280" />
+                <Text style={[
+                  styles.dueDateText,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  Due {formatDueDate(billSubmission?.dueDate)}
+                </Text>
               </View>
             </View>
 
-            {/* Estimated Split Card */}
-            {amount && parseFloat(amount) > 0 && (
-              <View style={styles.card}>
-                <View style={styles.estimatedHeader}>
-                  <Text style={styles.estimatedTitle}>Estimated Split</Text>
-                  <TouchableOpacity 
-                    onPress={() => Alert.alert(
-                      'Estimated Split',
-                      'This is an estimation of how the bill amount will be divided among all roommates. The actual split may include service fees based on your house status.'
-                    )}
-                  >
-                    <MaterialIcons name="help-outline" size={20} color="#64748b" />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.splitContainer}>
-                  <Text style={styles.splitLabel}>Your Roommates</Text>
-                  <Text style={styles.splitAmount}>
-                    ~${calculateEstimatedSplit().toFixed(2)} each
-                  </Text>
-                </View>
-                
-                <Text style={styles.splitNote}>
-                  Note: Actual charge amounts may include service fees based on your house status.
+            {/* Amount Input */}
+            <View style={styles.card}>
+              <Text style={[
+                styles.inputLabel,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Total Bill Amount</Text>
+              
+              {/* Instructions */}
+              <View style={styles.instructionContainer}>
+                <MaterialIcons name="info-outline" size={16} color="#34d399" />
+                <Text style={[
+                  styles.instructionText,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  Check your provider account for the total amount
                 </Text>
               </View>
-            )}
+              
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  value={amount}
+                  onChangeText={handleAmountChange}
+                  placeholder="0.00"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="decimal-pad"
+                  autoFocus={true}
+                />
+              </View>
+            </View>
 
-            {/* Info Card */}
+            {/* Split Preview */}
+          
+
+            {/* Process Info */}
             <View style={styles.infoCard}>
-              <MaterialIcons name="info" size={22} color="#22c55e" style={styles.infoIcon} />
-              <Text style={styles.infoText}>
-                After submission, this bill will be split among all roommates. Each roommate will receive a charge notification.
+              <View style={styles.infoHeader}>
+                <MaterialIcons name="auto-awesome" size={20} color="#34d399" />
+                <Text style={[
+                  styles.infoTitle,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>How it works</Text>
+              </View>
+              <Text style={[
+                styles.infoText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                We'll split this bill among roommates. Once everyone pays, HouseTabz handles payment to your provider.
               </Text>
             </View>
           </ScrollView>
 
-          {/* Footer with buttons */}
+          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity 
               style={styles.cancelButton}
               onPress={onClose}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={[
+                styles.cancelButtonText,
+                fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+              ]}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -220,8 +253,11 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
                 <ActivityIndicator color="white" size="small" />
               ) : (
                 <>
-                  <MaterialIcons name="check" size={20} color="white" style={{ marginRight: 8 }} />
-                  <Text style={styles.submitButtonText}>Submit Bill</Text>
+                  <MaterialIcons name="send" size={18} color="white" style={{ marginRight: 8 }} />
+                  <Text style={[
+                    styles.submitButtonText,
+                    fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                  ]}>Submit Bill</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -233,215 +269,251 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
 };
 
 const styles = StyleSheet.create({
-  // Main container styles
+  // Main container styles (kept the same)
   container: {
     flex: 1,
     backgroundColor: "#dff6f0",
   },
+  
+  // Header (improved)
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#d1d5db",
+    borderBottomColor: "#e2e8f0",
     backgroundColor: "#dff6f0",
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#0f172a",
-    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : "System",
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   closeButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   
   // Content
   scrollContent: {
-    padding: 16,
+    padding: 20,
   },
   card: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 20,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 16,
-    color: "#64748b",
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   
-  // Due Date
-  dueDateContainer: {
+  // Bill Header (improved)
+  billHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
   },
-  dueDateText: {
-    marginLeft: 8,
-    color: "#64748b",
-    fontSize: 14,
+  serviceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#d1fae5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  billInfo: {
     flex: 1,
+  },
+  serviceName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  billType: {
+    fontSize: 14,
+    color: "#6b7280",
   },
   overdueBadge: {
     backgroundColor: "#fee2e2",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
   },
   overdueText: {
-    color: "#ef4444",
-    fontSize: 10,
+    color: "#dc2626",
+    fontSize: 11,
     fontWeight: "700",
   },
   
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: "#f1f5f9",
-    marginBottom: 16,
+  // Due Date
+  dueDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  dueDateText: {
+    marginLeft: 8,
+    color: "#6b7280",
+    fontSize: 14,
   },
   
-  // Amount Input
-  amountSection: {
-    marginBottom: 8,
+  // Instructions
+  instructionContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#ecfdf5",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: "#34d399",
   },
-  amountLabel: {
+  instructionText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#059669",
+    lineHeight: 18,
+    marginLeft: 8,
+  },
+  inputLabel: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0f172a",
+    color: "#111827",
     marginBottom: 12,
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 12,
-    padding: 12,
     backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
   },
   currencySymbol: {
     fontSize: 24,
     fontWeight: "600",
-    color: "#64748b",
+    color: "#6b7280",
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
     fontSize: 24,
-    color: "#0f172a",
     fontWeight: "600",
+    color: "#111827",
     padding: 0,
   },
   
-  // Estimated Split
-  estimatedHeader: {
+  // Split Preview (simplified)
+  splitHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  estimatedTitle: {
+  splitTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0f172a",
-  },
-  splitContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#f0fdf4",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#dcfce7",
-    marginBottom: 8,
-  },
-  splitLabel: {
-    color: "#0f172a",
-    fontSize: 14,
+    color: "#111827",
   },
   splitAmount: {
-    fontWeight: "bold",
-    color: "#0f172a",
-    fontSize: 14,
+    alignItems: "center",
+  },
+  splitValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#34d399",
+    marginBottom: 4,
   },
   splitNote: {
     fontSize: 12,
-    color: "#64748b",
+    color: "#6b7280",
     fontStyle: "italic",
   },
   
-  // Info Card
+  // Info Card (cleaner)
   infoCard: {
-    flexDirection: "row",
+    backgroundColor: "#d1fae5",
+    borderRadius: 12,
     padding: 16,
-    backgroundColor: "#f0fdf4",
-    borderRadius: 16,
-    borderColor: "#dcfce7",
     borderWidth: 1,
-    marginBottom: 16,
+    borderColor: "#a7f3d0",
   },
-  infoIcon: {
-    marginRight: 12,
-    alignSelf: "flex-start",
-    paddingTop: 2,
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  infoTitle: {
+    marginLeft: 8,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
   },
   infoText: {
-    flex: 1,
-    color: "#0f172a",
+    fontSize: 14,
+    color: "#374151",
     lineHeight: 20,
   },
   
-  // Footer
+  // Footer (kept the same structure, refined styling)
   footer: {
-    padding: 16,
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: "#e2e8f0",
     backgroundColor: "#dff6f0",
     flexDirection: "row",
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
-    padding: 16,
+    backgroundColor: "#f8fafc",
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
   },
   cancelButtonText: {
-    fontWeight: "bold",
-    color: "#475569",
+    fontWeight: "600",
+    color: "#6b7280",
+    fontSize: 16,
   },
   submitButton: {
     flex: 2,
     flexDirection: "row",
-    backgroundColor: "#22c55e",
-    padding: 16,
+    backgroundColor: "#34d399",
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
   },
   disabledButton: {
     backgroundColor: "#a7f3d0",
   },
   submitButtonText: {
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "white",
+    fontSize: 16,
   }
 });
 

@@ -60,26 +60,42 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
     console.log('PaymentFlow received existing request result:', data);
     
     if (data.type === 'webhook_resent') {
-      // Webhook was resent successfully - send success back to SDK
-      onSuccess({
-        status: 'success',
-        data: {
-          agreementId: data.agreementId,
-          serviceName: data.serviceName,
-          message: data.message
-        }
-      });
+      // Webhook was resent successfully - this IS a final completion
+      console.log('🎉 Webhook resent, completing flow');
+      
+      // FIXED: Call onSuccess for final completion
+      if (onSuccess) {
+        onSuccess({
+          status: 'success',
+          data: {
+            agreementId: data.agreementId,
+            serviceName: data.serviceName,
+            message: data.message,
+            type: 'reused_agreement'
+          }
+        });
+      }
+      // Don't call onClose here - let the parent handle it
     }
   };
-
+  
   const handleConfirmSuccess = (data) => {
+    console.log('PaymentFlow: Confirmation successful:', data);
     setRequestData(data);
-    goToStep('success');
+    goToStep('success'); // Go to success screen, don't complete yet
   };
-
+  
   const handleDone = () => {
-    if (onSuccess) onSuccess({ status: 'success', data: requestData });
-    onClose();
+    console.log('PaymentFlow: Success screen done, completing flow');
+    
+    // FIXED: This is the final completion - call onSuccess here
+    if (onSuccess) {
+      onSuccess({ 
+        status: 'success', 
+        data: requestData 
+      });
+    }
+    // Don't call onClose here - let the parent handle it
   };
 
   // Don't render anything if not visible

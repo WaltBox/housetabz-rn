@@ -91,27 +91,71 @@ const TaskCard = ({ task, type = "task", isAlternate, onPress, fontsLoaded }) =>
   const [loading, setLoading] = useState(true);
 
   // Determine the service name based on the type and structure
-  const getServiceName = () => {
-    // For bill submissions
-    if (type === 'billSubmission') {
-      return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
+// Add this enhanced getServiceName function with debugging to your TaskCard component
+
+const getServiceName = () => {
+  // Debug logging to see the actual task structure
+  console.log('=== TaskCard Debug Info ===');
+  console.log('Task ID:', task.id);
+  console.log('Task type:', task.type);
+  console.log('Task object keys:', Object.keys(task));
+  console.log('Full task object:', JSON.stringify(task, null, 2));
+  
+  // For bill submissions
+  if (type === 'billSubmission') {
+    console.log('Processing as bill submission');
+    return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
+  }
+  
+  // For regular tasks - enhanced debugging
+  console.log('ServiceRequestBundle exists:', !!task.serviceRequestBundle);
+  console.log('ServiceRequestBundleId:', task.serviceRequestBundleId);
+  
+  if (!task.serviceRequestBundle) {
+    // Check if we have alternative fields that might contain the service name
+    console.log('No serviceRequestBundle found. Checking alternatives...');
+    console.log('Task.name:', task.name);
+    console.log('Task.type:', task.type);
+    console.log('Task.metadata:', task.metadata);
+    
+    // Try to get service name from alternative sources
+    if (task.name && task.name !== task.type) {
+      return task.name;
     }
     
-    // For regular tasks
-    if (!task.serviceRequestBundle) {
-      return 'Task';
+    if (task.metadata?.serviceName) {
+      return task.metadata.serviceName;
     }
-
-    if (task.serviceRequestBundle.takeOverRequest) {
-      return task.serviceRequestBundle.takeOverRequest.serviceName || 'Service Request';
+    
+    // If task.type is descriptive enough, use it
+    if (task.type && task.type !== 'task' && task.type !== 'serviceRequest') {
+      return task.type;
     }
+    
+    return 'Task';     
+  }
 
-    if (task.serviceRequestBundle.stagedRequest) {
-      return task.serviceRequestBundle.stagedRequest.name || 'Service Request';
-    }
+  console.log('ServiceRequestBundle structure:');
+  console.log('- takeOverRequest:', !!task.serviceRequestBundle.takeOverRequest);
+  console.log('- stagedRequest:', !!task.serviceRequestBundle.stagedRequest);
+  
+  if (task.serviceRequestBundle.takeOverRequest) {
+    console.log('TakeOverRequest data:', task.serviceRequestBundle.takeOverRequest);
+    return task.serviceRequestBundle.takeOverRequest.serviceName || 
+           task.serviceRequestBundle.takeOverRequest.name || 
+           'Service Request';
+  }
 
-    return 'Task';
-  };
+  if (task.serviceRequestBundle.stagedRequest) {
+    console.log('StagedRequest data:', task.serviceRequestBundle.stagedRequest);
+    return task.serviceRequestBundle.stagedRequest.name || 
+           task.serviceRequestBundle.stagedRequest.serviceName ||
+           'Service Request';
+  }
+
+  console.log('No nested request data found');
+  return 'Task';
+};
 
   // Fetch the requester username
   useEffect(() => {

@@ -31,12 +31,15 @@ const ChargeItem = ({ charge }) => {
   return (
     <View style={styles.chargeItem}>
       <View style={styles.chargeRow}>
-        <View style={styles.chargeText}>
-          <Text style={styles.chargeName}>{charge.name || 'Unnamed Charge'}</Text>
-          <Text style={[styles.dueDate, { color: status.color }]}>{status.label}</Text>
-        </View>
-        <View style={styles.chargeAmountWrapper}>
-          <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+        <View style={styles.chargeContent}>
+          <View style={styles.chargeHeader}>
+            <Text style={styles.chargeName}>{charge.name || 'Unnamed Charge'}</Text>
+            <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+          </View>
+          <View style={styles.chargeFooter}>
+            <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+            <Text style={[styles.dueDate, { color: status.color }]}>{status.label}</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -76,15 +79,8 @@ const UserTabModal = ({ visible, onClose }) => {
   );
 
   const handleNavigateToPayment = () => {
-    navigation.goBack();
-    setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [
-          { name: 'TabNavigator', params: { screen: 'Make Payment', params: { screen: 'MakePaymentScreen' } } }
-        ],
-      });
-    }, 300);
+    onClose(); // Close modal first
+    navigation.navigate('Pay Tab'); // Navigate to Pay Tab
   };
 
   if (!visible) return null;
@@ -94,11 +90,14 @@ const UserTabModal = ({ visible, onClose }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeIcon} hitSlop={{top:15,bottom:15,left:15,right:15}}>
-            <MaterialIcons name="close" size={28} color="#1e293b" />
-          </TouchableOpacity>
           <Text style={styles.title}>My Tab</Text>
-          <View style={{ width:28 }} />
+          <TouchableOpacity 
+            onPress={onClose} 
+            style={styles.closeButton} 
+            hitSlop={{top:15,bottom:15,left:15,right:15}}
+          >
+            <MaterialIcons name="close" size={24} color="#1e293b" />
+          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -108,33 +107,41 @@ const UserTabModal = ({ visible, onClose }) => {
         ) : (
           <>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>You Currently Owe</Text>
+              <View style={styles.summaryHeader}>
+                <MaterialIcons name="account-balance-wallet" size={28} color="#34d399" />
+                <Text style={styles.summaryLabel}>Total Outstanding</Text>
+              </View>
               <Text style={styles.summaryAmount}>${totalUnpaid.toFixed(2)}</Text>
               <TouchableOpacity
                 style={styles.payButton}
                 onPress={handleNavigateToPayment}
                 activeOpacity={0.8}
               >
+                <MaterialIcons name="payment" size={20} color="white" style={styles.payIcon} />
                 <Text style={styles.payButtonText}>Make Payment</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.chargesHeader}>Your charges</Text>
+            <View style={styles.chargesSection}>
+              <Text style={styles.chargesHeader}>Your charges ({charges.length})</Text>
 
-            <FlatList
-              data={charges}
-              keyExtractor={(item,i) => item.id?.toString() || i.toString()}
-              renderItem={({ item }) => <ChargeItem charge={item} />}
-              ListEmptyComponent={() => (
-                <View style={styles.empty}>
-                  <MaterialIcons name="check-circle" size={48} color="#34d399" />
-                  <Text style={styles.emptyTitle}>All caught up!</Text>
-                  <Text style={styles.emptyText}>You have no unpaid charges.</Text>
-                </View>
-              )}
-              contentContainerStyle={{ paddingBottom:16 }}
-              showsVerticalScrollIndicator={false}
-            />
+              <FlatList
+                data={charges}
+                keyExtractor={(item,i) => item.id?.toString() || i.toString()}
+                renderItem={({ item }) => <ChargeItem charge={item} />}
+                ListEmptyComponent={() => (
+                  <View style={styles.empty}>
+                    <View style={styles.emptyIcon}>
+                      <MaterialIcons name="check-circle" size={48} color="#34d399" />
+                    </View>
+                    <Text style={styles.emptyTitle}>All caught up!</Text>
+                    <Text style={styles.emptyText}>You have no unpaid charges.</Text>
+                  </View>
+                )}
+                contentContainerStyle={{ paddingBottom:16 }}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
           </>
         )}
       </SafeAreaView>
@@ -143,58 +150,188 @@ const UserTabModal = ({ visible, onClose }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#dff6f0' },
-  header: {
-    flexDirection:'row', justifyContent:'space-between', alignItems:'center',
-    paddingHorizontal:16, paddingTop: Platform.OS==='android'?28:20, paddingBottom:12,
-    backgroundColor:'#dff6f0'
+  container: { 
+    flex: 1, 
+    backgroundColor: '#dff6f0' 
   },
-  closeIcon:{padding:8},
-  title: { fontSize:20, fontWeight:'700', color:'#1e293b' },
-  loading: { flex:1, justifyContent:'center', alignItems:'center' },
+  header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingHorizontal: 20, 
+    paddingTop: Platform.OS === 'android' ? 28 : 20, 
+    paddingBottom: 16,
+    backgroundColor: '#dff6f0'
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: '700', 
+    color: '#1e293b',
+    flex: 1 
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  loading: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
 
   summaryCard: {
-    backgroundColor:'#ffffff', borderRadius:12, marginHorizontal:16,
-    padding:20, marginBottom:12, shadowColor:'#000', shadowOffset:{width:0,height:2},
-    shadowOpacity:0.1, shadowRadius:4, alignItems:'flex-start'
+    backgroundColor: 'white', 
+    borderRadius: 16, 
+    marginHorizontal: 20,
+    padding: 24, 
+    marginBottom: 20, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, 
+    shadowRadius: 8,
+    elevation: 4,
   },
-  summaryLabel: { fontSize:14, color:'#64748b', marginBottom:4 },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryLabel: { 
+    fontSize: 16, 
+    color: '#64748b', 
+    marginLeft: 8,
+    fontWeight: '500'
+  },
   summaryAmount: {
-    fontSize:32, fontWeight:'700', color:'#1e293b', marginBottom:16,
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Montserrat-Black',
-    fontVariant: ['tabular-nums']
+    fontSize: 36, 
+    fontWeight: '800', 
+    color: '#1e293b', 
+    marginBottom: 20,
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System',
   },
   payButton: {
-    backgroundColor:'#34d399', paddingVertical:12, paddingHorizontal:32,
-    borderRadius:999, alignSelf:'stretch', alignItems:'center'
+    backgroundColor: '#34d399', 
+    paddingVertical: 16, 
+    paddingHorizontal: 24,
+    borderRadius: 12, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  payButtonText: { color:'#ffffff', fontSize:16, fontWeight:'600' },
+  payIcon: {
+    marginRight: 8,
+  },
+  payButtonText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
 
+  chargesSection: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
   chargesHeader: {
-    marginHorizontal:16,
-    marginTop:8,
-    marginBottom:4,
-    fontSize:16,
-    fontWeight:'500',
-    color:'#1e293b'
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
   },
 
   chargeItem: {
-    backgroundColor:'#ffffff', borderRadius:12, marginHorizontal:16,
-    marginVertical:4, paddingVertical:8, paddingHorizontal:12,
-    shadowColor:'#000', shadowOffset:{width:0,height:1}, shadowOpacity:0.05,
-    shadowRadius:3, 
+    backgroundColor: 'white', 
+    borderRadius: 12, 
+    marginBottom: 12,
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  chargeRow: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
-  chargeText: { flex:1 },
-  chargeName: { fontSize:16, fontWeight:'600', color:'#1e293b' },
-  dueDate: { fontSize:12, color:'#64748b', marginTop:2 },
-  chargeAmountWrapper: { marginLeft:12 },
-  chargeAmount: { fontSize:16, fontWeight:'700', color:'#1e293b' },
+  chargeRow: { 
+    padding: 16 
+  },
+  chargeContent: {
+    flex: 1,
+  },
+  chargeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  chargeName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1e293b',
+    flex: 1,
+    marginRight: 12,
+  },
+  chargeAmount: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#1e293b' 
+  },
+  chargeFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  dueDate: { 
+    fontSize: 14, 
+    fontWeight: '500' 
+  },
 
-  empty: { justifyContent:'center', alignItems:'center', marginTop:32, paddingHorizontal:32 },
-  emptyTitle: { fontSize:18, fontWeight:'600', color:'#1e293b', marginTop:12 },
-  emptyText: { fontSize:14, color:'#64748b', marginTop:6, textAlign:'center' }
+  empty: { 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 40, 
+    paddingHorizontal: 32 
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  emptyTitle: { 
+    fontSize: 20, 
+    fontWeight: '600', 
+    color: '#1e293b', 
+    marginBottom: 8 
+  },
+  emptyText: { 
+    fontSize: 14, 
+    color: '#64748b', 
+    textAlign: 'center' 
+  }
 });
 
 export default UserTabModal;

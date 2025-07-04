@@ -59,7 +59,7 @@ const AppContent = () => {
 
   // Show custom loading screen while auth is loading
   if (loading) {
-    return <HouseTabzLoadingScreen message="Setting up your account..." />;
+    return <HouseTabzLoadingScreen />;
   }
 
   return (

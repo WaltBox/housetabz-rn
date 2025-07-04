@@ -136,7 +136,7 @@ const AppNavigator = () => {
   // Show loading screen while initial auth load or payment check is happening
   if (loading || (user && hasPaymentMethods === null)) {
     console.log('Showing loading screen. Loading:', loading, 'User:', !!user, 'HasPaymentMethods:', hasPaymentMethods);
-    return <HouseTabzLoadingScreen message="Setting up your account..." />;
+    return <HouseTabzLoadingScreen />;
   }
 
   console.log('AppNavigator decision - User:', !!user, 'HasPaymentMethods:', hasPaymentMethods, 'HouseId:', user?.houseId);

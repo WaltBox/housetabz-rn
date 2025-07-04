@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import apiClient from '../../config/api'; // Adjust path as needed
+import apiClient from '../../config/api';
 
 const OverviewTab = ({
   displayService,
@@ -15,156 +15,217 @@ const OverviewTab = ({
   const [allLedgers, setAllLedgers] = useState(ledgers || []);
   const [isLoading, setIsLoading] = useState(false);
   const [localActiveLedger, setLocalActiveLedger] = useState(activeLedger);
+  const [houseMembers, setHouseMembers] = useState([]); // Add state for house members
   
-  // Load all ledgers for this service if not already provided
+  // STABLE enhanced data that doesn't get lost on re-renders
+  const [stableEnhancedData, setStableEnhancedData] = useState(null);
+  const [serviceId, setServiceId] = useState(null);
+  
+  // Store enhanced data when we first receive it and prevent it from being lost
   useEffect(() => {
-    const fetchLedgers = async () => {
-      if (ledgers.length === 0 && displayService?.id) {
-        setIsLoading(true);
-        try {
-          const response = await apiClient.get(`/api/house-service/${displayService.id}`);
-          if (response.data?.ledgers?.length > 0) {
-            setAllLedgers(response.data.ledgers);
-            
-            // Find the active ledger if not provided
-            if (!activeLedger) {
-              const active = response.data.ledgers.find(l => l.status === 'active');
-              if (active) {
-                setLocalActiveLedger(active);
-              }
-            }
-          }
-        } catch (error) {
-          console.log('Error fetching ledgers:', error);
-        } finally {
-          setIsLoading(false);
+    if (displayService?.id !== serviceId) {
+      // New service selected - reset stored data
+      setServiceId(displayService.id);
+      setStableEnhancedData(null);
+    }
+    
+    if (displayService?.calculatedData && (!stableEnhancedData || displayService.id !== serviceId)) {
+      
+      setStableEnhancedData({
+        id: displayService.id,
+        name: displayService.name,
+        status: displayService.status,
+        amount: displayService.amount,
+        dueDate: displayService.dueDate,
+        calculatedData: displayService.calculatedData
+      });
+    }
+  }, [displayService?.id, displayService?.calculatedData, displayService?.name, serviceId, stableEnhancedData]);
+  
+  // Use stable enhanced data if available, otherwise use current displayService
+  const workingService = stableEnhancedData || displayService;
+  
+  // Fetch house members if we don't have enhanced data
+  useEffect(() => {
+    const fetchHouseMembers = async () => {
+      // If we have enhanced data with contributor details, we don't need to fetch separately
+      if (workingService?.calculatedData?.contributorDetails || workingService?.calculatedData?.nonContributors) {
+        return;
+      }
+      
+      // If we don't have house ID, try to get it from the service
+      const houseId = displayService?.houseId;
+      if (!houseId) {
+  
+        return;
+      }
+      
+      try {
+     
+        const response = await apiClient.get(`/api/houses/${houseId}/members`);
+        if (response.data?.members) {
+          setHouseMembers(response.data.members);
+         
+        }
+      } catch (error) {
+       
+        // Fallback: extract users from tasks if available
+        if (tasks.length > 0) {
+          const taskUsers = tasks.map(task => ({
+            id: task.user?.id,
+            username: task.user?.username || 'Unknown',
+            email: task.user?.email
+          })).filter(user => user.id);
+          setHouseMembers(taskUsers);
+         
         }
       }
     };
     
-    fetchLedgers();
-  }, [displayService?.id, ledgers, activeLedger]);
+    fetchHouseMembers();
+  }, [displayService?.houseId, workingService?.calculatedData, tasks]);
   
-  // Use local state or props
-  const currentActiveLedger = localActiveLedger || activeLedger;
-  
-  const isActive = displayService.status === 'active';
-  const pendingTasks = tasks.filter(t => !t.status);
-
-  const fundingRequired = Number(currentActiveLedger?.fundingRequired || displayService.amount || 0);
-  const funded = Number(currentActiveLedger?.funded || 0);
-  const progress = fundingRequired > 0 ? funded / fundingRequired : 0;
-  const percentFunded = Math.min(100, Math.round(progress * 100));
-  const remaining = Math.max(0, fundingRequired - funded);
-  const dueDate = formatDate(currentActiveLedger?.dueDate || displayService.dueDate || new Date(Date.now() + 15 * 86400000));
-  const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
-
-  // Check if ledger has funded users
-  const hasFundedUsers = !!(currentActiveLedger?.metadata?.fundedUsers?.length > 0);
-  
-  // Log debug info
-  console.log('DEBUG ServiceID:', displayService.id);
-  console.log('DEBUG ActiveLedger:', currentActiveLedger?.id);
-  console.log('DEBUG Has funded users:', hasFundedUsers); 
-  if (hasFundedUsers) {
-    console.log('DEBUG Funded users:', JSON.stringify(currentActiveLedger.metadata.fundedUsers));
-  }
-
-  // Get funding data from activeLedger metadata - this should always work even without the enhanced API
-  const getFundingData = () => {
-    // Use activeLedger metadata as primary source - should always be available
-    if (currentActiveLedger?.metadata?.fundedUsers) {
-      return {
-        fundedUsers: currentActiveLedger.metadata.fundedUsers.map(fu => ({
-          userId: fu.userId,
-          amount: fu.amount,
-          lastUpdated: fu.lastUpdated || fu.timestamp,
-          contributionCount: 1
-        })),
-        allTimeContributors: []
-      };
-    }
-    
-    // Fall back to fundingSummary if available (has the most data, but might not be available yet)
-    if (fundingSummary?.activeLedger) {
-      return {
-        fundedUsers: fundingSummary.userContributions?.filter(u => {
-          // For the current ledger, only show users with contributions in the active ledger
-          // This ensures we're only showing people who funded THIS bill, not previous ones
-          if (currentActiveLedger?.metadata?.fundedUsers) {
-            return currentActiveLedger.metadata.fundedUsers.some(fu => 
-              String(fu.userId) === String(u.userId)
-            );
+  // Load additional ledgers only if needed
+  useEffect(() => {
+    const fetchLedgers = async () => {
+      // Skip if we have enhanced data or already have ledgers
+      if (workingService?.calculatedData || ledgers.length > 0 || !displayService?.id) {
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+       
+        const response = await apiClient.get(`/api/house-service/${displayService.id}`);
+        if (response.data?.ledgers?.length > 0) {
+          setAllLedgers(response.data.ledgers);
+          
+          if (!activeLedger) {
+            const active = response.data.ledgers.find(l => l.status === 'active');
+            if (active) {
+              setLocalActiveLedger(active);
+            }
           }
-          return false;
-        }) || [],
-        allTimeContributors: fundingSummary.userContributions || []
-      };
-    }
+        }
+      } catch (error) {
+       
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Default empty values
+    fetchLedgers();
+  }, [displayService?.id, workingService?.calculatedData, ledgers.length, activeLedger]);
+  
+  // Memoize the funding data calculation to prevent recalculation on every render
+  const fundingData = useMemo(() => {
+    const currentActiveLedger = localActiveLedger || activeLedger;
+    const isActive = workingService?.status === 'active';
+    
+ 
+    
+    let fundingRequired, funded, percentFunded, remaining;
+    let usersFunded = [];
+    let unfundedUsers = [];
+    let allHouseMembers = [];
+
+    if (workingService?.calculatedData) {
+      // Use enhanced backend data
+  
+      const calc = workingService.calculatedData;
+      fundingRequired = calc.fundingRequired || 0;
+      funded = calc.funded || 0;
+      percentFunded = calc.percentFunded || 0;
+      remaining = calc.remainingAmount || 0;
+      
+      // Map enhanced data to display format
+      usersFunded = (calc.contributorDetails || []).map(contributor => ({
+        userId: contributor.userId,
+        username: contributor.username,
+        fundedAmount: contributor.amount,
+        fundedDate: contributor.timestamp || contributor.lastUpdated,
+        hasFunded: true
+      }));
+      
+      unfundedUsers = (calc.nonContributors || []).map(nonContributor => ({
+        userId: nonContributor.userId,
+        username: nonContributor.username,
+        expectedAmount: nonContributor.expectedAmount || 0,
+        hasFunded: false
+      }));
+      
+      // Combine all house members for total count
+      allHouseMembers = [...usersFunded, ...unfundedUsers];
+      
+
+      
+    } else {
+      // Fallback to ledger data + house members
+   
+      fundingRequired = Number(currentActiveLedger?.fundingRequired || workingService?.amount || 0);
+      funded = Number(currentActiveLedger?.funded || 0);
+      const progress = fundingRequired > 0 ? funded / fundingRequired : 0;
+      percentFunded = Math.min(100, Math.round(progress * 100));
+      remaining = Math.max(0, fundingRequired - funded);
+
+      // Create a set of funded user IDs
+      const fundedUserIds = new Set();
+      
+      // Get funding data from activeLedger metadata
+      if (currentActiveLedger?.metadata?.fundedUsers) {
+        usersFunded = currentActiveLedger.metadata.fundedUsers.map(fu => {
+          fundedUserIds.add(fu.userId);
+          return {
+            userId: fu.userId,
+            username: fu.user?.username || `User ${fu.userId}`,
+            fundedAmount: Number(fu.amount),
+            fundedDate: fu.timestamp || fu.lastUpdated,
+            hasFunded: true
+          };
+        });
+      }
+      
+      // Use house members if available, otherwise fall back to tasks
+      const membersToUse = houseMembers.length > 0 ? houseMembers : tasks.map(task => ({
+        id: task.user?.id,
+        username: task.user?.username || 'Unknown',
+        email: task.user?.email
+      })).filter(user => user.id);
+      
+      // Get unfunded users from house members
+      unfundedUsers = membersToUse
+        .filter(member => member.id && !fundedUserIds.has(member.id))
+        .map(member => ({
+          userId: member.id,
+          username: member.username,
+          expectedAmount: fundingRequired > 0 && membersToUse.length > 0 
+            ? Math.round(fundingRequired / membersToUse.length * 100) / 100 
+            : 0,
+          hasFunded: false
+        }));
+      
+      // Combine all members
+      allHouseMembers = [...usersFunded, ...unfundedUsers];
+      
+}
+
+    const dueDate = formatDate(currentActiveLedger?.dueDate || workingService?.dueDate || new Date(Date.now() + 15 * 86400000));
+    
     return {
-      fundedUsers: [],
-      allTimeContributors: []
+      fundingRequired,
+      funded,
+      percentFunded,
+      remaining,
+      usersFunded,
+      unfundedUsers,
+      allHouseMembers,
+      dueDate,
+      isActive,
+      currentActiveLedger
     };
-  };
+  }, [workingService, localActiveLedger, activeLedger, tasks, houseMembers, formatDate]);
 
-  const { fundedUsers, allTimeContributors } = getFundingData();
-  
-  // Create a map of userIds to their task data for quick lookup
-  const userTaskMap = {};
-  tasks.forEach(task => {
-    if (task.user && task.user.id) {
-      userTaskMap[task.user.id] = task;
-    }
-  });
-  
-  // Helper function to determine if a user has funded
-  const getUserHasFunded = (userId) => {
-    // Direct metadata check
-    if (currentActiveLedger?.metadata?.fundedUsers) {
-      return currentActiveLedger.metadata.fundedUsers.some(fu => String(fu.userId) === String(userId));
-    }
-    
-    // Check fundedUsers from our computed data
-    return fundedUsers.some(fu => String(fu.userId) === String(userId));
-  };
-
-  // Combine funding data with task data
-  const fundingStatuses = tasks.map(task => {
-    const userId = task.user?.id;
-    if (!userId) return {
-      userId: null,
-      username: task.user?.username || 'Unknown',
-      hasFunded: false,
-      fundedAmount: 0,
-      task
-    };
-    
-    // Check if user has funded the current bill
-    const hasFunded = getUserHasFunded(userId);
-    const currentFundingData = fundedUsers.find(f => String(f.userId) === String(userId));
-    
-    // Get all-time contribution data - may not be available yet
-    const allTimeData = allTimeContributors.find(c => String(c.userId) === String(userId));
-    
-    return {
-      userId,
-      username: task.user?.username || 'Unknown',
-      hasFunded: hasFunded, // Use our helper function
-      fundedAmount: Number(currentFundingData?.amount || 0),
-      fundedDate: currentFundingData?.timestamp || currentFundingData?.lastUpdated || null,
-      totalContribution: Number(allTimeData?.totalContribution || 0),
-      contributionCount: allTimeData?.contributionCount || 0,
-      task
-    };
-  });
-
-  // Get users who haven't funded yet
-  const unfundedUsers = fundingStatuses.filter(status => !status.hasFunded && status.userId);
-  
-  // Get users who have funded
-  const usersFunded = fundingStatuses.filter(status => status.hasFunded);
+  const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
 
   // If loading, show spinner
   if (isLoading) {
@@ -177,7 +238,7 @@ const OverviewTab = ({
   }
 
   // If there's no active ledger data but we have a fundingSummary, show a message
-  if (!currentActiveLedger && fundingSummary && isActive) {
+  if (!fundingData.currentActiveLedger && fundingSummary && fundingData.isActive) {
     return (
       <View style={styles.noActiveContainer}>
         <MaterialIcons name="info-outline" size={48} color="#0891b2" />
@@ -200,7 +261,7 @@ const OverviewTab = ({
   }
 
   // If no active ledger but service is active, show a message
-  if (!currentActiveLedger && isActive) {
+  if (!fundingData.currentActiveLedger && fundingData.isActive && fundingData.fundingRequired === 0) {
     return (
       <View style={styles.noActiveContainer}>
         <MaterialIcons name="info-outline" size={48} color="#0891b2" />
@@ -227,131 +288,70 @@ const OverviewTab = ({
       <View style={styles.card}>
         <Text style={styles.fundingLabel}>Amount Funded</Text>
         <View style={styles.fundingPercentageRow}>
-          <Text style={styles.fundingPercentage}>{percentFunded}%</Text>
+          <Text style={styles.fundingPercentage}>{fundingData.percentFunded}%</Text>
           <Text style={styles.fundingAmount}>
-            {formatCurrency(funded)} of {formatCurrency(fundingRequired)}
+            {formatCurrency(fundingData.funded)} of {formatCurrency(fundingData.fundingRequired)}
           </Text>
         </View>
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${percentFunded}%` }]} />
+          <View style={[
+            styles.progressBarFill, 
+            { width: `${fundingData.percentFunded}%` }
+          ]} />
         </View>
         <View style={styles.fundingDetailsRow}>
-          <Text style={styles.fundingDetailLabel}>Due: {dueDate}</Text>
-          <Text style={styles.fundingDetailValue}>{formatCurrency(remaining)} remaining</Text>
+          <Text style={styles.fundingDetailLabel}>Due: {fundingData.dueDate}</Text>
+          <Text style={styles.fundingDetailValue}>{formatCurrency(fundingData.remaining)} remaining</Text>
         </View>
       </View>
 
-      {/* Funding Status section to show both funded and unfunded users */}
-      {isActive && (
+      {/* Funding Status section - ALWAYS show for active services if we have member data */}
+      {fundingData.isActive && fundingData.allHouseMembers.length > 0 && (
         <>
           <Text style={styles.sectionHeader}>Funding Status</Text>
           <View style={styles.participantsCard}>
-            {/* Show users who have funded */}
-            {usersFunded.length > 0 && (
-              <>
-                {usersFunded.map((status, index) => (
-                  <View key={`funded-${status.userId || index}`} style={styles.participantRow}>
-                    <View style={styles.participantInfo}>
-                      <View style={styles.participantAvatar}>
-                        <Text style={styles.participantInitial}>
-                          {status.username?.[0]?.toUpperCase() || '?'}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text style={styles.participantName}>{status.username}</Text>
-                        {status.fundedDate && (
-                          <Text style={styles.fundedDate}>
-                            {formatDate(new Date(status.fundedDate))}
-                          </Text>
-                        )}
-                        {status.contributionCount > 1 && (
-                          <Text style={styles.totalContributions}>
-                            {status.contributionCount} total contributions
-                          </Text>
-                        )}
-                      </View>
+            {/* Show all members with their status */}
+            {fundingData.allHouseMembers.map((member) => {
+              const isPaid = member.hasFunded;
+              return (
+                <View key={`member-${member.userId}`} style={styles.participantRow}>
+                  <View style={styles.participantInfo}>
+                    <View style={styles.participantAvatar}>
+                      <Text style={styles.participantInitial}>
+                        {member.username?.[0]?.toUpperCase() || '?'}
+                      </Text>
                     </View>
-                    <View style={styles.fundedInfoContainer}>
-                      {status.fundedAmount > 0 && (
-                        <Text style={styles.fundedAmount}>{formatCurrency(status.fundedAmount)}</Text>
-                      )}
-                      <View
-                        style={[
-                          styles.participantStatusBadge,
-                          { backgroundColor: '#dcfce7' },
-                        ]}
-                      >
-                        <Text style={[
-                          styles.participantStatusText,
-                          { color: '#166534' },
-                        ]}>
-                          Funded
+                    <View style={styles.participantDetails}>
+                      <Text style={styles.participantName}>{member.username}</Text>
+                      {isPaid && member.fundedDate && (
+                        <Text style={styles.fundedDate}>
+                          Paid {formatDate(new Date(member.fundedDate))}
                         </Text>
-                      </View>
+                      )}
                     </View>
                   </View>
-                ))}
-              </>
-            )}
-
-            {/* Show users who haven't funded */}
-            {unfundedUsers.length > 0 && (
-              <>
-                {unfundedUsers.map((status, index) => (
-                  <View key={`unfunded-${status.userId || index}`} style={styles.participantRow}>
-                    <View style={styles.participantInfo}>
-                      <View style={styles.participantAvatar}>
-                        <Text style={styles.participantInitial}>
-                          {status.username?.[0]?.toUpperCase() || '?'}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text style={styles.participantName}>{status.username}</Text>
-                        {status.totalContribution > 0 && (
-                          <Text style={styles.totalContributions}>
-                            {formatCurrency(status.totalContribution)} total contributed
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    <View
-                      style={[
-                        styles.participantStatusBadge,
-                        { backgroundColor: '#fde68a' },
-                      ]}
-                    >
+                  <View style={styles.statusContainer}>
+                    <View style={[
+                      styles.statusPill,
+                      isPaid ? styles.paidPill : styles.unpaidPill
+                    ]}>
                       <Text style={[
-                        styles.participantStatusText,
-                        { color: '#b45309' },
+                        styles.statusText,
+                        isPaid ? styles.paidText : styles.unpaidText
                       ]}>
-                        Not Funded
+                        {isPaid ? 'Paid' : 'Unpaid'}
                       </Text>
                     </View>
                   </View>
-                ))}
-              </>
-            )}
+                </View>
+              );
+            })}
 
-            {/* Show message if no users or all tasks without users */}
-            {fundingStatuses.length === 0 && (
+            {/* Show message if no members found (shouldn't happen now) */}
+            {fundingData.allHouseMembers.length === 0 && (
               <View style={styles.emptyBillContainer}>
                 <MaterialIcons name="people" size={40} color="#cbd5e1" />
-                <Text style={styles.emptyBillText}>No participants found</Text>
-              </View>
-            )}
-
-            {/* Show debug message in development */}
-            {__DEV__ && !hasFundedUsers && (
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugTitle}>Debug Info</Text>
-                <Text style={styles.debugText}>ServiceID: {displayService.id}</Text>
-                <Text style={styles.debugText}>
-                  Active Ledger ID: {currentActiveLedger?.id || "None"}
-                </Text>
-                <Text style={styles.debugText}>
-                  Metadata: {currentActiveLedger?.metadata ? 
-                    JSON.stringify(currentActiveLedger.metadata) : "None"}
-                </Text>
+                <Text style={styles.emptyBillText}>No house members found</Text>
               </View>
             )}
           </View>
@@ -359,7 +359,7 @@ const OverviewTab = ({
       )}
 
       {/* Show approval status if not active */}
-      {!isActive && tasks.length > 0 && (
+      {!fundingData.isActive && tasks.length > 0 && (
         <>
           <Text style={styles.sectionHeader}>Approval Status</Text>
           <View style={styles.participantsCard}>
@@ -430,8 +430,8 @@ const OverviewTab = ({
         )}
       </View>
 
-      {/* All-Time Contributions (only if we have data from fundingSummary) */}
-      {fundingSummary && fundingSummary.userContributions && fundingSummary.userContributions.length > 0 && (
+      {/* All-Time Contributions (if available from fundingSummary) */}
+      {fundingSummary?.userContributions?.length > 0 && (
         <>
           <Text style={styles.sectionHeader}>All-Time Contributions</Text>
           <View style={styles.participantsCard}>
@@ -443,11 +443,11 @@ const OverviewTab = ({
                       {contributor.username?.[0]?.toUpperCase() || '?'}
                     </Text>
                   </View>
-                  <View>
+                  <View style={styles.participantDetails}>
                     <Text style={styles.participantName}>{contributor.username}</Text>
                     <Text style={styles.fundedDate}>
                       {contributor.lastContribution ? 
-                        `Last contributed: ${formatDate(new Date(contributor.lastContribution))}` : 
+                        `Last: ${formatDate(new Date(contributor.lastContribution))}` : 
                         `${contributor.contributionCount} contributions`}
                     </Text>
                   </View>
@@ -463,7 +463,6 @@ const OverviewTab = ({
 };
 
 const styles = StyleSheet.create({
-  // Existing styles
   sectionHeader: {
     fontSize: 16,
     fontWeight: '600',
@@ -471,6 +470,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 8,
     marginTop: 16,
+  },
+  subsectionHeader: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+    marginTop: 8,
   },
   card: {
     marginHorizontal: 16,
@@ -482,7 +488,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    
+    elevation: 1,
   },
   fundingLabel: {
     fontSize: 16,
@@ -542,7 +548,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
- 
+    elevation: 1,
   },
   participantRow: {
     flexDirection: 'row',
@@ -566,13 +572,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  statusContainer: {
+    alignItems: 'flex-end',
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paidPill: {
+    backgroundColor: '#34d399' + '20',
+  },
+  unpaidPill: {
+    backgroundColor: '#f59e0b' + '20',
+  },
+  statusText: {
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  paidText: {
+    color: '#34d399',
+  },
+  unpaidText: {
+    color: '#f59e0b',
+  },
   participantInitial: {
     color: '#1e293b',
     fontWeight: '600',
+    fontSize: 14,
+  },
+  participantDetails: {
+    flex: 1,
   },
   participantName: {
     color: '#1e293b',
     fontSize: 15,
+    fontWeight: '500',
+  },
+  fundedDate: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  expectedAmount: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 2,
+  },
+  fundedInfoContainer: {
+    alignItems: 'flex-end',
+  },
+  fundedAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
   },
   participantStatusBadge: {
     paddingHorizontal: 10,
@@ -632,32 +686,11 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 16,
   },
-  // Existing funding status styles
-  fundedInfoContainer: {
-    alignItems: 'flex-end',
-  },
-  fundedAmount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  fundedDate: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  totalContributions: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
   totalAmount: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
   },
-  
-  // New styles for improved UI
   noActiveContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -669,7 +702,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-  
+    elevation: 1,
   },
   noActiveTitle: {
     fontSize: 18,
@@ -711,24 +744,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
   },
-  // Debug styles
-  debugContainer: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#fdba74',
-    borderRadius: 8,
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7c2d12',
-    marginBottom: 8,
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#7c2d12',
-    marginBottom: 4,
-  }
 });
 
 export default OverviewTab;

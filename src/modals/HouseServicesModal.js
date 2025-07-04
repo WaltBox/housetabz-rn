@@ -216,11 +216,13 @@ const HouseServicesModal = ({ house, onClose }) => {
         
         {/* Detail Modal */}
         {selectedService && (
-          <HouseServiceDetailModal
-            visible={selectedService !== null}
-            service={selectedService}
-            onClose={() => setSelectedService(null)}
-          />
+      <HouseServiceDetailModal
+      visible={selectedService !== null}
+      service={selectedService}  // ← This should have calculatedData
+      activeLedger={selectedService.ledgers?.[0]}
+      fundingSummary={selectedService.calculatedData} // ← This line looks wrong
+      onClose={() => setSelectedService(null)}
+    />
         )}
       </SafeAreaView>
     </>

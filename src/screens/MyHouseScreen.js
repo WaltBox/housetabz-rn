@@ -25,11 +25,11 @@ import CurrentHouseTab from "../modals/CurrentHouseTab";
 import PaidHouseTabz from "../modals/PaidHouseTabz";
 import HouseServicesModal from "../modals/HouseServicesModal";
 import HSIModal from "../modals/HSIModal";
-// New components
+// Updated components
 import HouseHeader from "../components/myhouse/HouseHeader";
-import HSIComponent from "../components/myhouse/HSIComponent";
+import HouseFinancialHealth from "../components/myhouse/HouseFinancialHealth"; // New unified component
 import Scoreboard from "../components/myhouse/Scoreboard";
-import ActionCards from "../components/myhouse/ActionCards";
+import ActionCards from "../components/myhouse/ActionCards"; // Keep ActionCards!
 import InviteModalContent from "../components/myhouse/InviteModalContent";
 
 // Import the skeleton component
@@ -44,6 +44,10 @@ const HouseTabzScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  // NEW: Add state for bills data
+  const [unpaidBills, setUnpaidBills] = useState([]);
+  const [paidBills, setPaidBills] = useState([]);
 
   // Modal states
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -81,6 +85,7 @@ const HouseTabzScreen = () => {
     setTimeout(() => setInviteCopied(false), 2000);
   };
 
+  // UPDATED: New optimized fetch function
   const fetchHouseData = async () => {
     try {
       if (!user?.houseId) {
@@ -92,12 +97,43 @@ const HouseTabzScreen = () => {
       setError(null);
       if (!refreshing) setLoading(true);
 
-      const { data } = await apiClient.get(`/api/houses/${user.houseId}`);
-      setHouse(data);
+      console.log('Trying new tabs-data endpoint for house:', user.houseId);
+      
+      // Single API call with all data needed for tabs
+      const { data } = await apiClient.get(`/api/houses/${user.houseId}/tabs-data`);
+      
+      console.log('New endpoint success! Data received:', {
+        house: data.house?.name,
+        unpaidBills: data.unpaidBills?.length,
+        paidBills: data.paidBills?.length,
+        houseBalance: data.house?.houseBalance,
+        summary: data.summary
+      });
+      
+      // Set the main house data
+      setHouse(data.house);
+      
+      // Store the bills data for modals
+      setUnpaidBills(data.unpaidBills || []);
+      setPaidBills(data.paidBills || []);
+      
       setError(null);
     } catch (err) {
-      console.error("Error fetching house data:", err);
-      setError(err.response?.data?.message || "Failed to load house data");
+      console.error("New endpoint failed with error:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      
+      // Fallback to original endpoint if new one fails
+      try {
+        console.log('Falling back to original house endpoint...');
+        const { data } = await apiClient.get(`/api/houses/${user.houseId}`);
+        setHouse(data);
+        // Clear bills data since we don't have it
+        setUnpaidBills([]);
+        setPaidBills([]);
+      } catch (fallbackErr) {
+        setError(fallbackErr.response?.data?.message || "Failed to load house data");
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -171,28 +207,13 @@ const HouseTabzScreen = () => {
                 />
               }
             >
-              {/* Section: HSI Component */}
+              {/* UPDATED: House Financial Health (replaces just HSI) */}
               <View style={styles.section}>
-                <HSIComponent
+                <HouseFinancialHealth
                   house={house}
+                  onCurrentTabPress={() => setIsCurrentTabVisible(true)}
                   onInfoPress={handleHSIInfoPress}
                 />
-                
-                {/* HSI Modal */}
-                {isHSIModalVisible && (
-                  <ModalComponent
-                    visible={true}
-                    onClose={() => setIsHSIModalVisible(false)}
-                    fullScreen={true}
-                    hideCloseButton={true}
-                    backgroundColor="#dff6f0"
-                    useBackArrow={false}
-                  >
-                    <HSIModal 
-                      onClose={() => setIsHSIModalVisible(false)} 
-                    />
-                  </ModalComponent>
-                )}
               </View>
               
               {/* Section: Scoreboard */}
@@ -206,7 +227,7 @@ const HouseTabzScreen = () => {
               {/* Section: Action Cards */}
               <View style={styles.actionCardsSection}>
                 <ActionCards
-                  houseBalance={house?.finance?.balance}
+                  houseBalance={house?.houseBalance}
                   onCurrentTabPress={() => setIsCurrentTabVisible(true)}
                   onPaidTabPress={() => setIsPaidTabVisible(true)}
                 />
@@ -240,7 +261,23 @@ const HouseTabzScreen = () => {
           </TouchableWithoutFeedback>
         )}
 
-        {/* CurrentHouseTab Modal */}
+        {/* HSI Modal */}
+        {isHSIModalVisible && (
+          <ModalComponent
+            visible={true}
+            onClose={() => setIsHSIModalVisible(false)}
+            fullScreen={true}
+            hideCloseButton={true}
+            backgroundColor="#dff6f0"
+            useBackArrow={false}
+          >
+            <HSIModal 
+              onClose={() => setIsHSIModalVisible(false)} 
+            />
+          </ModalComponent>
+        )}
+
+        {/* UPDATED: CurrentHouseTab Modal - now passes pre-loaded data */}
         {isCurrentTabVisible && (
           <ModalComponent
             visible={true}
@@ -252,12 +289,13 @@ const HouseTabzScreen = () => {
           >
             <CurrentHouseTab 
               onClose={() => setIsCurrentTabVisible(false)} 
-              house={house} 
+              house={house}
+              bills={unpaidBills} // Pass pre-loaded bills data
             />
           </ModalComponent>
         )}
 
-        {/* PaidHouseTabz Modal */}
+        {/* UPDATED: PaidHouseTabz Modal - now passes pre-loaded data */}
         {isPaidTabVisible && (
           <ModalComponent
             visible={true}
@@ -270,6 +308,7 @@ const HouseTabzScreen = () => {
             <PaidHouseTabz 
               onClose={() => setIsPaidTabVisible(false)} 
               house={house}
+              paidBills={paidBills} // Pass pre-loaded bills data
             />
           </ModalComponent>
         )}

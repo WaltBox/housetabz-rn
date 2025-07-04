@@ -6,22 +6,15 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  Image,
   Modal,
-  Animated,
-  ActivityIndicator,
-  TouchableOpacity,
   RefreshControl,
+  Animated,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
 import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
-import SpecialDeals from "../components/SpecialDeals";
+import SwipeableAnnouncements from "../components/SwipeableAnnouncements";
 import { useAuth } from "../context/AuthContext";
-import { LinearGradient } from "expo-linear-gradient";
 import apiClient from "../config/api";
-
-// Import the skeleton component
 import PartnersSkeleton from "../components/skeletons/PartnersSkeleton";
 
 const { width } = Dimensions.get("window");
@@ -35,26 +28,20 @@ const PartnersScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [dealsCount, setDealsCount] = useState(0);
   const cardScale = useState(new Animated.Value(1))[0];
 
   useEffect(() => {
-    loadData();
+    fetchPartners();
   }, []);
 
-  const loadData = async () => {
+  const fetchPartners = async () => {
     try {
       setError(null);
       if (!refreshing) setLoading(true);
-      
-      // Load partners and deals in parallel
-      const [partnersResult, dealsResult] = await Promise.all([
-        loadPartners(),
-        loadDealsCount()
-      ]);
-      
-    } catch (err) {
-      console.error('Error loading partners data:', err);
+      const { data } = await apiClient.get("/api/partners");
+      setPartners(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Partners loading error:", e);
       setError("Couldn't load partners. Pull to retry.");
     } finally {
       setLoading(false);
@@ -62,159 +49,80 @@ const PartnersScreen = () => {
     }
   };
 
-  const loadPartners = async () => {
-    try {
-      const { data } = await apiClient.get("/api/partners");
-      setPartners(Array.isArray(data) ? data : []);
-      return data;
-    } catch (e) {
-      console.error('Partners loading error:', e);
-      throw e;
-    }
-  };
-
-  const loadDealsCount = async () => {
-    try {
-      const res = await apiClient.get("/api/deals");
-      setDealsCount(res.data.deals.length);
-      return res.data.deals.length;
-    } catch (e) {
-      console.error("Deals count error:", e);
-      // Don't throw for deals count - it's not critical
-      return 0;
-    }
-  };
-
-  const handleRefresh = () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    fetchPartners();
   };
 
-  const onCardPress = (p) => {
-    setSelectedPartner(p);
-    Animated.spring(cardScale, {
-      toValue: 0.96,
-      friction: 3,
-      useNativeDriver: true,
-    }).start();
+  const handlePress = (partner) => {
+    setSelectedPartner(partner);
+    Animated.spring(cardScale, { toValue: 0.96, friction: 3, useNativeDriver: true }).start();
   };
 
-  const closeModal = () => {
-    Animated.spring(cardScale, {
-      toValue: 1,
-      friction: 3,
-      useNativeDriver: true,
-    }).start(() => {
+  const handleClose = () => {
+    Animated.spring(cardScale, { toValue: 1, friction: 3, useNativeDriver: true }).start(() => {
       setSelectedPartner(null);
     });
   };
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={["#34d399", "#059669"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.gradient}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.textGroup}>
-            <Text style={styles.title}>Pay with HouseTabz at...</Text>
-          </View>
-          <Image
-            source={require("../../assets/housetabz-marketplace3.png")}
-            style={styles.headerImage}
-            resizeMode="contain"
-          />
-        </View>
-      </LinearGradient>
-    </View>
-  );
-
-  const renderBody = () => {
-    if (error) {
-      return (
-        <View style={styles.errorContainer}>
-          <MaterialIcons name="error-outline" size={32} color="#ef4444" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
-            <Text style={styles.retryText}>Refresh</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-    
-    return (
-      <View style={styles.grid}>
-        {partners.map((p) => (
-          <Animated.View key={p.id} style={{ transform: [{ scale: cardScale }] }}>
-            <CompanyCardComponent
-              name={p.name}
-              logoUrl={p.logo}
-              coverUrl={p.marketplace_cover}
-              onPress={() => onCardPress(p)}
-              cardWidth={CARD_WIDTH}
-            />
-          </Animated.View>
-        ))}
-      </View>
-    );
+  const handleRewardsPress = (announcement) => {
+    // Handle announcement press - could navigate based on announcement type
+    console.log('Announcement pressed:', announcement);
   };
 
-  // Show skeleton while loading (not refreshing)
-  if (loading && !refreshing) {
-    return <PartnersSkeleton />;
-  }
+  if (loading && !refreshing) return <PartnersSkeleton />;
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
-      <ScrollView 
-        contentContainerStyle={styles.scroll} 
+      <ScrollView
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#34d399"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34d399" />
         }
       >
-        {dealsCount > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleGroup}>
-                <MaterialIcons name="auto-awesome" size={24} color="#34d399" />
-                <Text style={styles.sectionTitle}>Special Deals</Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{dealsCount} available</Text>
-              </View>
+        {/* Swipeable Announcements */}
+        <View style={styles.announcementSection}>
+          <SwipeableAnnouncements onAnnouncementPress={handleRewardsPress} />
+        </View>
+
+        {/* Partners Header */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>Featured Services</Text>
+        </View>
+
+        {/* Partners Grid */}
+        <View style={styles.grid}>
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorSubtext} onPress={onRefresh}>Pull to retry</Text>
             </View>
-            <SpecialDeals />
-          </View>
-        )}
-        <View style={styles.section}>
-          <Text style={styles.subTitle}>Our Partners</Text>
-          {renderBody()}
+          ) : (
+            partners.map((p) => (
+              <Animated.View key={p.id} style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
+                <CompanyCardComponent
+                  name={p.name}
+                  logoUrl={p.logo}
+                  coverUrl={p.marketplace_cover}
+                  onPress={() => handlePress(p)}
+                  cardWidth={CARD_WIDTH}
+                />
+              </Animated.View>
+            ))
+          )}
+        </View>
+
+        {/* Simple footer */}
+        <View style={styles.footerContainer}>
+          <Text style={styles.footerText}>More services coming soon</Text>
         </View>
       </ScrollView>
 
-      <Modal
-        visible={!!selectedPartner}
-        transparent
-        animationType="slide"
-        onRequestClose={closeModal}
-      >
+      <Modal visible={!!selectedPartner} transparent animationType="slide" onRequestClose={handleClose}>
         <View style={styles.modalOverlay}>
           {selectedPartner && (
-            <ViewCompanyCard
-              partner={selectedPartner}
-              visible
-              onClose={closeModal}
-              userId={user.id}
-              jwtToken={token}
-            />
+            <ViewCompanyCard partner={selectedPartner} visible onClose={handleClose} userId={user.id} jwtToken={token} />
           )}
         </View>
       </Modal>
@@ -225,117 +133,61 @@ const PartnersScreen = () => {
 export default PartnersScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#dff6f0",
-  },
-  headerContainer: {
-    width: "100%",
-    overflow: "hidden",
-  },
-  gradient: {
+  container: { flex: 1, backgroundColor: "#dff6f0" },
+  scroll: { paddingBottom: 40 },
+  
+  announcementSection: {
     paddingVertical: 24,
-    paddingHorizontal: 24,
-    borderBottomRightRadius: 40,
   },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  
+  headerContainer: { 
+    paddingHorizontal: CARD_GUTTER, 
+    marginBottom: 20,
+    marginTop: 8,
   },
-  textGroup: {
-    flex: 1,
+  header: { 
+    fontSize: 20, 
+    fontWeight: "700", 
+    color: "#1e293b" 
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#fff",
-    letterSpacing: -0.5,
-    fontFamily: "Montserrat-Black",
-  },
-  headerImage: {
-    width: 120,
-    height: 80,
-  },
-  scroll: {
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    marginBottom: 12,
-  },
-  sectionTitleGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    fontFamily: "Montserrat-Bold",
-  },
-  badge: {
-    backgroundColor: "#f0fdf4",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#dcfce7",
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#34d399",
-  },
-  subTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    paddingHorizontal: CARD_GUTTER,
-    marginBottom: 12,
-    fontFamily: "Montserrat-Black",
-  },
+  
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     paddingHorizontal: CARD_GUTTER,
   },
-  errorContainer: {
-    margin: 16,
-    padding: 24,
-    backgroundColor: "#fee2e2",
-    borderRadius: 12,
-    alignItems: "center",
+  cardWrapper: { 
+    marginBottom: CARD_GUTTER 
   },
-  errorText: {
-    color: "#ef4444",
-    fontSize: 16,
-    textAlign: "center",
-    marginTop: 12,
+  
+  footerContainer: { 
+    alignItems: "center", 
+    paddingVertical: 32,
   },
-  retryBtn: {
-    marginTop: 16,
-    backgroundColor: "#34d399",
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    borderRadius: 8,
+  footerText: { 
+    fontSize: 13, 
+    color: "#64748b" 
   },
-  retryText: {
-    color: "#fff",
-    fontWeight: "600",
+  
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: "rgba(0,0,0,0.6)", 
+    justifyContent: "flex-end" 
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.9)",
-    justifyContent: "flex-end",
+  
+  errorContainer: { 
+    width: CARD_WIDTH * 2 + CARD_GUTTER, 
+    alignItems: "center", 
+    marginTop: 20 
   },
+  errorText: { 
+    color: "#ef4444", 
+    fontSize: 16, 
+    marginBottom: 8 
+  },
+  errorSubtext: { 
+    color: "#34d399", 
+    fontSize: 14 
+  }
 });

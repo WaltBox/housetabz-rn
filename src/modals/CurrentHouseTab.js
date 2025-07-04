@@ -12,8 +12,7 @@ import {
   Animated
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useAuth } from "../context/AuthContext";
-import apiClient from "../config/api";
+import { useFonts } from 'expo-font';
 
 const getDueDateStatus = (dueDate) => {
   if (!dueDate) return { color: '#64748b', label: 'No due date' };
@@ -26,57 +25,130 @@ const getDueDateStatus = (dueDate) => {
   return { color: '#34d399', label: `Due in ${diff}d` };
 };
 
-const BillCard = ({ bill, onPress }) => {
+const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
   const charges = bill.Charges || bill.charges || [];
-  const pending = charges.filter(c => c.status === 'pending' || c.status === 'unpaid');
-  const paid = charges.filter(c => c.status === 'paid');
-  const unpaidAmount = pending.reduce((sum, c) => sum + Number(c.amount), 0);
-  const paidAmount = paid.reduce((sum, c) => sum + Number(c.amount), 0);
+  const unpaidCharges = charges.filter(c => c.status === 'unpaid' || c.status === 'processing');
+  const paidCharges = charges.filter(c => c.status === 'paid');
+  const unpaidAmount = unpaidCharges.reduce((sum, c) => sum + Number(c.amount), 0);
+  const paidAmount = paidCharges.reduce((sum, c) => sum + Number(c.amount), 0);
   const total = unpaidAmount + paidAmount;
   const progress = total > 0 ? (paidAmount / total) * 100 : 0;
   const { label: dueLabel, color: dueColor } = getDueDateStatus(bill.dueDate);
   
-  // Use brand color for progress
-  const getProgressColor = () => {
-    // Use the brand color
-    return '#34d399'; // Brand color
-  };
-
-  const color = getProgressColor();
-
+  // Check if bill is overdue for styling context
+  const isOverdue = bill.dueDate && new Date(bill.dueDate) < new Date();
+  
   return (
-    <TouchableOpacity style={styles.billCard} onPress={onPress} activeOpacity={0.8}>
-      {/* Subtle progress indicator */}
-      <View style={styles.progressBarContainer}>
-        <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: color }]} />
-      </View>
-      <View style={styles.cardContent}>
-        <View style={styles.row}>
-          <Text style={styles.billName}>{bill.name}</Text>
-          <View style={styles.amountContainer}>
+    <>
+      {/* Bill Card */}
+      <TouchableOpacity style={styles.billCard} onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.billContent}>
+          <View style={styles.billHeader}>
+            <Text style={styles.billName}>{bill.name}</Text>
             <Text style={styles.billAmount}>${unpaidAmount.toFixed(2)}</Text>
           </View>
-        </View>
-        <View style={styles.bottomRow}>
-          <Text style={[styles.dueDate, { color: dueColor }]}>{dueLabel}</Text>
-          {/* Only show progress indicator if there's been some payment */}
+          <View style={styles.billFooter}>
+            <View style={[styles.statusDot, { backgroundColor: dueColor }]} />
+            <Text style={[styles.dueDate, { color: dueColor }]}>{dueLabel}</Text>
+            <View style={styles.expandIndicator}>
+              <MaterialIcons
+                name={isExpanded ? "expand-less" : "expand-more"}
+                size={20}
+                color="#64748b"
+              />
+            </View>
+          </View>
+          {/* Progress info */}
           {progress > 0 && (
-            <View style={[styles.percentBadge, { backgroundColor: 'rgba(52, 211, 153, 0.15)' }]}> 
-              <Text style={[styles.percentText, { color: '#34d399' }]}>{progress.toFixed(0)}% Paid</Text>
+            <View style={styles.progressInfo}>
+              <Text style={styles.progressText}>{progress.toFixed(0)}% Paid</Text>
             </View>
           )}
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      {/* Expandable Unpaid Users Section */}
+      <Animated.View style={[
+        styles.unpaidUsersContainer,
+        {
+          height: animationValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, Math.max(56 * unpaidCharges.length, 56)]
+          }),
+          opacity: animationValue
+        }
+      ]}>
+        {isExpanded && (
+          unpaidCharges.length > 0 ? (
+            unpaidCharges.map((charge, index) => {
+              // Get username from multiple possible sources
+              const username = charge.userName || 
+                              charge.User?.username || 
+                              charge.user?.username || 
+                              `User ${charge.userId}`;
+              
+              return (
+                <View 
+                  key={charge.id} 
+                  style={[
+                    styles.unpaidUserItem,
+                    // Remove border from last item
+                    index === unpaidCharges.length - 1 && styles.lastUnpaidUserItem
+                  ]}
+                >
+                  <View style={styles.userInfo}>
+                    <View style={[
+                      styles.userIconContainer,
+                      // Only use red background if bill is actually overdue
+                      isOverdue ? styles.userIconOverdue : styles.userIconNeutral
+                    ]}>
+                      <MaterialIcons 
+                        name="person" 
+                        size={16} 
+                        color={isOverdue ? "#dc2626" : "#6b7280"} 
+                      />
+                    </View>
+                    <Text style={styles.unpaidUserName}>
+                      {username}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.unpaidUserAmount,
+                    // Only use red text if bill is actually overdue
+                    isOverdue && styles.unpaidUserAmountOverdue
+                  ]}>
+                    ${Number(charge.amount).toFixed(2)}
+                  </Text>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.noUnpaidItem}>
+              <MaterialIcons name="check-circle" size={20} color="#34d399" />
+              <Text style={styles.noUnpaidText}>
+                All roommates have paid
+              </Text>
+            </View>
+          )
+        )}
+      </Animated.View>
+    </>
   );
 };
 
-const CurrentHouseTab = ({ house, onClose }) => {
-  const [bills, setBills] = useState([]);
-  const [loading, setLoading] = useState(true);
+const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
   const [totalUnpaid, setTotalUnpaid] = useState(0);
-  const [error, setError] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [expandedBill, setExpandedBill] = useState(null);
+  const [animationValues, setAnimationValues] = useState({});
+
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
 
   useEffect(() => {
     // Fade in animation
@@ -86,67 +158,67 @@ const CurrentHouseTab = ({ house, onClose }) => {
       useNativeDriver: true
     }).start();
 
-    const load = async () => {
-      try {
-        setError(false);
-        const res = await apiClient.get(`/api/houses/${house.id}/bills`);
-        const data = res.data.bills || res.data;
-        const houseBalance = res.data.houseBalance || 0;
-        
-        setBills(data);
-        setTotalUnpaid(houseBalance);
-      } catch (e) {
-        console.error(e);
-        setError(true);
-        setBills([]);
-        setTotalUnpaid(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Calculate total unpaid from house data
+    const houseBalance = house?.houseBalance || 0;
+    setTotalUnpaid(houseBalance);
     
-    if (house?.id) load();
-  }, [house.id]);
+    // Initialize animation values for each bill
+    let newAnimationValues = {};
+    bills.forEach(bill => {
+      newAnimationValues[bill.id] = new Animated.Value(0);
+    });
+    setAnimationValues(newAnimationValues);
+    
+    console.log('CurrentHouseTab received data:', {
+      billsCount: bills.length,
+      houseBalance,
+      houseName: house?.name
+    });
+  }, [house, bills]);
 
-  const handleBillPress = (bill) => {
-    console.log('Bill pressed:', bill.id);
-    // Navigate to bill details or open action sheet
+  const toggleBill = (billId) => {
+    if (expandedBill === billId) {
+      setExpandedBill(null);
+      animateBill(billId, false);
+    } else {
+      if (expandedBill !== null) {
+        animateBill(expandedBill, false);
+      }
+      setExpandedBill(billId);
+      animateBill(billId, true);
+    }
   };
 
-  // Only show bills that are not paid (more explicit filtering)
-  // Make sure to handle case differences and trim whitespace
+  const animateBill = (billId, expand) => {
+    if (animationValues[billId]) {
+      Animated.timing(animationValues[billId], {
+        toValue: expand ? 1 : 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+  // Filter bills - only show pending/partial_paid bills
   const unpaidBills = bills.filter(bill => {
-    // Get the status and normalize it (lowercase and trim)
     const status = (bill.status || '').toLowerCase().trim();
-    // Only include if status is pending or partial_paid, exclude paid bills
     return status === 'pending' || status === 'partial_paid';
   });
 
-  console.log('Bills filtered:', bills.length, 'total,', unpaidBills.length, 'unpaid');
+  // Get house name for display
+  const houseName = house?.name || 'House';
 
-  const retryLoading = () => {
-    setLoading(true);
-    // Trigger the useEffect to reload data
-    const load = async () => {
-      try {
-        const res = await apiClient.get(`/api/houses/${house.id}/bills`);
-        const data = res.data.bills || res.data;
-        const houseBalance = res.data.houseBalance || 0;
-        
-        setBills(data);
-        setTotalUnpaid(houseBalance);
-        setError(false);
-      } catch (e) {
-        console.error(e);
-        setError(true);
-        setBills([]);
-        setTotalUnpaid(0);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const renderBillItem = ({ item }) => {
+    const isExpanded = expandedBill === item.id;
     
-    if (house?.id) load();
+    return (
+      <BillCard
+        bill={item}
+        onPress={() => toggleBill(item.id)}
+        isExpanded={isExpanded}
+        animationValue={animationValues[item.id] || new Animated.Value(0)}
+      />
+    );
   };
 
   return (
@@ -157,61 +229,74 @@ const CurrentHouseTab = ({ house, onClose }) => {
           <View style={styles.header}>
             <TouchableOpacity 
               onPress={onClose} 
-              style={styles.closeIcon}
+              style={styles.closeButton}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
               <MaterialIcons name="close" size={28} color="#1e293b" />
             </TouchableOpacity>
-            <Text style={styles.title}>Current Tab</Text>
+            <Text style={[
+              styles.title,
+              fontsLoaded && { fontFamily: 'Poppins-Bold' }
+            ]}>
+              Current Tab
+            </Text>
             <View style={{ width: 28 }} />
           </View>
 
-          {loading ? (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color="#34d399" />
+          {/* Summary card with house name */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeader}>
+              <MaterialIcons name="home" size={28} color="#34d399" />
+              <Text style={[
+                styles.summaryLabel,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                {houseName} Currently Owes
+              </Text>
             </View>
-          ) : error ? (
-            <View style={styles.error}>
-              <MaterialIcons name="error-outline" size={48} color="#ef4444" />
-              <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
-              <Text style={styles.errorText}>We couldn't load your bills at this time.</Text>
-              <TouchableOpacity 
-                style={styles.retryButton}
-                onPress={retryLoading}
-              >
-                <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>You Currently Owe</Text>
-                <Text style={styles.summaryAmount}>${totalUnpaid.toFixed(2)}</Text>
-              </View>
+            <Text style={[
+              styles.summaryAmount,
+              fontsLoaded && { fontFamily: 'Poppins-Bold' }
+            ]}>
+              ${totalUnpaid.toFixed(2)}
+            </Text>
+          </View>
 
-              <Text style={styles.billsHeader}>Your Charges</Text>
+          <View style={styles.billsSection}>
+            <Text style={[
+              styles.billsHeader,
+              fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+            ]}>
+              Unpaid Bills ({unpaidBills.length})
+            </Text>
 
-              <FlatList
-                data={unpaidBills}
-                keyExtractor={item => item.id?.toString() || Math.random().toString()}
-                renderItem={({ item }) => (
-                  <BillCard 
-                    bill={item} 
-                    onPress={() => handleBillPress(item)}
-                  />
-                )} 
-                contentContainerStyle={{ paddingBottom: 16 }}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={() => (
-                  <View style={styles.empty}>
+            <FlatList
+              data={unpaidBills}
+              keyExtractor={item => item.id?.toString() || Math.random().toString()}
+              renderItem={renderBillItem}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={() => (
+                <View style={styles.empty}>
+                  <View style={styles.emptyIcon}>
                     <MaterialIcons name="check-circle" size={48} color="#34d399" />
-                    <Text style={styles.emptyTitle}>All Caught Up!</Text>
-                    <Text style={styles.emptyText}>You have no unpaid bills.</Text>
                   </View>
-                )}
-              />
-            </>
-          )}
+                  <Text style={[
+                    styles.emptyTitle,
+                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                  ]}>
+                    All Caught Up!
+                  </Text>
+                  <Text style={[
+                    styles.emptyText,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}>
+                    No unpaid bills found.
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
         </Animated.View>
       </SafeAreaView>
     </>
@@ -221,7 +306,7 @@ const CurrentHouseTab = ({ house, onClose }) => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#dff6f0' // Restoring original brand color
+    backgroundColor: '#dff6f0' 
   },
   header: {
     flexDirection: 'row', 
@@ -232,26 +317,22 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: '#dff6f0'
   },
-  closeIcon: { 
-    padding: 8 
-  },
   title: { 
     fontSize: 20, 
     fontWeight: '700', 
     color: '#1e293b',
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System'
+    flex: 1,
+    textAlign: 'center'
   },
-  loading: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  closeButton: {
+    padding: 8
   },
 
   summaryCard: {
     backgroundColor: '#ffffff', 
     borderRadius: 16, 
     marginHorizontal: 16,
-    padding: 20, 
+    padding: 24, 
     marginBottom: 16, 
     ...Platform.select({
       ios: {
@@ -261,136 +342,208 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
       },
       android: {
-    
+        elevation: 2
       }
     }),
     alignItems: 'flex-start'
   },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   summaryLabel: { 
     fontSize: 14, 
     color: '#64748b', 
-    marginBottom: 4 
+    marginLeft: 8,
+    fontWeight: '500'
   },
   summaryAmount: {
     fontSize: 32, 
     fontWeight: '700', 
     color: '#1e293b',
-    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'Montserrat-Black',
     fontVariant: ['tabular-nums']
   },
-  
+
+  billsSection: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
   billsHeader: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b'
+    color: '#1e293b',
+    marginBottom: 12,
   },
 
   billCard: {
     backgroundColor: '#ffffff', 
-    borderRadius: 16, 
-    marginHorizontal: 16,
-    marginVertical: 6, 
-    overflow: 'hidden',
+    borderRadius: 12, 
+    marginBottom: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000', 
         shadowOffset: { width: 0, height: 1 }, 
         shadowOpacity: 0.05,
-        shadowRadius: 5,
+        shadowRadius: 2,
       },
       android: {
- 
+        elevation: 1
       }
     })
   },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: '#f1f5f9',
+  billContent: {
+    padding: 16,
   },
-  progressBar: { 
-    height: '100%',
-    borderTopRightRadius: 1.5,
-    borderBottomRightRadius: 1.5,
-  },
-  cardContent: { 
-    padding: 16 
-  },
-  row: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
-  },
-  bottomRow: {
+  billHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   billName: { 
     fontSize: 16, 
     fontWeight: '600', 
-    color: '#1e293b' 
-  },
-  amountContainer: { 
-    marginLeft: 12 
+    color: '#1e293b',
+    flex: 1,
+    marginRight: 12,
   },
   billAmount: { 
-    fontSize: 16, 
+    fontSize: 18, 
     fontWeight: '700', 
     color: '#1e293b' 
   },
-  percentBadge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 3, 
-    borderRadius: 12
+  billFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  percentText: { 
-    fontSize: 12, 
-    fontWeight: '600' 
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   dueDate: { 
     fontSize: 13, 
-    fontWeight: '500'
+    fontWeight: '500',
+    flex: 1
   },
-
-  error: { 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: 32, 
-    paddingHorizontal: 32 
+  expandIndicator: {
+    marginLeft: 8,
   },
-  errorTitle: { 
-    fontSize: 18, 
-    fontWeight: '600', 
-    color: '#1e293b', 
-    marginTop: 12 
+  progressInfo: {
+    marginTop: 8
   },
-  errorText: { 
-    fontSize: 14, 
-    color: '#64748b', 
-    marginTop: 6, 
-    textAlign: 'center',
-    marginBottom: 16
-  },
-  retryButton: {
-    backgroundColor: '#34d399',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10
-  },
-  retryButtonText: {
-    color: 'white',
+  progressText: {
+    fontSize: 12,
+    color: '#34d399',
     fontWeight: '600'
   },
-
+  
+  // Expandable section styles
+  unpaidUsersContainer: {
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    marginTop: -4,
+    marginBottom: 8,
+    marginHorizontal: 4,
+    paddingHorizontal: 18,
+    paddingVertical: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1
+      }
+    })
+  },
+  unpaidUserItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  lastUnpaidUserItem: {
+    borderBottomWidth: 0,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1
+  },
+  userIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  userIconNeutral: {
+    backgroundColor: '#f3f4f6',
+  },
+  userIconOverdue: {
+    backgroundColor: '#fef2f2',
+  },
+  unpaidUserName: {
+    fontSize: 15,
+    color: '#1f2937',
+    fontWeight: '500',
+    flex: 1
+  },
+  unpaidUserAmount: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '600'
+  },
+  unpaidUserAmountOverdue: {
+    color: '#dc2626',
+  },
+  noUnpaidItem: {
+    padding: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  noUnpaidText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginLeft: 8,
+    fontWeight: '500'
+  },
+  
   empty: { 
     justifyContent: 'center', 
     alignItems: 'center', 
-    marginTop: 32, 
+    marginTop: 40, 
     paddingHorizontal: 32 
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4
+      }
+    })
   },
   emptyTitle: { 
     fontSize: 18, 

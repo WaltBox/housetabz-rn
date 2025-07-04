@@ -1,4 +1,4 @@
-// HouseServicesScreen.js (UPDATED WITH SKELETON)
+// HouseServicesScreen.js (COMPLETE FIXED VERSION)
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -33,54 +33,13 @@ const HouseServicesScreen = ({ navigation }) => {
 
   const { user } = useAuth();
   const [services, setServices] = useState([]);
-  const [serviceFundingSummaries, setServiceFundingSummaries] = useState({});
-  const [serviceLedgers, setServiceLedgers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('active');
   const [selectedService, setSelectedService] = useState(null);
 
-  // Function to fetch active ledger with enhanced data
-  const fetchLedgerForService = async (serviceId) => {
-    try {
-      // The original path that worked before
-      const response = await apiClient.get(`/api/house-service/${serviceId}/active`);
-      return response.data;
-    } catch (err) {
-      // First error, try alternative path
-      try {
-        // Try the new path format
-        const altResponse = await apiClient.get(`/api/house-service-ledgers/house-service/${serviceId}/active`);
-        return altResponse.data;
-      } catch (altErr) {
-        // If both fail, log quietly and return null
-        console.log(`No active ledger available for service ${serviceId}`);
-        return null;
-      }
-    }
-  };
-
-  // Function to fetch funding summary for a service
-  const fetchFundingSummaryForService = async (serviceId) => {
-    try {
-      // The correct path should match the routes we defined in house-service-ledger-routes.js
-      const response = await apiClient.get(`/api/house-service-ledgers/house-service/${serviceId}/funding-summary`);
-      return response.data;
-    } catch (err) {
-      // First error, try alternative path
-      try {
-        // Try another possible path format
-        const altResponse = await apiClient.get(`/api/house-service/${serviceId}/funding-summary`);
-        return altResponse.data;
-      } catch (altErr) {
-        // If both fail, log the original error but don't crash
-        console.log(`No funding summary available for service ${serviceId}`);
-        return null;
-      }
-    }
-  };
-
+  // Optimized fetch function using the new endpoint
   const fetchHouseServices = useCallback(async () => {
     try {
       if (!user?.houseId) {
@@ -92,46 +51,43 @@ const HouseServicesScreen = ({ navigation }) => {
       setError(null);
       if (!refreshing) setIsLoading(true);
 
-      // Fetch all house services
-      const response = await apiClient.get(`/api/houseServices/house/${user.houseId}`);
-      const houseServices = response.data?.houseServices || [];
-      setServices(houseServices);
+      
+      
+      // Try the enhanced endpoint first
+      try {
 
-      // Fetch enhanced data for all services in parallel
-      const ledgerPromises = houseServices.map(service => fetchLedgerForService(service.id));
-      const summaryPromises = houseServices.map(service => fetchFundingSummaryForService(service.id));
-      
-      // Wait for all promises to resolve
-      const [ledgerResults, summaryResults] = await Promise.all([
-        Promise.all(ledgerPromises),
-        Promise.all(summaryPromises)
-      ]);
-      
-      // Organize data by service ID
-      const ledgersData = {};
-      const summariesData = {};
-      
-      houseServices.forEach((service, index) => {
-        if (ledgerResults[index]) {
-          ledgersData[service.id] = ledgerResults[index];
-        }
+        const response = await apiClient.get(`/api/houseServices/house/${user.houseId}/with-data`);
         
-        if (summaryResults[index]) {
-          summariesData[service.id] = summaryResults[index];
+   
+  
+        
+        const houseServices = response.data?.houseServices || [];
+        setServices(houseServices);
+        setError(null);
+        
+      } catch (enhancedError) {
+   
+        
+        // Fallback to old method
+
+        try {
+          const response = await apiClient.get(`/api/houseServices/house/${user.houseId}`);
+ 
+          const houseServices = response.data?.houseServices || [];
+          setServices(houseServices);
+        } catch (fallbackErr) {
+        
+          setError('Failed to load house services. Please try again.');
         }
-      });
-      
-      setServiceLedgers(ledgersData);
-      setServiceFundingSummaries(summariesData);
-      setError(null);
+      }
     } catch (err) {
-      console.error('Error fetching house services:', err);
+
       setError('Failed to load house services. Please try again.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [user?.houseId]);
+  }, [user?.houseId, refreshing]);
 
   useEffect(() => {
     let isMounted = true;
@@ -167,80 +123,37 @@ const HouseServicesScreen = ({ navigation }) => {
     return true;
   });
 
+  // FIXED: Clean helper functions using new data structure
   const getPercentFunded = (service) => {
-    // First try to get data from the funding summary
-    const summary = serviceFundingSummaries[service.id];
-    if (summary?.activeLedger?.percentFunded !== undefined) {
-      return summary.activeLedger.percentFunded;
+    if (service.calculatedData?.percentFunded !== undefined) {
+      return service.calculatedData.percentFunded;
     }
     
-    // Then try the active ledger
-    const ledger = serviceLedgers[service.id];
-    if (ledger) {
-      const total = Number(ledger.fundingRequired) || 0;
-      const funded = Number(ledger.funded) || 0;
-      
-      if (total === 0) return 0;
-      return Math.round((funded / total) * 100);
-    }
-    
-    // Fall back to service data
     const total = Number(service.amount) || 0;
     const funded = Number(service.fundedAmount) || 0;
-    
-    // Special case for Google Fiber (ID 7)
-    if (service.id === 7 && service.name?.includes('Google Fiber')) {
-      return 20; // 20% funded
-    }
     
     if (total === 0) return 0;
     return Math.round((funded / total) * 100);
   };
 
   const getContributorCount = (service) => {
-    const ledger = serviceLedgers[service.id];
-    if (ledger?.metadata?.fundedUsers?.length) {
-      return ledger.metadata.fundedUsers.length;
-    }
-    return 0;
+    return service.calculatedData?.contributorCount || 0;
   };
 
   const getServiceDetails = (service) => {
-    const summary = serviceFundingSummaries[service.id];
-    const ledger = serviceLedgers[service.id];
-    
-    let details = {};
-    
-    if (summary?.activeLedger) {
-      details = {
-        fundingRequired: summary.activeLedger.fundingRequired,
-        funded: summary.activeLedger.funded,
-        remainingAmount: summary.activeLedger.remainingAmount,
-        percentFunded: summary.activeLedger.percentFunded,
-        contributorCount: summary.userContributions?.length || 0,
-        userContributions: summary.userContributions || []
-      };
-    } else if (ledger) {
-      details = {
-        fundingRequired: ledger.fundingRequired,
-        funded: ledger.funded,
-        remainingAmount: Math.max(0, Number(ledger.fundingRequired) - Number(ledger.funded)),
-        percentFunded: getPercentFunded(service),
-        contributorCount: ledger.metadata?.fundedUsers?.length || 0,
-        fundedUsers: ledger.metadata?.fundedUsers || []
-      };
-    } else {
-      details = {
-        fundingRequired: service.amount || 0,
-        funded: service.fundedAmount || 0,
-        remainingAmount: Math.max(0, Number(service.amount || 0) - Number(service.fundedAmount || 0)),
-        percentFunded: getPercentFunded(service),
-        contributorCount: 0,
-        fundedUsers: []
-      };
+    if (service.calculatedData) {
+      return service.calculatedData;
     }
     
-    return details;
+    // Fallback for services without calculatedData
+    return {
+      fundingRequired: service.amount || 0,
+      funded: service.fundedAmount || 0,
+      remainingAmount: Math.max(0, (service.amount || 0) - (service.fundedAmount || 0)),
+      percentFunded: getPercentFunded(service),
+      contributorCount: 0,
+      userContributions: []
+    };
   };
 
   const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
@@ -438,14 +351,18 @@ const HouseServicesScreen = ({ navigation }) => {
           </>
         )}
 
+        {/* DEBUG: Modal using embedded data */}
         {selectedService && (
-          <HouseServiceDetailModal
-            visible={selectedService !== null}
-            service={selectedService}
-            activeLedger={serviceLedgers[selectedService?.id]}
-            fundingSummary={serviceFundingSummaries[selectedService?.id]}
-            onClose={() => setSelectedService(null)}
-          />
+          <>
+
+            <HouseServiceDetailModal
+              visible={selectedService !== null}
+              service={selectedService}
+              activeLedger={selectedService.ledgers?.[0]} // Use embedded ledger data
+              fundingSummary={selectedService.calculatedData} // Use calculated data
+              onClose={() => setSelectedService(null)}
+            />
+          </>
         )}
       </SafeAreaView>
     </>
@@ -521,6 +438,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    minHeight: 140, // Ensure consistent height for expanded content
   },
   serviceContent: {
     flexDirection: 'row',
@@ -563,6 +481,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#34d399',
     borderRadius: 3,
   },
+  fullyFundedBar: {
+    backgroundColor: '#10b981', // Green for fully funded
+  },
   amountInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -575,6 +496,86 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
+  },
+  // Contributor Status Section
+  contributorStatus: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  contributorLabel: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  contributorList: {
+    gap: 2,
+  },
+  contributorItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contributorName: {
+    fontSize: 11,
+    color: '#10b981',
+    fontWeight: '500',
+  },
+  contributorAmount: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  moreContributors: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  // Waiting Status Section
+  waitingStatus: {
+    marginTop: 6,
+  },
+  waitingLabel: {
+    fontSize: 12,
+    color: '#ef4444',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  waitingList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  waitingName: {
+    fontSize: 11,
+    color: '#ef4444',
+    fontWeight: '400',
+  },
+  moreWaiting: {
+    fontSize: 10,
+    color: '#fca5a5',
+    fontStyle: 'italic',
+    marginLeft: 4,
+  },
+  // Fully Funded Badge
+  fullyFundedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  fullyFundedText: {
+    fontSize: 11,
+    color: '#10b981',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   errorContainer: {
     flex: 1,

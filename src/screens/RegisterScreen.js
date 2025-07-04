@@ -24,6 +24,7 @@ const RegisterScreen = ({ navigation }) => {
     password: '',
     confirmPassword: '',
   });
+  const [smsConsent, setSmsConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const { register } = useAuth();
@@ -54,6 +55,12 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
+    // Check SMS consent
+    if (!smsConsent) {
+      Alert.alert('SMS Consent Required', 'Please agree to receive SMS notifications to continue. These are required for payment reminders.');
+      return;
+    }
+
     setLoading(true);
     try {
       await register({
@@ -61,6 +68,7 @@ const RegisterScreen = ({ navigation }) => {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         password: formData.password,
+        smsConsent: smsConsent,
       });
     } catch (error) {
       Alert.alert(
@@ -186,6 +194,25 @@ const RegisterScreen = ({ navigation }) => {
                 />
               </View>
             </View>
+
+            {/* SMS Consent Section */}
+            <TouchableOpacity 
+              style={styles.consentContainer}
+              onPress={() => setSmsConsent(!smsConsent)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, smsConsent && styles.checkboxChecked]}>
+                {smsConsent && (
+                  <Icon name="check" size={14} color="white" />
+                )}
+              </View>
+              <Text style={[
+                styles.consentText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                I agree to receive SMS notifications from HouseTabz for payment reminders
+              </Text>
+            </TouchableOpacity>
 
             {/* Create Account Button */}
             <TouchableOpacity
@@ -341,7 +368,7 @@ const styles = StyleSheet.create({
   },
   inputSection: {
     width: '100%',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -361,6 +388,33 @@ const styles = StyleSheet.create({
     height: 56,
     fontSize: 16,
     color: '#374151',
+  },
+  consentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    backgroundColor: 'white',
+  },
+  checkboxChecked: {
+    backgroundColor: '#34d399',
+    borderColor: '#34d399',
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6b7280',
+    lineHeight: 20,
   },
   registerButton: {
     width: '100%',

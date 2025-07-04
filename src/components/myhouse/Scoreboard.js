@@ -83,7 +83,6 @@ const Scoreboard = ({ house }) => {
         ]}>
           Score Board
         </Text>
-        <MaterialIcons name="leaderboard" size={22} color="#64748b" />
       </View>
       
       {sortedUsers.length > 0 ? (

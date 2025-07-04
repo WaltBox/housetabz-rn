@@ -12,7 +12,6 @@ import {
   Animated
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import apiClient from "../config/api";
 
 const formatDate = (dateString) => {
   if (!dateString) return "Unknown";
@@ -48,7 +47,7 @@ const PaidBillItem = ({ bill }) => {
       
       <View style={styles.billDetails}>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Final Payment Recieved:</Text>
+          <Text style={styles.detailLabel}>Final Payment Received:</Text>
           <Text style={styles.detailValue}>{formatDate(bill.paymentDate || bill.updatedAt)}</Text>
         </View>
         
@@ -79,7 +78,7 @@ const MonthAccordion = ({ month, bills, isExpanded, onToggle }) => {
   useEffect(() => {
     Animated.timing(animation, {
       toValue: isExpanded ? 1 : 0,
-      duration: 200, // Match UserTransactionsModal animation speed
+      duration: 200,
       useNativeDriver: false,
     }).start();
   }, [isExpanded]);
@@ -134,42 +133,23 @@ const MonthAccordion = ({ month, bills, isExpanded, onToggle }) => {
   );
 };
 
-const PaidHouseTabz = ({ house, onClose }) => {
-  const [paidBills, setPaidBills] = useState([]);
-  const [loading, setLoading] = useState(true);
+// UPDATED: Component now accepts paidBills as props instead of fetching them
+const PaidHouseTabz = ({ house, onClose, paidBills = [] }) => {
   const [expandedMonth, setExpandedMonth] = useState(null);
   
+  // No more loading state or API call since data is pre-loaded
+  const loading = false;
+
   useEffect(() => {
-    const fetchPaidBills = async () => {
-      try {
-        if (!house?.id) {
-          setLoading(false);
-          return;
-        }
-        
-        const response = await apiClient.get(`/api/houses/${house.id}/paid-bills`);
-        setPaidBills(response.data || []);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching paid bills:', err);
-        setLoading(false);
-      }
-    };
+    console.log('PaidHouseTabz received data:', {
+      paidBillsCount: paidBills.length,
+      houseName: house?.name
+    });
+  }, [house, paidBills]);
 
-    fetchPaidBills();
-  }, [house?.id]);
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#34d399" />
-      </View>
-    );
-  }
-
-  // Group bills by month based on due date
+  // Group bills by month based on due date or payment date
   const groupedBills = paidBills.reduce((groups, bill) => {
-    const dueDate = bill.dueDate || bill.paymentDate;
+    const dueDate = bill.dueDate || bill.paymentDate || bill.updatedAt;
     if (!dueDate) return groups;
     
     const date = new Date(dueDate);
@@ -185,8 +165,8 @@ const PaidHouseTabz = ({ house, onClose }) => {
 
   // Sort months in reverse chronological order
   const sortedMonths = Object.keys(groupedBills).sort((a, b) => {
-    const dateA = new Date(a);
-    const dateB = new Date(b);
+    const dateA = new Date(a + " 1"); // Add day to make it a valid date
+    const dateB = new Date(b + " 1");
     return dateB - dateA;
   });
 
@@ -275,7 +255,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
-    flexGrow: 1, // Ensures the content fills the available space
+    flexGrow: 1,
   },
   transactionContainer: {
     marginBottom: 16,
@@ -394,12 +374,6 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     fontWeight: '500',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#dff6f0',
-  },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -419,7 +393,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
-   
   },
   emptyTitle: {
     fontSize: 24,

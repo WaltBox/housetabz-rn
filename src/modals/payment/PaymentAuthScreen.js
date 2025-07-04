@@ -55,70 +55,78 @@ const PaymentAuthScreen = ({ onSuccess, onCancel, onError, paymentData }) => {
     }
   };
 
-  const handleLogin = async () => {
-    if (!email) {
-      setError("Email is required");
-      return;
-    }
-    setLoading(true);
-    setError(null);
+  // Replace the handleLogin function in your PaymentAuthScreen with this:
+
+const handleLogin = async () => {
+  if (!email) {
+    setError("Email is required");
+    return;
+  }
+  setLoading(true);
+  setError(null);
+  
+  try {
+    // FIXED: Don't use login() - just verify credentials
+    console.log('🔐 Verifying credentials for SDK flow...');
     
-    try {
-      // Step 1: Authenticate user
-      console.log('🔐 Starting authentication...');
-      const loginResult = await login(email, password);
-      console.log('✅ Authentication successful:', loginResult);
-      
-      // Get user from context after successful login
-      const currentUser = user;
-      console.log('🔍 Current user from context:', currentUser);
-      
-      // Step 2: Check if house already has this service
-      if (paymentData && paymentData.apiKey && currentUser && currentUser.houseId) {
-        console.log('🏠 Checking house service status after authentication...');
-        console.log('🏠 Payment data:', paymentData);
-        console.log('🏠 User house ID:', currentUser.houseId);
-        
-        const statusCheck = await checkHouseServiceStatus(paymentData.apiKey, currentUser.houseId);
-        
-        if (statusCheck.exists) {
-          console.log('🎯 Service already exists:', statusCheck);
-          
-          // SIMPLIFIED: Always show ExistingRequestModal regardless of status
-          console.log('🔄 Existing service found, showing existing request modal');
-          onSuccess({
-            type: 'existing_service',
-            serviceStatus: statusCheck
-          });
-          return;
-        } else {
-          console.log('🆕 No existing service found');
-        }
-      } else {
-        console.log('⚠️ Skipping status check - missing data:', {
-          hasPaymentData: !!paymentData,
-          hasApiKey: !!(paymentData && paymentData.apiKey),
-          hasUser: !!currentUser,
-          hasHouseId: !!(currentUser && currentUser.houseId),
-          houseId: currentUser?.houseId
-        });
-      }
-      
-      // Step 3: No existing service found - proceed with normal flow
-      console.log('📝 Proceeding to RequestConfirmationScreen');
-      onSuccess({
-        type: 'new_request',
-        message: 'Proceeding to confirmation screen'
-      });
-      
-    } catch (err) {
-      console.error('❌ Error during authentication or status check:', err);
-      console.error('❌ Error response:', err.response?.data);
-      setError(err.response?.data?.message || err.message || "Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
+    // Just verify credentials without actually logging in
+    const response = await apiClient.post('/api/auth/verify-credentials', {
+      email,
+      password
+    });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Invalid credentials');
     }
-  };
+    
+    const currentUser = response.data.user;
+    console.log('✅ Credentials verified for user:', currentUser.username);
+    
+    // Step 2: Check if house already has this service
+    if (paymentData && paymentData.apiKey && currentUser && currentUser.houseId) {
+      console.log('🏠 Checking house service status after verification...');
+      console.log('🏠 Payment data:', paymentData);
+      console.log('🏠 User house ID:', currentUser.houseId);
+      
+      const statusCheck = await checkHouseServiceStatus(paymentData.apiKey, currentUser.houseId);
+      
+      if (statusCheck.exists) {
+        console.log('🎯 Service already exists:', statusCheck);
+        console.log('🔄 Existing service found, showing existing request modal');
+        onSuccess({
+          type: 'existing_service',
+          serviceStatus: statusCheck
+        });
+        return;
+      } else {
+        console.log('🆕 No existing service found');
+      }
+    } else {
+      console.log('⚠️ Skipping status check - missing data:', {
+        hasPaymentData: !!paymentData,
+        hasApiKey: !!(paymentData && paymentData.apiKey),
+        hasUser: !!currentUser,
+        hasHouseId: !!(currentUser && currentUser.houseId),
+        houseId: currentUser?.houseId
+      });
+    }
+    
+    // Step 3: No existing service found - proceed with normal flow
+    console.log('📝 Proceeding to RequestConfirmationScreen');
+    onSuccess({
+      type: 'new_request',
+      message: 'Proceeding to confirmation screen',
+      user: currentUser // Pass user data for the confirmation screen
+    });
+    
+  } catch (err) {
+    console.error('❌ Error during credential verification:', err);
+    console.error('❌ Error response:', err.response?.data);
+    setError(err.response?.data?.message || err.message || "Invalid credentials. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

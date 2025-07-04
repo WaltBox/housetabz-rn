@@ -1,3 +1,4 @@
+// Updated DashboardTopSection.js
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import FinancialSummaryCard from './topSection/FinancialSummaryCard';
@@ -11,7 +12,8 @@ import { useAuth } from '../../context/AuthContext';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
 
-const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) => {
+// UPDATED: Add unpaidBills prop
+const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, unpaidBills = [] }) => {
   const { user } = useAuth();
 
   // Modal visibility state
@@ -36,22 +38,28 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) 
   useEffect(() => {
     // Debug log to check house data
     if (house) {
-      console.log("House data in DashboardTopSection:", house);
-      console.log("HSI value:", house?.statusIndex?.score || house?.hsi || 0);
+      console.log("House data in DashboardTopSection:", {
+        name: house.name,
+        houseBalance: house.houseBalance,
+        financeBalance: house.finance?.balance,
+        unpaidBillsCount: unpaidBills.length
+      });
     }
-  }, [house]);
+  }, [house, unpaidBills]);
 
-  // House data for CurrentHouseTab and DawgModeModal
+  // FIXED: House data for CurrentHouseTab - now includes bills
   const houseData = {
-    id: user?.houseId || '1',
-    name: user?.house?.name || 'Your House',
+    id: user?.houseId || house?.id || '1',
+    name: house?.name || user?.house?.name || 'Your House',
     finance: houseFinance,
     balance: houseFinance?.balance || 0,
+    // IMPORTANT: Add the calculated house balance from bills
+    houseBalance: house?.houseBalance || 0,
     // Direct reference to house object for complete data access
     ...house,
     // Ensure we have these specific properties 
     statusIndex: house?.statusIndex || null,
-    hsi: typeof house?.hsi === 'number' ? house.hsi : (house?.statusIndex?.score || 45) // Default to 45 for demo
+    hsi: typeof house?.hsi === 'number' ? house.hsi : (house?.statusIndex?.score || 45)
   };
 
   return (
@@ -74,7 +82,8 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) 
         <View style={styles.cardWrapper}>
           <FinancialSummaryCard
             title="HouseTab"
-            balance={houseFinance?.balance || 0}
+            // FIXED: Use the calculated house balance, not just finance balance
+            balance={house?.houseBalance || houseFinance?.balance || 0}
             iconName="home"
             onPress={handleHouseFinancePress}
           />
@@ -90,7 +99,7 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) 
         visible={showDawgMode}
         onClose={() => setShowDawgMode(false)}
         fullScreen={true}
-        backgroundColor="#6d28d9" // Dark purple background as fallback
+        backgroundColor="#6d28d9"
         hideCloseButton={false}
         useBackArrow={true}
         title="Dawg Mode"
@@ -113,7 +122,7 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) 
         />
       </ModalComponent>
 
-      {/* Current House Tab Modal */}
+      {/* FIXED: Current House Tab Modal - now passes bills data */}
       <ModalComponent
         visible={isHouseModalVisible}
         onClose={() => setHouseModalVisible(false)}
@@ -122,6 +131,7 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house }) 
       >
         <CurrentHouseTab
           house={houseData}
+          bills={unpaidBills} // IMPORTANT: Pass the bills data
           onClose={() => setHouseModalVisible(false)}
         />
       </ModalComponent>

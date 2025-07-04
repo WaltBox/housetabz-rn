@@ -1,4 +1,4 @@
-// modals/HouseServiceDetailModal.js (COMPLETE REWRITTEN VERSION)
+// modals/HouseServiceDetailModal.js (FIXED VERSION - PRESERVES ENHANCED DATA)
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -56,35 +56,59 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
     const fetchData = async () => {
       if (!service?.id || !visible) return;
   
+      // Check if we already have enhanced data - if so, be more selective about what we fetch
+      const hasEnhancedData = service.calculatedData;
+
+  
       setIsLoading(true);
       try {
-        // Fetch house service details
+        // Always fetch detailed service info for tasks and bundle details
+     
         const serviceResp = await apiClient.get(`/api/houseServices/${service.id}`);
-        setDetailedService(serviceResp.data);
         
-        // If we don't have a ledger yet, try to fetch it
-        if (!activeLedger) {
+        // CRITICAL: Merge the enhanced data from the original service with the detailed data
+        const mergedService = {
+          ...serviceResp.data,
+          // Preserve the enhanced data if it exists
+          ...(hasEnhancedData && {
+            calculatedData: service.calculatedData,
+            ledgers: service.ledgers || serviceResp.data.ledgers
+          })
+        };
+        
+     
+        setDetailedService(mergedService);
+        
+        // If we don't have a ledger yet and don't have enhanced data, try to fetch it
+        if (!activeLedger && !hasEnhancedData) {
           try {
+           
             const activeLedgerResp = await apiClient.get(`/api/house-service/${service.id}/active`);
             setActiveLedger(activeLedgerResp.data);
           } catch (err) {
-        
+  
           }
         }
         
-        // Try to fetch all ledgers
-        try {
-          const ledgersResp = await apiClient.get(`/api/house-service/${service.id}`);
-          if (ledgersResp.data?.ledgers) {
-            setLedgers(ledgersResp.data.ledgers);
+        // Try to fetch all ledgers only if we don't have them
+        if (!hasEnhancedData || !service.ledgers?.length) {
+          try {
+        
+            const ledgersResp = await apiClient.get(`/api/house-service/${service.id}`);
+            if (ledgersResp.data?.ledgers) {
+              setLedgers(ledgersResp.data.ledgers);
+            }
+          } catch (err) {
+      
           }
-        } catch (err) {
-          console.log('No ledgers found or error fetching ledgers:', err);
+        } else {
+          // Use ledgers from enhanced data
+          setLedgers(service.ledgers || []);
         }
         
         setError(null);
       } catch (err) {
-        console.error('Error fetching service details:', err);
+
         setError('Failed to load service details');
       } finally {
         setIsLoading(false);
@@ -94,14 +118,11 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
     fetchData();
   }, [service?.id, visible]);
 
+  // Use the merged detailed service if available, otherwise use the original service
   const displayService = detailedService || service;
   const tasks = displayService.serviceRequestBundle?.tasks || [];
 
-  // Special case for Google Fiber
-  const enhancedService = 
-    displayService.id === 7 && displayService.name?.includes('Google Fiber')
-      ? { ...displayService, fundedAmount: 20 }
-      : displayService;
+
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -153,7 +174,18 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
               onPress={() => {
                 setIsLoading(true);
                 apiClient.get(`/api/houseServices/${service.id}`)
-                  .then(r => { setDetailedService(r.data); setError(null); })
+                  .then(r => { 
+                    // Preserve enhanced data on retry too
+                    const mergedService = {
+                      ...r.data,
+                      ...(service.calculatedData && {
+                        calculatedData: service.calculatedData,
+                        ledgers: service.ledgers || r.data.ledgers
+                      })
+                    };
+                    setDetailedService(mergedService); 
+                    setError(null); 
+                  })
                   .catch(() => setError('Failed to load service details'))
                   .finally(() => setIsLoading(false));
               }}
@@ -169,8 +201,8 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
     tasks={tasks}
     formatDate={formatDate}
     getStatusColor={getStatusColor}
-    activeLedger={detailedService?.activeLedger}
-    ledgers={detailedService?.ledgers || []}
+    activeLedger={activeLedger || displayService?.activeLedger}
+    ledgers={ledgers.length > 0 ? ledgers : (displayService?.ledgers || [])}
   />
 ) : (
   <DetailsTab

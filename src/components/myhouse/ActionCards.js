@@ -24,6 +24,7 @@ const ActionCards = ({ houseBalance = 0, onCurrentTabPress, onPaidTabPress }) =>
   return (
     <View style={styles.container}>
       <View style={styles.actionCards}>
+        {/* CurrentTab Card - Now Horizontal */}
         <TouchableOpacity 
           style={styles.currentTabCard} 
           onPress={onCurrentTabPress}
@@ -31,9 +32,9 @@ const ActionCards = ({ houseBalance = 0, onCurrentTabPress, onPaidTabPress }) =>
         >
           {/* Background Design Element for CurrentTab */}
           <View style={styles.backgroundDesign}>
-            <Svg height="160" width="100%" viewBox="0 0 160 160" style={styles.backgroundSvg}>
+            <Svg height="80" width="100%" viewBox="0 0 320 80" style={styles.backgroundSvg}>
               <Defs>
-                <LinearGradient id="gradientCurrent" x1="0%" y1="0%" x2="100%" y2="100%">
+                <LinearGradient id="gradientCurrent" x1="0%" y1="0%" x2="100%" y2="0%">
                   <Stop offset="0%" stopColor="#34d399" />
                   <Stop offset="100%" stopColor="#10b981" />
                 </LinearGradient>
@@ -42,33 +43,35 @@ const ActionCards = ({ houseBalance = 0, onCurrentTabPress, onPaidTabPress }) =>
                   <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                 </LinearGradient>
               </Defs>
-              <Rect x="0" y="0" width="160" height="160" rx="16" fill="url(#gradientCurrent)" />
-              <Circle cx="140" cy="20" r="40" fill="url(#accentGradient)" />
-              <Circle cx="30" cy="140" r="50" fill="url(#accentGradient)" />
+              <Rect x="0" y="0" width="320" height="80" rx="16" fill="url(#gradientCurrent)" />
+              <Circle cx="280" cy="20" r="30" fill="url(#accentGradient)" />
+              <Circle cx="40" cy="60" r="25" fill="url(#accentGradient)" />
             </Svg>
           </View>
           
-          <Text style={[
-            styles.titleText,
-            fontsLoaded && { fontFamily: 'Poppins-Bold' }
-          ]}>
-            CurrentTab
-          </Text>
-          
-          <View style={styles.balanceContainer}>
-            <Text style={[
-              styles.balanceText,
-              fontsLoaded && { fontFamily: 'Poppins-Black' }
-            ]}>
-              {formattedBalance}
-            </Text>
-          </View>
-          
-          <View style={styles.iconCircle}>
-            <MaterialIcons name="chevron-right" size={22} color="#10b981" />
+          <View style={styles.cardContent}>
+            <View style={styles.cardLeft}>
+              <Text style={[
+                styles.titleText,
+                fontsLoaded && { fontFamily: 'Poppins-Bold' }
+              ]}>
+                CurrentTab
+              </Text>
+              <Text style={[
+                styles.balanceText,
+                fontsLoaded && { fontFamily: 'Poppins-Black' }
+              ]}>
+                {formattedBalance}
+              </Text>
+            </View>
+            
+            <View style={styles.iconCircle}>
+              <MaterialIcons name="chevron-right" size={24} color="#10b981" />
+            </View>
           </View>
         </TouchableOpacity>
         
+        {/* PaidTabz Card - Now Horizontal */}
         <TouchableOpacity 
           style={styles.paidTabCard} 
           onPress={onPaidTabPress}
@@ -76,9 +79,9 @@ const ActionCards = ({ houseBalance = 0, onCurrentTabPress, onPaidTabPress }) =>
         >
           {/* Background Design Element for PaidTabz */}
           <View style={styles.backgroundDesign}>
-            <Svg height="160" width="100%" viewBox="0 0 160 160" style={styles.backgroundSvg}>
+            <Svg height="80" width="100%" viewBox="0 0 320 80" style={styles.backgroundSvg}>
               <Defs>
-                <LinearGradient id="gradientPaid" x1="0%" y1="0%" x2="100%" y2="100%">
+                <LinearGradient id="gradientPaid" x1="0%" y1="0%" x2="100%" y2="0%">
                   <Stop offset="0%" stopColor="#8b5cf6" />
                   <Stop offset="100%" stopColor="#7c3aed" />
                 </LinearGradient>
@@ -87,34 +90,35 @@ const ActionCards = ({ houseBalance = 0, onCurrentTabPress, onPaidTabPress }) =>
                   <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                 </LinearGradient>
               </Defs>
-              <Rect x="0" y="0" width="160" height="160" rx="16" fill="url(#gradientPaid)" />
+              <Rect x="0" y="0" width="320" height="80" rx="16" fill="url(#gradientPaid)" />
               
               {/* Decorative bars suggesting history/timeline */}
-              <Rect x="40" y="120" width="15" height="20" rx="2" fill="url(#accentGradient2)" />
-              <Rect x="65" y="110" width="15" height="30" rx="2" fill="url(#accentGradient2)" />
-              <Rect x="90" y="100" width="15" height="40" rx="2" fill="url(#accentGradient2)" />
-              <Rect x="115" y="90" width="15" height="50" rx="2" fill="url(#accentGradient2)" />
+              <Rect x="240" y="50" width="8" height="20" rx="2" fill="url(#accentGradient2)" />
+              <Rect x="255" y="40" width="8" height="30" rx="2" fill="url(#accentGradient2)" />
+              <Rect x="270" y="35" width="8" height="35" rx="2" fill="url(#accentGradient2)" />
+              <Rect x="285" y="25" width="8" height="45" rx="2" fill="url(#accentGradient2)" />
             </Svg>
           </View>
           
-          <Text style={[
-            styles.paidTitleText,
-            fontsLoaded && { fontFamily: 'Poppins-Bold' }
-          ]}>
-            PaidTabz
-          </Text>
-          
-          <View style={styles.paidFeatureContainer}>
-            <Text style={[
-              styles.paidFeatureText,
-              fontsLoaded && { fontFamily: 'Poppins-Bold' }
-            ]}>
-              View Payment History
-            </Text>
-          </View>
-          
-          <View style={styles.paidIconCircle}>
-            <MaterialIcons name="chevron-right" size={22} color="#7c3aed" />
+          <View style={styles.cardContent}>
+            <View style={styles.cardLeft}>
+              <Text style={[
+                styles.paidTitleText,
+                fontsLoaded && { fontFamily: 'Poppins-Bold' }
+              ]}>
+                PaidTabz
+              </Text>
+              <Text style={[
+                styles.paidFeatureText,
+                fontsLoaded && { fontFamily: 'Poppins-Medium' }
+              ]}>
+                View Payment History
+              </Text>
+            </View>
+            
+            <View style={styles.paidIconCircle}>
+              <MaterialIcons name="chevron-right" size={24} color="#7c3aed" />
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -128,38 +132,31 @@ const styles = StyleSheet.create({
   },
   actionCards: {
     paddingHorizontal: 24,
-    flexDirection: "row",
-    justifyContent: "space-between",
     backgroundColor: "#dff6f0", // Match parent background color
   },
   currentTabCard: {
-    width: "48%",
+    width: "100%",
     borderRadius: 16,
-    padding: 20,
     marginBottom: 12,
- 
     shadowColor: "#0d9488",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    height: 160,
-    justifyContent: "space-between",
-    overflow: "hidden", // Ensure content respects the border radius
+    height: 80,
+    overflow: "hidden",
     position: "relative",
     backgroundColor: "#10b981", // Fallback background color
   },
   paidTabCard: {
-    width: "48%",
+    width: "100%",
     borderRadius: 16,
-    padding: 20,
     marginBottom: 12,
     shadowColor: "#6d28d9",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    height: 160,
-    justifyContent: "space-between",
-    overflow: "hidden", // Ensure content respects the border radius
+    height: 80,
+    overflow: "hidden",
     position: "relative",
     backgroundColor: "#7c3aed", // Fallback background color
   },
@@ -169,75 +166,71 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 16, // Match the parent's border radius
-    overflow: "hidden", // Ensure SVG respects the border radius
+    borderRadius: 16,
+    overflow: "hidden",
   },
   backgroundSvg: {
     position: "absolute",
-    borderRadius: 16, // Match the parent's border radius
+    borderRadius: 16,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    height: '100%',
+    zIndex: 2,
+  },
+  cardLeft: {
+    flex: 1,
   },
   titleText: {
     fontSize: 18,
     fontWeight: "700",
     color: "white",
-    marginBottom: 8,
-    zIndex: 2,
+    marginBottom: 4,
   },
   paidTitleText: {
     fontSize: 18,
     fontWeight: "700",
     color: "white",
-    marginBottom: 8,
-    zIndex: 2,
-  },
-  balanceContainer: {
-    zIndex: 2,
-    alignSelf: "center",
-    marginTop: 10,
+    marginBottom: 4,
   },
   balanceText: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "900",
     color: "white",
-    textAlign: "center",
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2
   },
-  paidFeatureContainer: {
-    zIndex: 2,
-    alignSelf: "center",
-    marginTop: 10,
-  },
   paidFeatureText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     color: "white",
-    textAlign: "center",
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2
   },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "flex-end",
-    zIndex: 2,
+    marginLeft: 16,
   },
   paidIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "flex-end",
-    zIndex: 2,
+    marginLeft: 16,
   },
 });
 

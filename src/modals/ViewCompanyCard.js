@@ -254,11 +254,12 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
 
       {showBrowser ? renderBrowser() : renderMainContent()}
 
-      {/* Payment Modal */}
+      {/* Payment Modal - FIXED */}
       {showPaymentModal && paymentData && (
         <PaymentFlow
           visible={showPaymentModal}
           onClose={() => {
+            console.log('PaymentFlow: User manually closed modal');
             setShowPaymentModal(false);
             // Send cancellation response back to WebView
             if (webviewRef.current) {
@@ -274,28 +275,31 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
             }
           }}
           paymentData={paymentData}
-          onSuccess={(data) => {
+          onSuccess={(result) => {
+            // FIXED: Only handle final success, not intermediate steps
+            console.log('PaymentFlow: Final success received:', result);
+            
             // Handle different success types
             let responseData = {};
             let responseStatus = 'success';
             
-            if (data.type === 'already_connected') {
+            if (result.data?.type === 'already_connected') {
               responseStatus = 'already_connected';
               responseData = {
-                serviceName: data.serviceName,
-                partnerName: data.partnerName,
-                status: data.status
+                serviceName: result.data.serviceName,
+                partnerName: result.data.partnerName,
+                status: result.data.status
               };
-            } else if (data.type === 'reused_agreement') {
+            } else if (result.data?.type === 'reused_agreement') {
               responseStatus = 'success';
               responseData = {
-                agreementId: data.agreementId,
-                serviceName: data.serviceName,
-                message: data.message
+                agreementId: result.data.agreementId,
+                serviceName: result.data.serviceName,
+                message: result.data.message
               };
             } else {
               responseStatus = 'success';
-              responseData = data;
+              responseData = result.data || result;
             }
             
             // Send response back to WebView
@@ -312,10 +316,12 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
               `);
             }
             
-            // Close the modal
+            // Close the modal - ONLY after the entire flow is complete
             setShowPaymentModal(false);
           }}
           onError={(error) => {
+            console.log('PaymentFlow: Error received:', error);
+            
             // Send error response back to WebView
             if (webviewRef.current) {
               webviewRef.current.injectJavaScript(`
@@ -329,6 +335,8 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
                 true;
               `);
             }
+            
+            // Don't automatically close on error - let user try again or manually close
           }}
         />
       )}
