@@ -14,11 +14,20 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../config/api';
+import { useFonts } from 'expo-font';
 
-const getDueDateStatus = (dueDate) => {
+const getDueDateStatus = (charge) => {
+  // Backend now provides proper dueDate, but fallback to bill.dueDate if needed
+  const dueDate = charge?.dueDate || charge?.Bill?.dueDate || charge?.bill?.dueDate;
+                  
   if (!dueDate) return { color: '#64748b', label: 'No due date' };
+  
   const now = new Date();
   const due = new Date(dueDate);
+  
+  // Check if date is valid
+  if (isNaN(due.getTime())) return { color: '#64748b', label: 'Invalid date' };
+  
   const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
   if (diffDays < 0) return { color: '#ef4444', label: `${Math.abs(diffDays)}d overdue` };
   if (diffDays <= 3) return { color: '#f59e0b', label: `Due in ${diffDays}d` };
@@ -27,7 +36,7 @@ const getDueDateStatus = (dueDate) => {
 };
 
 const ChargeItem = ({ charge }) => {
-  const status = getDueDateStatus(charge.dueDate);
+  const status = getDueDateStatus(charge);
   return (
     <View style={styles.chargeItem}>
       <View style={styles.chargeRow}>
@@ -52,11 +61,34 @@ const UserTabModal = ({ visible, onClose }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
+    'Poppins-SemiBold': require('../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Medium': require('../../assets/fonts/Poppins/Poppins-Medium.ttf'),
+    'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
+  });
+
   const fetchUserData = async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
       const res = await apiClient.get(`/api/users/${user.id}`);
+      console.log("👤 UserTabModal received user data:", {
+        hasCharges: !!res.data?.charges,
+        chargesCount: res.data?.charges?.length || 0,
+        unpaidCharges: res.data?.charges?.filter(c => c.status === 'unpaid')?.length || 0,
+        firstCharge: res.data?.charges?.[0],
+        chargeKeys: res.data?.charges?.[0] ? Object.keys(res.data.charges[0]) : 'no charges'
+      });
+      
+      // ✅ Backend now provides complete data with due dates - no additional fetching needed
+      console.log("✅ Received user charges with due dates:", {
+        chargesWithDueDates: res.data?.charges?.filter(c => c.dueDate).length || 0,
+        totalCharges: res.data?.charges?.length || 0,
+        sampleCharge: res.data?.charges?.[0]
+      });
+      
       setUserData(res.data);
     } catch (err) {
       console.error(err);
@@ -90,7 +122,12 @@ const UserTabModal = ({ visible, onClose }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Tab</Text>
+          <Text style={[
+            styles.title,
+            fontsLoaded && { fontFamily: 'Poppins-Bold' }
+          ]}>
+            My Tab
+          </Text>
           <TouchableOpacity 
             onPress={onClose} 
             style={styles.closeButton} 
@@ -106,24 +143,29 @@ const UserTabModal = ({ visible, onClose }) => {
           </View>
         ) : (
           <>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryHeader}>
-                <MaterialIcons name="account-balance-wallet" size={28} color="#34d399" />
-                <Text style={styles.summaryLabel}>Total Outstanding</Text>
+            {/* Clean Header with Integrated Amount */}
+            <View style={styles.amountHeader}>
+              <View style={styles.amountRow}>
+                <View style={styles.amountInfo}>
+                  <Text style={styles.amountLabel}>Outstanding Balance</Text>
+                  <Text style={styles.amountValue}>${totalUnpaid.toFixed(2)}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.payButton}
+                  onPress={handleNavigateToPayment}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="payment" size={18} color="white" />
+                  <Text style={styles.payButtonText}>Pay</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.summaryAmount}>${totalUnpaid.toFixed(2)}</Text>
-              <TouchableOpacity
-                style={styles.payButton}
-                onPress={handleNavigateToPayment}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="payment" size={20} color="white" style={styles.payIcon} />
-                <Text style={styles.payButtonText}>Make Payment</Text>
-              </TouchableOpacity>
+              
+              {/* Subtle divider */}
+              <View style={styles.headerDivider} />
             </View>
 
             <View style={styles.chargesSection}>
-              <Text style={styles.chargesHeader}>Your charges ({charges.length})</Text>
+              <Text style={styles.chargesHeader}>Charges • {charges.length}</Text>
 
               <FlatList
                 data={charges}
@@ -188,57 +230,59 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
 
-  summaryCard: {
-    backgroundColor: 'white', 
-    borderRadius: 16, 
-    marginHorizontal: 20,
-    padding: 24, 
-    marginBottom: 20, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, 
-    shadowRadius: 8,
-    elevation: 4,
+  // Clean Amount Header Styles
+  amountHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
-  summaryHeader: {
+  amountRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  summaryLabel: { 
-    fontSize: 16, 
-    color: '#64748b', 
-    marginLeft: 8,
-    fontWeight: '500'
+  amountInfo: {
+    flex: 1,
   },
-  summaryAmount: {
-    fontSize: 36, 
-    fontWeight: '800', 
-    color: '#1e293b', 
-    marginBottom: 20,
+  amountLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  amountValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1e293b',
     fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System',
   },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginTop: 20,
+    marginHorizontal: -4,
+  },
   payButton: {
-    backgroundColor: '#34d399', 
-    paddingVertical: 16, 
-    paddingHorizontal: 24,
-    borderRadius: 12, 
+    backgroundColor: '#34d399',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#34d399',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 6,
   },
-  payIcon: {
-    marginRight: 8,
-  },
-  payButtonText: { 
-    color: 'white', 
-    fontSize: 16, 
-    fontWeight: '600' 
+  payButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 
   chargesSection: {
@@ -246,24 +290,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   chargesHeader: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 12,
+    color: '#475569',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   chargeItem: {
-    backgroundColor: 'white', 
-    borderRadius: 12, 
-    marginBottom: 12,
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 8,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
   },
-  chargeRow: { 
-    padding: 16 
+  chargeRow: {
+    padding: 20,
   },
   chargeContent: {
     flex: 1,
@@ -272,19 +320,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  chargeName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
+  chargeName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1e293b',
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
+    lineHeight: 22,
   },
-  chargeAmount: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: '#1e293b' 
+  chargeAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   chargeFooter: {
     flexDirection: 'row',
@@ -296,9 +345,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 8,
   },
-  dueDate: { 
-    fontSize: 14, 
-    fontWeight: '500' 
+  dueDate: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748b',
+    letterSpacing: 0.2,
   },
 
   empty: { 

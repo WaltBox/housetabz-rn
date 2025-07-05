@@ -44,16 +44,23 @@ const JoinHouseScreen = ({ navigation }) => {
       });
       
       const updatedUser = response.data.user;
+      console.log('✅ Join house response:', {
+        hasUser: !!updatedUser,
+        onboarded: updatedUser?.onboarded,
+        houseId: updatedUser?.houseId,
+        userKeys: Object.keys(updatedUser || {})
+      });
+      
+      // Update user's onboarding step to 'payment' after joining house
+      const userWithPaymentStep = { ...updatedUser, onboarding_step: 'payment' };
       
       // Store updated user data in Keychain instead of AsyncStorage
-      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(userWithPaymentStep));
+      setUser(userWithPaymentStep);
 
       Alert.alert('Success', '🏡 Welcome to your new household!');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'TabNavigator' }],
-      });
+      
+      // AppNavigator will now show PaymentMethodOnboardingScreen since onboarding_step is 'payment'
     } catch (error) {
       console.error('Join house error:', error);
       Alert.alert(

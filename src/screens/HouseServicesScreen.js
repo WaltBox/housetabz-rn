@@ -15,9 +15,14 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
-import apiClient from '../config/api';
+import apiClient, { 
+  getHouseServicesData, 
+  invalidateCache, 
+  clearHouseCache
+} from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import HouseServiceDetailModal from '../modals/HouseServiceDetailModal';
+import { isScreenPrefetched, getPrefetchStatus } from '../services/PrefetchService';
 
 // Import the skeleton component
 import HouseServicesSkeleton from '../components/skeletons/HouseServicesSkeleton';
@@ -39,7 +44,7 @@ const HouseServicesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('active');
   const [selectedService, setSelectedService] = useState(null);
 
-  // Optimized fetch function using the new endpoint
+  // Optimized fetch function using cached API
   const fetchHouseServices = useCallback(async () => {
     try {
       if (!user?.houseId) {
@@ -49,40 +54,57 @@ const HouseServicesScreen = ({ navigation }) => {
       }
 
       setError(null);
-      if (!refreshing) setIsLoading(true);
-
       
+      // 🆕 CHECK IF ALREADY PREFETCHED
+      const isPrefetched = isScreenPrefetched('HouseServices');
+      const prefetchStatus = getPrefetchStatus();
       
-      // Try the enhanced endpoint first
-      try {
-
-        const response = await apiClient.get(`/api/houseServices/house/${user.houseId}/with-data`);
-        
-   
-  
-        
-        const houseServices = response.data?.houseServices || [];
-        setServices(houseServices);
-        setError(null);
-        
-      } catch (enhancedError) {
-   
-        
-        // Fallback to old method
-
-        try {
-          const response = await apiClient.get(`/api/houseServices/house/${user.houseId}`);
- 
-          const houseServices = response.data?.houseServices || [];
-          setServices(houseServices);
-        } catch (fallbackErr) {
-        
-          setError('Failed to load house services. Please try again.');
-        }
+      if (isPrefetched) {
+        console.log('⚡ HouseServices already prefetched - loading from cache');
+        setIsLoading(false); // Skip loading state since data should be cached
+      } else {
+        console.log('🔄 HouseServices not prefetched - showing loading state');
+        if (!refreshing) setIsLoading(true);
       }
-    } catch (err) {
 
-      setError('Failed to load house services. Please try again.');
+      console.log('🚀 Fetching house services for house:', user.houseId);
+      console.log('📊 Prefetch info:', {
+        isPrefetched,
+        prefetchComplete: prefetchStatus.isComplete,
+        completedScreens: prefetchStatus.completedScreens
+      });
+      
+      // ✅ UPDATED: Use cached API function
+      const data = await getHouseServicesData(user.houseId);
+      
+      console.log('📊 House services data received:', {
+        rawData: data,
+        dataKeys: Object.keys(data || {}),
+        servicesCount: Array.isArray(data.houseServices) ? data.houseServices.length : 0,
+        activeCount: Array.isArray(data.houseServices) ? data.houseServices.filter(s => s.status === 'active').length : 0,
+        pendingCount: Array.isArray(data.houseServices) ? data.houseServices.filter(s => s.status === 'pending').length : 0,
+        isPrefetched,
+        loadTime: isPrefetched ? 'instant' : 'fetched'
+      });
+
+
+
+      // Set the services data
+      setServices(Array.isArray(data.houseServices) ? data.houseServices : []);
+
+      console.log('✅ House services loaded successfully');
+
+    } catch (error) {
+      console.log('❌ House services fetch failed:', error.message);
+      setError(`Failed to load house services: ${error.message}`);
+      
+      // Clear cache on error
+      try {
+        clearHouseCache(user?.houseId);
+        console.log('🧹 Cleared house cache due to error');
+      } catch (cacheError) {
+        console.log('⚠️ Failed to clear house cache:', cacheError.message);
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -112,8 +134,11 @@ const HouseServicesScreen = ({ navigation }) => {
     };
   }, [navigation, fetchHouseServices]);
 
+  // Enhanced refresh function that clears cache first
   const handleRefresh = () => {
     setRefreshing(true);
+    // Clear cache to force fresh data
+    clearHouseCache(user.houseId);
     fetchHouseServices();
   };
 
@@ -129,7 +154,8 @@ const HouseServicesScreen = ({ navigation }) => {
       return service.calculatedData.percentFunded;
     }
     
-    const total = Number(service.amount) || 0;
+    // Use totalRequired from backend (already includes service fee)
+    const total = Number(service.totalRequired) || Number(service.amount) || 0;
     const funded = Number(service.fundedAmount) || 0;
     
     if (total === 0) return 0;
@@ -145,11 +171,14 @@ const HouseServicesScreen = ({ navigation }) => {
       return service.calculatedData;
     }
     
-    // Fallback for services without calculatedData
+    // Fallback for services without calculatedData - use totalRequired from backend
+    const fundingRequired = Number(service.totalRequired) || Number(service.amount) || 0;
+    const funded = Number(service.fundedAmount) || 0;
+    
     return {
-      fundingRequired: service.amount || 0,
-      funded: service.fundedAmount || 0,
-      remainingAmount: Math.max(0, (service.amount || 0) - (service.fundedAmount || 0)),
+      fundingRequired: fundingRequired,
+      funded: funded,
+      remainingAmount: Math.max(0, fundingRequired - funded),
       percentFunded: getPercentFunded(service),
       contributorCount: 0,
       userContributions: []
@@ -215,6 +244,10 @@ const HouseServicesScreen = ({ navigation }) => {
                 {formatCurrency(serviceDetails.funded)} of {formatCurrency(serviceDetails.fundingRequired)}
               </Text>
               
+
+              
+
+              
               <Text style={[
                 styles.remainingText,
                 fontsLoaded && { fontFamily: 'Poppins-Regular' }
@@ -249,10 +282,12 @@ const HouseServicesScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.tabContainer}>
-          <View style={styles.tabIndicator} />
           <View style={styles.tabsWrapper}>
             <TouchableOpacity 
-              style={[styles.tab, { marginLeft: 0 }]}
+              style={[
+                styles.tab, 
+                activeTab === 'active' && styles.activeTab
+              ]}
               onPress={() => setActiveTab('active')}
             >
               <Text style={[
@@ -262,11 +297,13 @@ const HouseServicesScreen = ({ navigation }) => {
               ]}>
                 Active
               </Text>
-              {activeTab === 'active' && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.tab}
+              style={[
+                styles.tab,
+                activeTab === 'pending' && styles.activeTab
+              ]}
               onPress={() => setActiveTab('pending')}
             >
               <Text style={[
@@ -276,7 +313,6 @@ const HouseServicesScreen = ({ navigation }) => {
               ]}>
                 Pending
               </Text>
-              {activeTab === 'pending' && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -376,7 +412,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     backgroundColor: "#dff6f0",
   },
@@ -389,56 +425,47 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
     backgroundColor: "#dff6f0",
+    paddingHorizontal: 20,
   },
   tabsWrapper: {
     flexDirection: 'row',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 2,
   },
   tab: {
-    width: '30%',
-    paddingVertical: 10,
+    flex: 1,
+    paddingVertical: 8,
     alignItems: 'center',
+    borderRadius: 6,
+    marginHorizontal: 1,
   },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#1e293b',
-    zIndex: 1,
+  activeTab: {
+    backgroundColor: '#34d399',
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748b',
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: '#1e293b',
     fontWeight: '600',
   },
+  activeTabText: {
+    color: '#ffffff',
+  },
   servicesList: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 80,
   },
   serviceCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
+    marginBottom: 8,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    minHeight: 140, // Ensure consistent height for expanded content
+    shadowRadius: 3,
+    elevation: 2,
+    minHeight: 80,
   },
   serviceContent: {
     flexDirection: 'row',
@@ -447,7 +474,7 @@ const styles = StyleSheet.create({
   },
   serviceInfo: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
   },
   serviceName: {
     fontSize: 16,
@@ -458,39 +485,42 @@ const styles = StyleSheet.create({
   fundingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   fundingText: {
-    fontSize: 14,
-    color: '#64748b',
+    fontSize: 13,
+    color: '#34d399',
+    fontWeight: '600',
   },
   contributorText: {
     fontSize: 12,
-    color: '#94a3b8',
-    marginLeft: 4,
+    color: '#64748b',
+    marginLeft: 8,
   },
   progressBarContainer: {
-    height: 6,
+    height: 4,
     backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+    borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#34d399',
-    borderRadius: 3,
+    borderRadius: 2,
   },
   fullyFundedBar: {
-    backgroundColor: '#10b981', // Green for fully funded
+    backgroundColor: '#10b981',
   },
   amountInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   amountText: {
     fontSize: 12,
     color: '#64748b',
+    fontWeight: '500',
   },
   remainingText: {
     fontSize: 12,
@@ -568,7 +598,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 6,
     alignSelf: 'flex-start',
   },
   fullyFundedText: {

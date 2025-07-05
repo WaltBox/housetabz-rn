@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.75;
+const CARD_WIDTH = width * 0.85;
 const CARD_HEIGHT = 120;
 
 const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
@@ -20,7 +20,11 @@ const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
   if (!messages || messages.length === 0) return null;
   
   // Filter out resolved messages
-  const activeMessages = messages.filter(m => !m.isResolved && !m.body.includes('(RESOLVED)'));
+  const activeMessages = messages.filter(m => {
+    // ✅ BACKEND FIX: Handle cases where body might be undefined
+    const messageText = m.body || m.message || '';
+    return !m.isResolved && !messageText.includes('(RESOLVED)');
+  });
   if (activeMessages.length === 0) return null;
 
   // Function to determine icon based on message type
@@ -77,13 +81,13 @@ const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
                 </View>
                 <View style={styles.textWrapper}>
                   <Text style={[styles.title, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                    {message.title}
+                    {message.title || 'Urgent Notice'}
                   </Text>
                   <Text 
                     style={[styles.message, fontsLoaded && { fontFamily: 'Poppins-Medium' }]} 
                     numberOfLines={3}
                   >
-                    {message.body}
+                    {message.body || message.message || 'No message content'}
                   </Text>
                 </View>
                 <View style={styles.chevronContainer}>

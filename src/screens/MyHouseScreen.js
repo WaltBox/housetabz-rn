@@ -17,7 +17,12 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-import apiClient from "../config/api";
+import apiClient, { 
+  getHouseTabsData, 
+  invalidateCache, 
+  clearHouseCache
+} from "../config/api";
+import { isScreenPrefetched, getPrefetchStatus } from '../services/PrefetchService';
 
 // Existing modals/components
 import ModalComponent from "../components/ModalComponent";
@@ -85,7 +90,7 @@ const HouseTabzScreen = () => {
     setTimeout(() => setInviteCopied(false), 2000);
   };
 
-  // UPDATED: New optimized fetch function
+  // UPDATED: New optimized fetch function using cached API
   const fetchHouseData = async () => {
     try {
       if (!user?.houseId) {
@@ -95,44 +100,87 @@ const HouseTabzScreen = () => {
       }
 
       setError(null);
-      if (!refreshing) setLoading(true);
+      
+      // 🆕 CHECK IF ALREADY PREFETCHED
+      const isPrefetched = isScreenPrefetched('MyHouse');
+      const prefetchStatus = getPrefetchStatus();
+      
+      if (isPrefetched) {
+        console.log('⚡ MyHouse already prefetched - loading from cache');
+        setLoading(false); // Skip loading state since data should be cached
+      } else {
+        console.log('🔄 MyHouse not prefetched - showing loading state');
+        if (!refreshing) setLoading(true);
+      }
 
-      console.log('Trying new tabs-data endpoint for house:', user.houseId);
-      
-      // Single API call with all data needed for tabs
-      const { data } = await apiClient.get(`/api/houses/${user.houseId}/tabs-data`);
-      
-      console.log('New endpoint success! Data received:', {
-        house: data.house?.name,
-        unpaidBills: data.unpaidBills?.length,
-        paidBills: data.paidBills?.length,
-        houseBalance: data.house?.houseBalance,
-        summary: data.summary
+      console.log('🚀 Fetching house data for house:', user.houseId);
+      console.log('📊 Prefetch info:', {
+        isPrefetched,
+        prefetchComplete: prefetchStatus.isComplete,
+        completedScreens: prefetchStatus.completedScreens
       });
       
-      // Set the main house data
-      setHouse(data.house);
+      // ✅ UPDATED: Use cached API function
+      const data = await getHouseTabsData(user.houseId);
       
-      // Store the bills data for modals
+      console.log('📊 House data received:', {
+        houseMembersCount: Array.isArray(data.houseMembers) ? data.houseMembers.length : 0,
+        financialHealthScore: data.houseFinancialHealth?.score,
+        totalBalance: data.houseFinance?.totalBalance,
+        rawHouseData: data.house,
+        houseKeys: Object.keys(data.house || {}),
+        hasAdvanceData: !!data.house?.advanceSummary,
+        hasStatusIndex: !!data.house?.statusIndex,
+        isPrefetched,
+        loadTime: isPrefetched ? 'instant' : 'fetched'
+      });
+
+      // Set house data
+      if (data.house) {
+        setHouse(data.house);
+        console.log('🏠 House data set:', {
+          id: data.house.id,
+          name: data.house.name,
+          statusIndex: data.house.statusIndex,
+          advanceSummary: data.house.advanceSummary,
+          finance: data.house.finance
+        });
+      }
+
+      // Store the bills data for modals (if available)
       setUnpaidBills(data.unpaidBills || []);
       setPaidBills(data.paidBills || []);
+
+      // 🚨 DEBUG: Check bill structure from House tabs endpoint
+      console.log("🚨 MYHOUSE BILLS STRUCTURE DEBUG:", {
+        billsCount: (data.unpaidBills || []).length,
+        firstBillStructure: data.unpaidBills?.[0] ? {
+          id: data.unpaidBills[0].id,
+          hasCharges: !!data.unpaidBills[0].charges,
+          hasChargesArray: Array.isArray(data.unpaidBills[0].charges),
+          chargesCount: data.unpaidBills[0].charges?.length || 0,
+          chargesKeys: data.unpaidBills[0].charges?.[0] ? Object.keys(data.unpaidBills[0].charges[0]) : 'no charges',
+          hasUserData: !!data.unpaidBills[0].charges?.[0]?.User,
+          userNameField: data.unpaidBills[0].charges?.[0]?.userName,
+          billKeys: Object.keys(data.unpaidBills[0])
+        } : 'no bills',
+        dataSource: 'HOUSE_TABS_ENDPOINT'
+      });
+
+      console.log('✅ House data loaded successfully');
+      console.log('📝 NOTE: Any additional API calls you see below are from child components, not the prefetch system');
+      console.log('📝 Child components like HouseFinancialHealth make their own API calls for specific features');
+
+    } catch (error) {
+      console.log('❌ House data fetch failed:', error.message);
+      setError(`Failed to load house data: ${error.message}`);
       
-      setError(null);
-    } catch (err) {
-      console.error("New endpoint failed with error:", err);
-      console.error("Error response:", err.response?.data);
-      console.error("Error status:", err.response?.status);
-      
-      // Fallback to original endpoint if new one fails
+      // Clear cache on error
       try {
-        console.log('Falling back to original house endpoint...');
-        const { data } = await apiClient.get(`/api/houses/${user.houseId}`);
-        setHouse(data);
-        // Clear bills data since we don't have it
-        setUnpaidBills([]);
-        setPaidBills([]);
-      } catch (fallbackErr) {
-        setError(fallbackErr.response?.data?.message || "Failed to load house data");
+        clearHouseCache(user?.houseId);
+        console.log('🧹 Cleared house cache due to error');
+      } catch (cacheError) {
+        console.log('⚠️ Failed to clear house cache:', cacheError.message);
       }
     } finally {
       setLoading(false);
@@ -140,14 +188,17 @@ const HouseTabzScreen = () => {
     }
   };
 
+  // Enhanced refresh function that clears cache first
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Clear cache to force fresh data
+    clearHouseCache(user.houseId);
+    fetchHouseData();
+  };
+
   useEffect(() => {
     if (user?.id) fetchHouseData();
   }, [user?.id, user?.houseId]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchHouseData();
-  };
 
   const handleHSIInfoPress = () => {
     setIsHSIModalVisible(true);

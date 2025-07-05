@@ -118,8 +118,18 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
     fetchData();
   }, [service?.id, visible]);
 
-  // Use the merged detailed service if available, otherwise use the original service
-  const displayService = detailedService || service;
+  // Use the detailed service data (now includes ledger info), but merge in original service data as fallback
+  const displayService = {
+    ...service, // Original service data as fallback
+    ...(detailedService && detailedService), // Use detailed service data (now has ledger info)
+    // Extract service fee and total from active ledger if available
+    ...(detailedService?.ledgers?.length > 0 && {
+      serviceFeeTotal: detailedService.ledgers[0].serviceFeeTotal,
+      totalRequired: detailedService.ledgers[0].totalRequired,
+      fundingRequired: detailedService.ledgers[0].fundingRequired,
+      funded: detailedService.ledgers[0].funded
+    })
+  };
   const tasks = displayService.serviceRequestBundle?.tasks || [];
 
 
@@ -137,25 +147,34 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
 
         {/* Tab Bar */}
         <View style={styles.tabContainer}>
-          <View style={styles.tabIndicator} />
           <View style={styles.tabsWrapper}>
             <TouchableOpacity
-              style={[styles.tab, { marginLeft: 0 }]}
+              style={[
+                styles.tab,
+                activeTab === 'overview' && styles.activeTab
+              ]}
               onPress={() => setActiveTab('overview')}
             >
-              <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'overview' && styles.activeTabText
+              ]}>
                 Overview
               </Text>
-              {activeTab === 'overview' && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.tab}
+              style={[
+                styles.tab,
+                activeTab === 'details' && styles.activeTab
+              ]}
               onPress={() => setActiveTab('details')}
             >
-              <Text style={[styles.tabText, activeTab === 'details' && styles.activeTabText]}>
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'details' && styles.activeTabText
+              ]}>
                 Details
               </Text>
-              {activeTab === 'details' && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -225,61 +244,53 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: "#dff6f0",
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: "#1e293b",
     fontFamily: Platform.OS === "android"
       ? "sans-serif-black"
       : "Montserrat-Black",
   },
-  closeButton: { padding: 8 },
+  closeButton: { 
+    padding: 8,
+    borderRadius: 8,
+  },
 
   tabContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 20,
     backgroundColor: "#dff6f0",
+    paddingHorizontal: 20,
   },
   tabsWrapper: {
     flexDirection: 'row',
-    backgroundColor: 'transparent',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 2,
   },
   tab: {
-    width: '30%',
+    flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    position: 'relative',
-    backgroundColor: 'transparent',
+    borderRadius: 6,
+    marginHorizontal: 1,
   },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#1e293b',
-    zIndex: 1,
+  activeTab: {
+    backgroundColor: '#34d399',
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748b',
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: '600',
   },
   activeTabText: {
-    color: '#1e293b',
-    fontWeight: '600',
+    color: '#ffffff',
   },
 
   scrollContent: {

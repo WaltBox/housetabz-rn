@@ -124,7 +124,7 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
         style={{ flex: 1 }}
       >
         <SafeAreaView style={styles.container}>
-          {/* Header */}
+          {/* Clean Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <Text style={[
@@ -137,82 +137,72 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
               ]}>{serviceName}</Text>
             </View>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <MaterialIcons name="close" size={24} color="#6b7280" />
+              <MaterialIcons name="close" size={24} color="#1e293b" />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            {/* Bill Details Card */}
-            <View style={styles.card}>
-              <View style={styles.billHeader}>
-                <View style={styles.serviceIcon}>
-                  <MaterialIcons name="receipt-long" size={24} color="#34d399" />
-                </View>
-                <View style={styles.billInfo}>
-                  <Text style={[
-                    styles.serviceName,
-                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                  ]}>{serviceName}</Text>
-                  <Text style={[
-                    styles.billType,
-                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
-                  ]}>Monthly bill</Text>
-                </View>
-                {isOverdue() && (
-                  <View style={styles.overdueBadge}>
-                    <Text style={styles.overdueText}>OVERDUE</Text>
-                  </View>
-                )}
+            {/* Integrated Service Header */}
+            <View style={styles.serviceHeader}>
+              <View style={styles.serviceIcon}>
+                <MaterialIcons name="receipt-long" size={28} color="#34d399" />
               </View>
-              
-              <View style={styles.dueDateRow}>
-                <MaterialIcons name="schedule" size={18} color="#6b7280" />
+              <View style={styles.serviceInfo}>
                 <Text style={[
-                  styles.dueDateText,
-                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
-                ]}>
-                  Due {formatDueDate(billSubmission?.dueDate)}
-                </Text>
+                  styles.serviceName,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                ]}>{serviceName}</Text>
+                <View style={styles.dueDateRow}>
+                  <MaterialIcons name="schedule" size={16} color="#64748b" />
+                  <Text style={[
+                    styles.dueDateText,
+                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  ]}>
+                    Due {formatDueDate(billSubmission?.dueDate)}
+                  </Text>
+                </View>
               </View>
+              {isOverdue() && (
+                <View style={styles.overdueBadge}>
+                  <Text style={styles.overdueText}>OVERDUE</Text>
+                </View>
+              )}
             </View>
 
-            {/* Amount Input */}
-            <View style={styles.card}>
+            {/* Amount Input Section */}
+            <View style={styles.inputSection}>
               <Text style={[
                 styles.inputLabel,
                 fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-              ]}>Total Bill Amount</Text>
-              
-              {/* Instructions */}
-              <View style={styles.instructionContainer}>
-                <MaterialIcons name="info-outline" size={16} color="#34d399" />
-                <Text style={[
-                  styles.instructionText,
-                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
-                ]}>
-                  Check your provider account for the total amount
-                </Text>
-              </View>
+              ]}>Enter Total Amount</Text>
               
               <View style={styles.amountInputContainer}>
                 <Text style={styles.currencySymbol}>$</Text>
                 <TextInput
-                  style={styles.amountInput}
+                  style={[
+                    styles.amountInput,
+                    fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                  ]}
                   value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0.00"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="decimal-pad"
                   autoFocus={true}
                 />
               </View>
+              
+              {/* Subtle instruction */}
+              <Text style={[
+                styles.instructionText,
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                Check your provider account for the exact amount
+              </Text>
             </View>
 
-            {/* Split Preview */}
-          
-
             {/* Process Info */}
-            <View style={styles.infoCard}>
+            <View style={styles.infoSection}>
               <View style={styles.infoHeader}>
                 <MaterialIcons name="auto-awesome" size={20} color="#34d399" />
                 <Text style={[
@@ -269,251 +259,225 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
 };
 
 const styles = StyleSheet.create({
-  // Main container styles (kept the same)
+  // Main container styles
   container: {
     flex: 1,
     backgroundColor: "#dff6f0",
   },
   
-  // Header (improved)
+  // Clean Header Design
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    paddingTop: Platform.OS === 'android' ? 28 : 20,
+    paddingBottom: 16,
     backgroundColor: "#dff6f0",
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#111827",
-    marginBottom: 2,
+    color: "#1e293b",
+    marginBottom: 4,
+    letterSpacing: 0.2,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#64748b",
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "white",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   
   // Content
   scrollContent: {
-    padding: 20,
-  },
-  card: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    padding: 24,
   },
   
-  // Bill Header (improved)
-  billHeader: {
+  // Integrated Service Header
+  serviceHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 32,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d1fae5",
   },
   serviceIcon: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#d1fae5",
+    backgroundColor: "#10b981",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 16,
+    opacity: 0.9,
   },
-  billInfo: {
+  serviceInfo: {
     flex: 1,
   },
   serviceName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#111827",
-    marginBottom: 2,
+    color: "#1e293b",
+    marginBottom: 6,
+    lineHeight: 24,
   },
-  billType: {
+  dueDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dueDateText: {
+    marginLeft: 6,
+    color: "#64748b",
     fontSize: 14,
-    color: "#6b7280",
+    fontWeight: "500",
+    letterSpacing: 0.2,
   },
   overdueBadge: {
     backgroundColor: "#fee2e2",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#fecaca",
   },
   overdueText: {
     color: "#dc2626",
     fontSize: 11,
     fontWeight: "700",
+    letterSpacing: 0.5,
   },
   
-  // Due Date
-  dueDateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
-  },
-  dueDateText: {
-    marginLeft: 8,
-    color: "#6b7280",
-    fontSize: 14,
-  },
-  
-  // Instructions
-  instructionContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#ecfdf5",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: "#34d399",
-  },
-  instructionText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#059669",
-    lineHeight: 18,
-    marginLeft: 8,
+  // Input Section
+  inputSection: {
+    marginBottom: 32,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
-    color: "#111827",
-    marginBottom: 12,
+    color: "#1e293b",
+    marginBottom: 20,
+    letterSpacing: 0.2,
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 2,
-    borderColor: "#e2e8f0",
+    borderColor: "#6ee7b7",
+    marginBottom: 12,
+    width: "100%",
   },
   currencySymbol: {
     fontSize: 24,
-    fontWeight: "600",
-    color: "#6b7280",
+    fontWeight: "700",
+    color: "#10b981",
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
     fontSize: 24,
-    fontWeight: "600",
-    color: "#111827",
-    padding: 0,
-  },
-  
-  // Split Preview (simplified)
-  splitHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  splitTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  splitAmount: {
-    alignItems: "center",
-  },
-  splitValue: {
-    fontSize: 28,
     fontWeight: "700",
-    color: "#34d399",
-    marginBottom: 4,
+    color: "#1e293b",
+    padding: 0,
+    textAlign: "center",
   },
-  splitNote: {
-    fontSize: 12,
-    color: "#6b7280",
+  instructionText: {
+    fontSize: 14,
+    color: "#64748b",
+    lineHeight: 18,
+    fontWeight: "500",
+    textAlign: "center",
     fontStyle: "italic",
   },
   
-  // Info Card (cleaner)
-  infoCard: {
-    backgroundColor: "#d1fae5",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#a7f3d0",
+
+  
+  // Info Section
+  infoSection: {
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#d1fae5",
   },
   infoHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   infoTitle: {
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
+    color: "#1e293b",
+    letterSpacing: 0.2,
   },
   infoText: {
     fontSize: 14,
-    color: "#374151",
+    color: "#64748b",
     lineHeight: 20,
+    fontWeight: "500",
   },
   
-  // Footer (kept the same structure, refined styling)
+  // Integrated Footer
   footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    padding: 24,
     backgroundColor: "#dff6f0",
     flexDirection: "row",
-    gap: 12,
+    gap: 16,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderWidth: 2,
+    borderColor: "#6ee7b7",
   },
   cancelButtonText: {
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#64748b",
     fontSize: 16,
+    letterSpacing: 0.2,
   },
   submitButton: {
     flex: 2,
     flexDirection: "row",
-    backgroundColor: "#34d399",
+    backgroundColor: "#10b981",
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   disabledButton: {
     backgroundColor: "#a7f3d0",
+    opacity: 0.7,
   },
   submitButtonText: {
     fontWeight: "700",
     color: "white",
     fontSize: 16,
+    letterSpacing: 0.3,
   }
 });
 

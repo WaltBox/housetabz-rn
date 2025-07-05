@@ -1,286 +1,213 @@
 // HouseServicesSkeleton.js
-import React, { useRef, useEffect } from 'react';
-import {
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
-  Text,
-  FlatList,
-  Animated,
-  Platform
+import React from 'react';
+import { 
+  SafeAreaView, 
+  ScrollView, 
+  View, 
+  StyleSheet, 
+  StatusBar 
 } from 'react-native';
+import { 
+  SkeletonShimmer, 
+  SkeletonCard, 
+  SkeletonBox, 
+  SkeletonCircle, 
+  SkeletonText, 
+  SKELETON_COLORS, 
+  getSkeletonSpacing, 
+  getSkeletonSizes 
+} from './SkeletonUtils';
 
-// Custom skeleton shimmer animation
-const SkeletonShimmer = ({ children, style }) => {
-  const shimmerOpacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const shimmerAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerOpacity, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmerAnimation.start();
-    return () => shimmerAnimation.stop();
-  }, [shimmerOpacity]);
-
-  return (
-    <Animated.View style={[style, { opacity: shimmerOpacity }]}>
-      {children}
-    </Animated.View>
-  );
-};
+// Skeleton for header section
+const HeaderSkeleton = () => (
+  <View style={styles.header}>
+    <SkeletonText width={160} height={24} />
+  </View>
+);
 
 // Skeleton for individual service card
 const ServiceCardSkeleton = () => (
-  <View style={skeletonStyles.serviceCard}>
-    <View style={skeletonStyles.serviceContent}>
-      <View style={skeletonStyles.serviceInfo}>
+  <SkeletonCard style={styles.serviceCard}>
+    <View style={styles.serviceContent}>
+      <View style={styles.serviceInfo}>
         {/* Service name */}
-        <SkeletonShimmer style={skeletonStyles.serviceName} />
+        <SkeletonText width="70%" height={18} style={styles.serviceName} />
         
         {/* Funding info line */}
-        <View style={skeletonStyles.fundingInfo}>
-          <SkeletonShimmer style={skeletonStyles.fundingText} />
-          <SkeletonShimmer style={skeletonStyles.contributorText} />
+        <View style={styles.fundingInfo}>
+          <SkeletonText width={80} height={14} />
+          <SkeletonText width={120} height={14} />
         </View>
         
         {/* Progress bar */}
-        <View style={skeletonStyles.progressBarContainer}>
-          <SkeletonShimmer style={skeletonStyles.progressBarFill} />
+        <View style={styles.progressBarContainer}>
+          <SkeletonBox 
+            width="35%" 
+            height={6} 
+            borderRadius={3}
+            style={styles.progressBarFill}
+          />
         </View>
         
         {/* Amount info */}
-        <View style={skeletonStyles.amountInfo}>
-          <SkeletonShimmer style={skeletonStyles.amountText} />
-          <SkeletonShimmer style={skeletonStyles.remainingText} />
+        <View style={styles.amountInfo}>
+          <SkeletonText width={120} height={14} />
+          <SkeletonText width={100} height={14} />
         </View>
       </View>
       
       {/* Chevron */}
-      <SkeletonShimmer style={skeletonStyles.chevron} />
+      <SkeletonCircle size={24} />
     </View>
-  </View>
+  </SkeletonCard>
 );
 
 // Skeleton for tab indicator (Active/Pending tabs)
 const TabsSkeleton = () => (
-  <View style={skeletonStyles.tabContainer}>
-    <View style={skeletonStyles.tabIndicator} />
-    <View style={skeletonStyles.tabsWrapper}>
-      <View style={skeletonStyles.tab}>
-        <SkeletonShimmer style={skeletonStyles.activeTab} />
-        <View style={skeletonStyles.activeIndicator} />
+  <View style={styles.tabContainer}>
+    <View style={styles.tabIndicator} />
+    <View style={styles.tabsWrapper}>
+      <View style={styles.tab}>
+        <SkeletonText width={60} height={16} style={styles.activeTab} />
+        <SkeletonBox 
+          width={60} 
+          height={3} 
+          borderRadius={2}
+          style={styles.activeIndicator}
+        />
       </View>
-      <View style={skeletonStyles.tab}>
-        <SkeletonShimmer style={skeletonStyles.inactiveTab} />
+      <View style={styles.tab}>
+        <SkeletonText width={70} height={16} />
       </View>
     </View>
   </View>
 );
 
-// Main HouseServices Skeleton Component
+// Skeleton for services list
+const ServicesListSkeleton = () => (
+  <ScrollView 
+    contentContainerStyle={styles.servicesList}
+    showsVerticalScrollIndicator={false}
+  >
+    <ServiceCardSkeleton />
+    <ServiceCardSkeleton />
+    <ServiceCardSkeleton />
+    <ServiceCardSkeleton />
+    <ServiceCardSkeleton />
+    <ServiceCardSkeleton />
+  </ScrollView>
+);
+
+// Main House Services Skeleton Component
 const HouseServicesSkeleton = () => {
-  // Create dummy data for skeleton cards
-  const skeletonData = Array.from({ length: 6 }, (_, index) => ({ id: index }));
-
-  const renderSkeletonItem = ({ item }) => <ServiceCardSkeleton />;
-
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
-      <SafeAreaView style={skeletonStyles.container}>
-        {/* Header */}
-        <View style={skeletonStyles.header}>
-          <SkeletonShimmer style={skeletonStyles.headerTitle} />
-        </View>
-
-        {/* Tabs */}
+      <StatusBar barStyle="dark-content" backgroundColor={SKELETON_COLORS.background} />
+      <SafeAreaView style={styles.container}>
+        <HeaderSkeleton />
         <TabsSkeleton />
-
-        {/* Service List */}
-        <FlatList
-          data={skeletonData}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderSkeletonItem}
-          contentContainerStyle={skeletonStyles.servicesList}
-          showsVerticalScrollIndicator={false}
-        />
+        <ServicesListSkeleton />
       </SafeAreaView>
     </>
   );
 };
 
-const skeletonStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#dff6f0",
+    backgroundColor: SKELETON_COLORS.background,
   },
-  
-  // Header skeleton
+
+  // Header styles
   header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    backgroundColor: "#dff6f0",
-  },
-  headerTitle: {
-    width: 180,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#e5e7eb',
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: SKELETON_COLORS.secondary,
   },
 
-  // Tabs skeleton
+  // Tab styles
   tabContainer: {
-    position: 'relative',
-    marginBottom: 16,
-    backgroundColor: "#dff6f0",
-  },
-  tabsWrapper: {
-    flexDirection: 'row',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#D1D5DB',
-  },
-  tab: {
-    width: '30%',
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  activeTab: {
-    width: 60,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#1e293b',
-  },
-  inactiveTab: {
-    width: 70,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#94a3b8',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#1e293b',
-    zIndex: 1,
-  },
-
-  // Service list
-  servicesList: {
-    padding: 20,
-    paddingBottom: 80,
-  },
-
-  // Service card skeleton
-  serviceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
+    backgroundColor: SKELETON_COLORS.cardBackground,
+    paddingTop: getSkeletonSpacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
+  },
+  tabIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: SKELETON_COLORS.tertiary,
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: getSkeletonSpacing.lg,
+  },
+  tab: {
+    marginRight: getSkeletonSpacing.xxl,
+    paddingBottom: getSkeletonSpacing.lg,
+    alignItems: 'center',
+    gap: getSkeletonSpacing.sm,
+  },
+  activeTab: {
+    backgroundColor: SKELETON_COLORS.accent,
+  },
+  activeIndicator: {
+    backgroundColor: SKELETON_COLORS.accent,
+  },
+
+  // Services list styles
+  servicesList: {
+    padding: getSkeletonSpacing.lg,
+    gap: getSkeletonSpacing.md,
+  },
+
+  // Service card styles
+  serviceCard: {
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   serviceContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: getSkeletonSpacing.lg,
   },
   serviceInfo: {
     flex: 1,
-    marginRight: 10,
+    gap: getSkeletonSpacing.sm,
   },
-
-  // Service name skeleton
   serviceName: {
-    width: '70%',
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 8,
+    marginBottom: getSkeletonSpacing.xs,
   },
-
-  // Funding info skeleton
   fundingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: getSkeletonSpacing.sm,
   },
-  fundingText: {
-    width: 80,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
-  },
-  contributorText: {
-    width: 90,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-  },
-
-  // Progress bar skeleton
   progressBarContainer: {
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: SKELETON_COLORS.secondary,
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginVertical: getSkeletonSpacing.xs,
   },
   progressBarFill: {
-    height: '100%',
-    width: '60%', // Default to 60% filled for skeleton
-    backgroundColor: '#34d399',
-    borderRadius: 3,
+    backgroundColor: SKELETON_COLORS.accent,
   },
-
-  // Amount info skeleton
   amountInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  amountText: {
-    width: 120,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-  },
-  remainingText: {
-    width: 100,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-  },
-
-  // Chevron skeleton
-  chevron: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
   },
 });
 

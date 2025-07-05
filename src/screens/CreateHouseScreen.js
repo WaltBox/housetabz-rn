@@ -8,12 +8,16 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useFonts } from 'expo-font';
 import apiClient from '../config/api';
+import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
 
 const CreateHouseScreen = ({ navigation }) => {
   const [houseData, setHouseData] = useState({
@@ -23,7 +27,7 @@ const CreateHouseScreen = ({ navigation }) => {
     zip_code: '',
   });
   const [loading, setLoading] = useState(false);
-  const { user, updateUserHouse } = useAuth();
+  const { user, setUser, updateUserHouse } = useAuth();
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -35,6 +39,9 @@ const CreateHouseScreen = ({ navigation }) => {
   });
 
   const handleCreateHouse = async () => {
+    // Dismiss keyboard before validation
+    Keyboard.dismiss();
+    
     if (!houseData.name || !houseData.city || !houseData.state || !houseData.zip_code) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
@@ -46,13 +53,27 @@ const CreateHouseScreen = ({ navigation }) => {
       const response = await apiClient.post('/api/houses', payload);
       const createdHouse = response.data.house;
       
+      console.log('✅ Create house response:', {
+        hasHouse: !!createdHouse,
+        houseId: createdHouse?.id,
+        houseName: createdHouse?.name
+      });
+      
       await updateUserHouse(createdHouse.id);
       
-      Alert.alert('Success', 'House created successfully! 🎉');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'TabNavigator' }],
+      // Update user's onboarding step to 'payment' after creating house
+      const userWithPaymentStep = { ...user, houseId: createdHouse.id, onboarding_step: 'payment' };
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(userWithPaymentStep));
+      setUser(userWithPaymentStep);
+      
+      console.log('✅ After setting payment step user state:', {
+        onboardingStep: userWithPaymentStep.onboarding_step,
+        houseId: userWithPaymentStep.houseId
       });
+      
+      Alert.alert('Success', 'House created successfully! 🎉');
+      
+      // AppNavigator will now show PaymentMethodOnboardingScreen since onboarding_step is 'payment'
     } catch (error) {
       console.error('Error creating house:', error);
       Alert.alert(
@@ -65,20 +86,26 @@ const CreateHouseScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Decorative background circles */}
-      <View style={styles.circle1} />
-      <View style={styles.circle2} />
-      <View style={styles.circle3} />
-      <View style={styles.circle4} />
-      <View style={styles.circle5} />
-      <View style={styles.circle6} />
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
-      >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        {/* Decorative background circles */}
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+        <View style={styles.circle3} />
+        <View style={styles.circle4} />
+        <View style={styles.circle5} />
+        <View style={styles.circle6} />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -115,6 +142,8 @@ const CreateHouseScreen = ({ navigation }) => {
                 placeholderTextColor="#9ca3af"
                 value={houseData.name}
                 onChangeText={(text) => setHouseData({ ...houseData, name: text })}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
             </View>
 
@@ -129,6 +158,8 @@ const CreateHouseScreen = ({ navigation }) => {
                 placeholderTextColor="#9ca3af"
                 value={houseData.city}
                 onChangeText={(text) => setHouseData({ ...houseData, city: text })}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
             </View>
 
@@ -144,6 +175,8 @@ const CreateHouseScreen = ({ navigation }) => {
                 value={houseData.state}
                 onChangeText={(text) => setHouseData({ ...houseData, state: text.toUpperCase() })}
                 maxLength={2}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
             </View>
 
@@ -159,6 +192,8 @@ const CreateHouseScreen = ({ navigation }) => {
                 value={houseData.zip_code}
                 onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
                 keyboardType="number-pad"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
               />
             </View>
           </View>
@@ -184,9 +219,11 @@ const CreateHouseScreen = ({ navigation }) => {
               ]}>Create House</Text>
             )}
           </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+          </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -255,12 +292,15 @@ const styles = StyleSheet.create({
     left: -60,
     opacity: 0.08,
   },
-  content: {
+  keyboardView: {
     flex: 1,
+    zIndex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 32,
     paddingTop: 60,
     paddingBottom: 50,
-    zIndex: 1,
   },
   header: {
     alignItems: 'center',

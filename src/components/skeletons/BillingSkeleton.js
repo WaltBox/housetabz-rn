@@ -1,390 +1,294 @@
 // BillingSkeleton.js
-import React, { useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  StatusBar,
-  Platform,
-  ScrollView,
-  Animated
+import React from 'react';
+import { 
+  SafeAreaView, 
+  ScrollView, 
+  View, 
+  StyleSheet, 
+  StatusBar 
 } from 'react-native';
+import { 
+  SkeletonShimmer, 
+  SkeletonCard, 
+  SkeletonBox, 
+  SkeletonCircle, 
+  SkeletonText, 
+  SKELETON_COLORS, 
+  getSkeletonSpacing, 
+  getSkeletonSizes 
+} from './SkeletonUtils';
 
-// Custom skeleton shimmer animation
-const SkeletonShimmer = ({ children, style }) => {
-  const shimmerOpacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const shimmerAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerOpacity, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmerAnimation.start();
-    return () => shimmerAnimation.stop();
-  }, [shimmerOpacity]);
-
-  return (
-    <Animated.View style={[style, { opacity: shimmerOpacity }]}>
-      {children}
-    </Animated.View>
-  );
-};
+// Skeleton for header section
+const HeaderSkeleton = () => (
+  <View style={styles.header}>
+    <SkeletonText width={200} height={28} />
+    <SkeletonText width={150} height={16} />
+  </View>
+);
 
 // Skeleton for charge card
 const ChargeCardSkeleton = ({ isSelected = false }) => (
-  <View style={[
-    skeletonStyles.chargeItem,
-    isSelected && skeletonStyles.selectedChargeItem
+  <SkeletonCard style={[
+    styles.chargeItem,
+    isSelected && styles.selectedChargeItem
   ]}>
-    <View style={skeletonStyles.chargeHeader}>
-      <View style={skeletonStyles.chargeTitleContainer}>
-        <View style={skeletonStyles.chargeTextContent}>
-          <SkeletonShimmer style={[
-            skeletonStyles.chargeTitle,
-            isSelected && skeletonStyles.selectedElement
-          ]} />
-          <SkeletonShimmer style={[
-            skeletonStyles.chargeSubtitle,
-            isSelected && skeletonStyles.selectedElement
-          ]} />
+    <View style={styles.chargeHeader}>
+      <View style={styles.chargeTitleContainer}>
+        <View style={styles.chargeTextContent}>
+          <SkeletonText 
+            width="75%" 
+            height={18} 
+            style={isSelected ? styles.selectedElement : {}}
+          />
+          <SkeletonText 
+            width="60%" 
+            height={14} 
+            style={isSelected ? styles.selectedElement : {}}
+          />
         </View>
       </View>
-      <SkeletonShimmer style={[
-        skeletonStyles.chargeAmount,
-        isSelected && skeletonStyles.selectedElement
-      ]} />
-    </View>
-    <View style={skeletonStyles.selectIndicator}>
-      <SkeletonShimmer style={[
-        skeletonStyles.selectText,
-        isSelected && skeletonStyles.selectedElement
-      ]} />
-      <SkeletonShimmer style={[
-        skeletonStyles.selectIcon,
-        isSelected && skeletonStyles.selectedElement
-      ]} />
-    </View>
-  </View>
-);
-
-// Skeleton for charge section
-const ChargeSectionSkeleton = ({ title, color, cardCount = 2 }) => (
-  <View style={skeletonStyles.section}>
-    <View style={[skeletonStyles.sectionHeader, { borderLeftColor: color }]}>
-      <Text style={skeletonStyles.sectionTitle}>{title}</Text>
-      <View style={[skeletonStyles.statusDot, { backgroundColor: color }]} />
-    </View>
-    {Array.from({ length: cardCount }).map((_, index) => (
-      <ChargeCardSkeleton 
-        key={index} 
-        isSelected={index === 0} // Make first card appear selected
+      <SkeletonText 
+        width={80} 
+        height={24} 
+        style={isSelected ? styles.selectedElement : {}}
       />
-    ))}
-  </View>
+    </View>
+    <View style={styles.selectIndicator}>
+      <SkeletonText 
+        width={100} 
+        height={14} 
+        style={isSelected ? styles.selectedElement : {}}
+      />
+      <SkeletonCircle 
+        size={20} 
+        style={isSelected ? styles.selectedElement : {}}
+      />
+    </View>
+  </SkeletonCard>
 );
 
-// Skeleton for header card
-const HeaderCardSkeleton = () => (
-  <View style={skeletonStyles.headerCard}>
-    <View style={skeletonStyles.headerTop}>
-      <View style={skeletonStyles.headerSplit}>
-        <View style={skeletonStyles.headerSection}>
-          <SkeletonShimmer style={skeletonStyles.headerLabel} />
-          <SkeletonShimmer style={skeletonStyles.headerAmount} />
-        </View>
-        <View style={skeletonStyles.headerSection}>
-          <SkeletonShimmer style={skeletonStyles.headerLabel} />
-          <SkeletonShimmer style={skeletonStyles.selectedAmount} />
-        </View>
-      </View>
-      
-      <SkeletonShimmer style={skeletonStyles.addPaymentMethodBtn} />
+// Skeleton for payment summary
+const PaymentSummarySkeleton = () => (
+  <SkeletonCard style={styles.summaryCard}>
+    <View style={styles.summaryHeader}>
+      <SkeletonText width={140} height={20} />
     </View>
-    
-    <SkeletonShimmer style={skeletonStyles.paymentButton} />
-  </View>
+    <View style={styles.summaryContent}>
+      <View style={styles.summaryRow}>
+        <SkeletonText width={100} height={16} />
+        <SkeletonText width={80} height={16} />
+      </View>
+      <View style={styles.summaryRow}>
+        <SkeletonText width={120} height={16} />
+        <SkeletonText width={60} height={16} />
+      </View>
+      <View style={styles.summaryDivider} />
+      <View style={styles.summaryRow}>
+        <SkeletonText width={80} height={18} />
+        <SkeletonText width={100} height={18} />
+      </View>
+    </View>
+  </SkeletonCard>
 );
 
 // Skeleton for tabs
 const TabsSkeleton = () => (
-  <View style={skeletonStyles.tabContainer}>
-    <View style={skeletonStyles.tabIndicator} />
-    <View style={skeletonStyles.tabsWrapper}>
-      <View style={skeletonStyles.tab}>
-        <SkeletonShimmer style={skeletonStyles.activeTab} />
-        <View style={skeletonStyles.activeIndicator} />
+  <View style={styles.tabContainer}>
+    <View style={styles.tabIndicator} />
+    <View style={styles.tabsWrapper}>
+      <View style={styles.tab}>
+        <SkeletonText width={80} height={16} style={styles.activeTab} />
+        <SkeletonBox 
+          width={80} 
+          height={3} 
+          borderRadius={2}
+          style={styles.activeIndicator}
+        />
       </View>
-      <View style={skeletonStyles.tab}>
-        <SkeletonShimmer style={skeletonStyles.inactiveTab} />
+      <View style={styles.tab}>
+        <SkeletonText width={70} height={16} />
       </View>
     </View>
   </View>
+);
+
+// Skeleton for payment button
+const PaymentButtonSkeleton = () => (
+  <View style={styles.paymentButtonContainer}>
+    <SkeletonBox 
+      width="100%" 
+      height={50} 
+      borderRadius={12}
+      style={styles.paymentButton}
+    />
+  </View>
+);
+
+// Skeleton for charges list
+const ChargesListSkeleton = () => (
+  <ScrollView 
+    contentContainerStyle={styles.chargesList}
+    showsVerticalScrollIndicator={false}
+  >
+    <ChargeCardSkeleton isSelected={true} />
+    <ChargeCardSkeleton />
+    <ChargeCardSkeleton />
+    <ChargeCardSkeleton />
+    <ChargeCardSkeleton />
+  </ScrollView>
 );
 
 // Main Billing Skeleton Component
 const BillingSkeleton = () => {
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
-      <View style={skeletonStyles.container}>
-        {/* Header */}
-        <View style={skeletonStyles.header}>
-          <SkeletonShimmer style={skeletonStyles.headerTitle} />
-        </View>
-        
-        {/* Tab Navigation */}
+      <StatusBar barStyle="dark-content" backgroundColor={SKELETON_COLORS.background} />
+      <SafeAreaView style={styles.container}>
+        <HeaderSkeleton />
         <TabsSkeleton />
-
-        {/* Header Card */}
-        <HeaderCardSkeleton />
-
-        {/* Charge Sections */}
-        <ScrollView style={skeletonStyles.content} showsVerticalScrollIndicator={false}>
-          <ChargeSectionSkeleton 
-            title="Late Payments" 
-            color="#ef4444" 
-            cardCount={1}
-          />
-          <ChargeSectionSkeleton 
-            title="Upcoming Payments" 
-            color="#eab308" 
-            cardCount={2}
-          />
-          <ChargeSectionSkeleton 
-            title="Other Charges" 
-            color="#34d399" 
-            cardCount={3}
-          />
-        </ScrollView>
-      </View>
+        <ChargesListSkeleton />
+        <PaymentSummarySkeleton />
+        <PaymentButtonSkeleton />
+      </SafeAreaView>
     </>
   );
 };
 
-const skeletonStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dff6f0',
-  },
-  
-  // Header skeleton
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    backgroundColor: "#dff6f0",
-  },
-  headerTitle: {
-    width: 140,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: SKELETON_COLORS.background,
   },
 
-  // Tabs skeleton
-  tabContainer: {
-    position: 'relative',
-    paddingHorizontal: 0,
-    marginBottom: 16,
-    backgroundColor: "#dff6f0",
+  // Header styles
+  header: {
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.lg,
+    gap: getSkeletonSpacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: SKELETON_COLORS.secondary,
   },
-  tabsWrapper: {
-    flexDirection: 'row',
-    backgroundColor: 'transparent',
+
+  // Tab styles
+  tabContainer: {
+    backgroundColor: SKELETON_COLORS.cardBackground,
+    paddingTop: getSkeletonSpacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   tabIndicator: {
     position: 'absolute',
-    bottom: 0,
+    top: 0,
     left: 0,
     right: 0,
-    height: 2,
-    backgroundColor: '#D1D5DB',
+    height: 1,
+    backgroundColor: SKELETON_COLORS.tertiary,
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: getSkeletonSpacing.lg,
   },
   tab: {
-    width: '30%',
-    paddingVertical: 10,
+    marginRight: getSkeletonSpacing.xxl,
+    paddingBottom: getSkeletonSpacing.lg,
     alignItems: 'center',
-    position: 'relative',
-    backgroundColor: 'transparent',
+    gap: getSkeletonSpacing.sm,
   },
   activeTab: {
-    width: 40,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#1e293b',
-  },
-  inactiveTab: {
-    width: 60,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#94a3b8',
+    backgroundColor: SKELETON_COLORS.accent,
   },
   activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#1e293b',
-    zIndex: 1,
+    backgroundColor: SKELETON_COLORS.accent,
   },
 
-  // Header card skeleton
-  headerCard: {
-    backgroundColor: '#dff6f0',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9'
-  },
-  headerTop: {
-    marginBottom: 12
-  },
-  headerSplit: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12
-  },
-  headerSection: {
-    flex: 1
-  },
-  headerLabel: {
-    width: 80,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 4
-  },
-  headerAmount: {
-    width: 120,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e5e7eb',
-  },
-  selectedAmount: {
-    width: 100,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#34d399',
-  },
-  addPaymentMethodBtn: {
-    width: 160,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(52, 211, 153, 0.2)',
-    alignSelf: 'flex-start',
-  },
-  paymentButton: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#34d399',
+  // Charges list styles
+  chargesList: {
+    flex: 1,
+    padding: getSkeletonSpacing.lg,
+    gap: getSkeletonSpacing.md,
   },
 
-  // Content skeleton
-  content: {
-    flex: 1
-  },
-  section: {
-    marginTop: 16,
-    marginHorizontal: 16
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingLeft: 8,
-    borderLeftWidth: 3
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginRight: 8
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3
-  },
-
-  // Charge card skeleton
+  // Charge card styles
   chargeItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#f1f5f9'
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   selectedChargeItem: {
-    backgroundColor: '#34d399',
-    borderColor: '#34d399'
+    borderColor: SKELETON_COLORS.accent,
+    backgroundColor: `${SKELETON_COLORS.accent}10`, // 10% opacity
   },
   chargeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8
+    marginBottom: getSkeletonSpacing.md,
   },
   chargeTitleContainer: {
-    flexDirection: 'row',
     flex: 1,
-    marginRight: 8
+    marginRight: getSkeletonSpacing.md,
   },
   chargeTextContent: {
-    flex: 1
-  },
-  chargeTitle: {
-    width: 140,
-    height: 15,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 4
-  },
-  chargeSubtitle: {
-    width: 100,
-    height: 13,
-    borderRadius: 7,
-    backgroundColor: '#f3f4f6',
-  },
-  chargeAmount: {
-    width: 80,
-    height: 15,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
+    gap: getSkeletonSpacing.sm,
   },
   selectIndicator: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: 4
+    paddingTop: getSkeletonSpacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: SKELETON_COLORS.secondary,
   },
-  selectText: {
-    width: 70,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-    marginRight: 6
-  },
-  selectIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#e5e7eb',
+  selectedElement: {
+    backgroundColor: SKELETON_COLORS.accent,
   },
 
-  // Selected state styling
-  selectedElement: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  // Payment summary styles
+  summaryCard: {
+    margin: getSkeletonSpacing.lg,
+    padding: getSkeletonSpacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  summaryHeader: {
+    marginBottom: getSkeletonSpacing.lg,
+    paddingBottom: getSkeletonSpacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: SKELETON_COLORS.secondary,
+  },
+  summaryContent: {
+    gap: getSkeletonSpacing.md,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: SKELETON_COLORS.tertiary,
+    marginVertical: getSkeletonSpacing.sm,
+  },
+
+  // Payment button styles
+  paymentButtonContainer: {
+    padding: getSkeletonSpacing.lg,
+    paddingBottom: getSkeletonSpacing.xxl,
+  },
+  paymentButton: {
+    backgroundColor: SKELETON_COLORS.accent,
   },
 });
 

@@ -37,10 +37,19 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
     'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
   });
   
-  console.log('Tasks:', tasks.length, 'Bill Submissions:', billSubmissions.length);
+  // Filter tasks to only show incomplete ones (where completed=false)
+  const incompleteTasks = tasks.filter(task => !task.completed);
   
-  // Check if we have any content to show
-  const hasContent = (tasks && tasks.length > 0) || (billSubmissions && billSubmissions.length > 0);
+  // Filter bill submissions to only show pending ones
+  const pendingBillSubmissions = billSubmissions.filter(submission => 
+    submission.status === 'pending'
+  );
+  
+  console.log('Filtered Tasks:', incompleteTasks.length, 'Filtered Bill Submissions:', pendingBillSubmissions.length);
+  
+  // Check if we have any content to show after filtering
+  const hasContent = (incompleteTasks && incompleteTasks.length > 0) || 
+                    (pendingBillSubmissions && pendingBillSubmissions.length > 0);
   
   if (!hasContent) return null;
 
@@ -57,8 +66,8 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH + 12} // Add the margin to snap properly
       >
-        {/* Render Tasks */}
-        {tasks.map((task, idx) => (
+        {/* Render filtered incomplete Tasks */}
+        {incompleteTasks.map((task, idx) => (
           <TaskCard 
             key={`task-${task.id || idx}`} 
             task={task}
@@ -69,13 +78,13 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
           />
         ))}
         
-        {/* Render Bill Submissions */}
-        {billSubmissions.map((submission, idx) => (
+        {/* Render filtered pending Bill Submissions */}
+        {pendingBillSubmissions.map((submission, idx) => (
           <TaskCard 
             key={`bill-${submission.id || idx}`} 
             task={submission}
             type="billSubmission"
-            isAlternate={(tasks.length + idx) % 2 === 1}
+            isAlternate={(incompleteTasks.length + idx) % 2 === 1}
             onPress={() => onTaskPress?.(submission)}
             fontsLoaded={fontsLoaded}
           />

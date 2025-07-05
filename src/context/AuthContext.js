@@ -296,7 +296,9 @@ export const AuthProvider = ({ children }) => {
           console.log('✅ Token still valid, restoring session');
           setDebugInfo('✅ Restored from Keychain');
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          setUser(JSON.parse(storedUserData));
+          const parsedUserData = JSON.parse(storedUserData);
+          console.log('🔍 Restoring user from Keychain:', JSON.stringify(parsedUserData, null, 2));
+          setUser(parsedUserData);
           setToken(storedToken);
         }
       } else {
@@ -541,11 +543,39 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Add function to refresh user data from server
+  const refreshUserData = async () => {
+    try {
+      if (!user?.id || !token) {
+        console.log('Cannot refresh user data - no user or token');
+        return false;
+      }
+
+      console.log('🔄 Refreshing user data from server...');
+      const response = await apiClient.get(`/api/users/${user.id}`);
+      const freshUserData = response.data;
+      
+      console.log('🔍 Fresh user data from server:', JSON.stringify(freshUserData, null, 2));
+      console.log('🔍 Current cached user data:', JSON.stringify(user, null, 2));
+      
+      // Update user state and keychain with fresh data
+      setUser(freshUserData);
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(freshUserData));
+      
+      console.log('✅ User data refreshed successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error refreshing user data:', error);
+      return false;
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <AuthContext.Provider
         value={{
           user,
+          setUser,
           token,
           loading,
           hasPaymentMethods,
@@ -553,6 +583,7 @@ export const AuthProvider = ({ children }) => {
           logout,
           register,
           updateUserHouse,
+          refreshUserData,
           registerDeviceToken,
           checkPaymentMethods,
           refreshPaymentMethods,

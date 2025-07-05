@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +12,6 @@ import SetNewPasswordScreen from '../screens/ResetPassword/SetNewPasswordScreen'
 import RegisterScreen from '../screens/RegisterScreen';
 
 // Onboarding Screens
-import PaymentMethodOnboardingScreen from '../screens/PaymentMethodOnboardingScreen';
 
 // App Screens
 import HouseTabzLoadingScreen from '../components/HouseTabzLoadingScreen'; // Changed this line
@@ -32,6 +31,7 @@ import BillTakeoverScreen from '../screens/BillTakeOverScreen';
 import HouseOptionsScreen from '../screens/HouseOptionsScreen';
 import CreateHouseScreen from '../screens/CreateHouseScreen';
 import JoinHouseScreen from '../screens/JoinHouseScreen';
+import PaymentMethodOnboardingScreen from '../screens/PaymentMethodOnboardingScreen';
 
 const Stack = createStackNavigator();
 
@@ -81,17 +81,7 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// Payment method onboarding (mandatory)
-const PaymentOnboardingStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen 
-      name="PaymentMethodOnboarding" 
-      component={PaymentMethodOnboardingScreen} 
-    />
-  </Stack.Navigator>
-);
-
-// House setup onboarding (after payment method is added)
+// House setup onboarding
 const HouseOnboardingStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen 
@@ -106,57 +96,80 @@ const HouseOnboardingStack = () => (
       name="JoinHouse" 
       component={JoinHouseScreen} 
     />
+    <Stack.Screen 
+      name="PaymentMethodOnboarding" 
+      component={PaymentMethodOnboardingScreen} 
+    />
   </Stack.Navigator>
 );
 
 const AppNavigator = () => {
-  const { user, loading, hasPaymentMethods, checkPaymentMethods } = useAuth();
-  const [checkingPayments, setCheckingPayments] = useState(false);
+  const { user, loading, refreshUserData } = useAuth();
 
-  // Check payment methods when user becomes available (for app startup)
-  useEffect(() => {
-    const checkPaymentsOnStartup = async () => {
-      if (user && hasPaymentMethods === null && !checkingPayments) {
-        console.log('Checking payment methods on app startup...');
-        setCheckingPayments(true);
-        try {
-          const result = await checkPaymentMethods();
-          console.log('Payment methods check result:', result);
-        } catch (error) {
-          console.error('Error checking payment methods on startup:', error);
-        } finally {
-          setCheckingPayments(false);
-        }
-      }
-    };
+  // Add useEffect to refresh user data when AppNavigator mounts
+  React.useEffect(() => {
+    if (user && !loading) {
+      console.log('🔄 AppNavigator mounted - refreshing user data from server...');
+      refreshUserData();
+    }
+  }, [user?.id, loading]); // Run when user ID changes or loading completes
 
-    checkPaymentsOnStartup();
-  }, [user, hasPaymentMethods, checkingPayments]);
-
-  // Show loading screen while initial auth load or payment check is happening
-  if (loading || (user && hasPaymentMethods === null)) {
-    console.log('Showing loading screen. Loading:', loading, 'User:', !!user, 'HasPaymentMethods:', hasPaymentMethods);
+  // Show loading screen while initial auth load is happening
+  if (loading) {
+    console.log('Showing loading screen. Loading:', loading, 'User:', !!user);
     return <HouseTabzLoadingScreen />;
   }
 
-  console.log('AppNavigator decision - User:', !!user, 'HasPaymentMethods:', hasPaymentMethods, 'HouseId:', user?.houseId);
+  console.log('AppNavigator decision - User:', !!user, 'Onboarded:', user?.onboarded, 'OnboardingStep:', user?.onboarding_step);
+  console.log('Full user object:', JSON.stringify(user, null, 2));
+
+  // Function to get the right onboarding screen/stack
+  const getOnboardingScreen = () => {
+    console.log('🔍 Checking onboarding step:', user?.onboarding_step, 'Type:', typeof user?.onboarding_step);
+    console.log('🔍 User has houseId:', user?.houseId, 'House exists:', !!user?.house);
+    
+    // Handle different onboarding steps
+    switch (user?.onboarding_step) {
+      case 'payment':
+        console.log('💳 Navigating to PaymentMethodOnboardingScreen (onboarding_step: payment)');
+        return <PaymentMethodOnboardingScreen />;
+      
+      case 'completed':
+        // This shouldn't happen since onboarded should be true, but handle gracefully
+        console.log('✅ Onboarding step is completed but user.onboarded is false - navigating to MainStack');
+        return <MainStack />;
+      
+      case 'house':
+      case undefined:
+      default:
+        // If user has a house but onboarding_step is undefined/house, infer they need payment setup
+        if (user?.houseId && user?.house && !user?.onboarding_step) {
+          console.log('💳 Navigating to PaymentMethodOnboardingScreen (has house but missing onboarding_step)');
+          return <PaymentMethodOnboardingScreen />;
+        }
+        
+        console.log('🏠 Navigating to HouseOnboardingStack (onboarding_step: house or no house)');
+        return <HouseOnboardingStack />;
+    }
+  };
 
   return (
     <NavigationContainer>
       {user ? (
-        // Check payment methods first
-        hasPaymentMethods === false ? (
-          // No payment methods - force payment method setup
-          <PaymentOnboardingStack />
-        ) : hasPaymentMethods === true ? (
-          // Has payment methods, now check house status
-          user.houseId ? <MainStack /> : <HouseOnboardingStack />
+        // Check if user is onboarded
+        user.onboarded ? (
+          <>
+            {console.log('🚀 Navigating to MainStack (user is onboarded)')}
+            <MainStack />
+          </>
         ) : (
-          // Still checking or undefined - show loading
-          <HouseTabzLoadingScreen message="Checking payment methods..." />
+          getOnboardingScreen()
         )
       ) : (
-        <AuthStack />
+        <>
+          {console.log('🔐 Navigating to AuthStack (no user)')}
+          <AuthStack />
+        </>
       )}
     </NavigationContainer>
   );

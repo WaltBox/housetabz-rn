@@ -19,6 +19,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../config/api';
 import { useFonts } from 'expo-font';
+import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,7 +28,7 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
   const [setupIntentClientSecret, setSetupIntentClientSecret] = useState(null);
   const [setupIntentId, setSetupIntentId] = useState(null); // ADD THIS LINE
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { user, token, refreshPaymentMethods } = useAuth();
+  const { user, setUser, token, refreshPaymentMethods } = useAuth();
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -203,6 +204,13 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
       if (completionSuccess) {
         // Refresh payment methods to update the UI state
         await refreshPaymentMethods();
+        
+        // Mark user as fully onboarded after successful payment setup
+        const onboardedUser = { ...user, onboarded: true };
+        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(onboardedUser));
+        setUser(onboardedUser);
+        
+        console.log('✅ User marked as onboarded after payment method setup');
         
         // Success message - AppNavigator will handle navigation automatically
         Alert.alert('Success!', 'Payment method added successfully');

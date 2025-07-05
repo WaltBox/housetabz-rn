@@ -1,88 +1,74 @@
 // DashboardSkeleton.js - Main skeleton screen
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { 
   SafeAreaView, 
   ScrollView, 
   StyleSheet, 
   View, 
-  Animated,
   Dimensions 
 } from 'react-native';
+import { 
+  SkeletonShimmer, 
+  SkeletonCard, 
+  SkeletonBox, 
+  SkeletonCircle, 
+  SkeletonText, 
+  SKELETON_COLORS, 
+  getSkeletonSpacing, 
+  getSkeletonSizes 
+} from './SkeletonUtils';
 
-const { width } = Dimensions.get('window');
-
-// Custom skeleton shimmer animation
-const SkeletonShimmer = ({ children, style }) => {
-  const shimmerOpacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const shimmerAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerOpacity, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmerAnimation.start();
-    return () => shimmerAnimation.stop();
-  }, [shimmerOpacity]);
-
-  return (
-    <Animated.View style={[style, { opacity: shimmerOpacity }]}>
-      {children}
-    </Animated.View>
-  );
-};
+const { width, height } = Dimensions.get('window');
+const CARD_WIDTH = width * 0.75;
+const CARD_HEIGHT = height * 0.2;
 
 // Skeleton for FinancialSummaryCard
 const FinancialCardSkeleton = () => (
-  <View style={skeletonStyles.financialCard}>
-    <View style={skeletonStyles.cardMain}>
-      <View style={skeletonStyles.cardTop}>
-        <SkeletonShimmer style={skeletonStyles.iconSkeleton} />
-        <SkeletonShimmer style={skeletonStyles.titleSkeleton} />
+  <SkeletonCard width={CARD_WIDTH} height={CARD_HEIGHT} style={styles.financialCard}>
+    <View style={styles.cardMain}>
+      <View style={styles.cardTop}>
+        <SkeletonCircle size={getSkeletonSizes.icon.medium} />
+        <SkeletonText width={80} height={getSkeletonSizes.text.medium} />
       </View>
-      <View style={skeletonStyles.balanceContainer}>
-        <SkeletonShimmer style={skeletonStyles.currencySkeleton} />
-        <SkeletonShimmer style={skeletonStyles.amountSkeleton} />
+      <View style={styles.balanceContainer}>
+        <SkeletonText width={20} height={20} />
+        <SkeletonText width={120} height={32} />
       </View>
     </View>
-    <SkeletonShimmer style={skeletonStyles.cardFooter} />
-  </View>
+    <SkeletonBox 
+      width="100%" 
+      height={CARD_HEIGHT * 0.25} 
+      borderRadius={0}
+      style={styles.cardFooter}
+    />
+  </SkeletonCard>
 );
 
 // Skeleton for DawgModeCard
 const DawgModeCardSkeleton = () => (
-  <SkeletonShimmer style={skeletonStyles.dawgModeCard}>
-    <View style={skeletonStyles.dawgModeContent}>
-      <View style={skeletonStyles.dawgModeTitle} />
-      <View style={skeletonStyles.dawgModeIcon} />
+  <SkeletonCard width={width * 0.38} height={CARD_HEIGHT} style={styles.dawgModeCard}>
+    <View style={styles.dawgModeContent}>
+      <SkeletonText width={100} height={20} style={styles.dawgModeTitle} />
+      <SkeletonCircle size={40} style={styles.dawgModeIcon} />
     </View>
-  </SkeletonShimmer>
+  </SkeletonCard>
 );
 
 // Skeleton for TopSection
 const TopSectionSkeleton = () => (
-  <View style={skeletonStyles.topSection}>
+  <View style={styles.topSection}>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={skeletonStyles.topScrollContent}
+      contentContainerStyle={styles.topScrollContent}
     >
-      <View style={skeletonStyles.cardWrapper}>
+      <View style={styles.cardWrapper}>
         <FinancialCardSkeleton />
       </View>
-      <View style={skeletonStyles.cardWrapper}>
+      <View style={styles.cardWrapper}>
         <FinancialCardSkeleton />
       </View>
-      <View style={skeletonStyles.dawgCardWrapper}>
+      <View style={styles.dawgCardWrapper}>
         <DawgModeCardSkeleton />
       </View>
     </ScrollView>
@@ -91,68 +77,55 @@ const TopSectionSkeleton = () => (
 
 // Skeleton for UrgentMessageCard
 const UrgentMessageCardSkeleton = () => (
-  <SkeletonShimmer style={skeletonStyles.urgentCard}>
-    <View style={skeletonStyles.urgentContent}>
-      <View style={skeletonStyles.urgentIcon} />
-      <View style={skeletonStyles.urgentTextContainer}>
-        <View style={skeletonStyles.urgentTitle} />
-        <View style={skeletonStyles.urgentMessage1} />
-        <View style={skeletonStyles.urgentMessage2} />
+  <SkeletonCard 
+    width={width * 0.75} 
+    height={120} 
+    style={styles.urgentCard}
+  >
+    <View style={styles.urgentContent}>
+      <SkeletonCircle size={50} />
+      <View style={styles.urgentTextContainer}>
+        <SkeletonText width={120} height={16} />
+        <SkeletonText width="90%" height={12} />
+        <SkeletonText width="70%" height={12} />
       </View>
-      <View style={skeletonStyles.urgentChevron} />
+      <SkeletonCircle size={24} />
     </View>
-  </SkeletonShimmer>
+  </SkeletonCard>
 );
 
 // Skeleton for TaskCard
 const TaskCardSkeleton = ({ isAlternate = false }) => (
-  <View style={[
-    skeletonStyles.taskCard, 
-    isAlternate ? skeletonStyles.taskCardAlternate : null
-  ]}>
-    <View style={skeletonStyles.taskContent}>
-      <SkeletonShimmer style={[
-        skeletonStyles.taskIcon,
-        isAlternate ? skeletonStyles.taskIconAlternate : null
-      ]} />
-      <View style={skeletonStyles.taskTextContainer}>
-        <SkeletonShimmer style={[
-          skeletonStyles.taskCategory,
-          isAlternate ? skeletonStyles.taskCategoryAlternate : null
-        ]} />
-        <SkeletonShimmer style={[
-          skeletonStyles.taskTitle,
-          isAlternate ? skeletonStyles.taskTitleAlternate : null
-        ]} />
-        <SkeletonShimmer style={[
-          skeletonStyles.taskSubtitle,
-          isAlternate ? skeletonStyles.taskSubtitleAlternate : null
-        ]} />
+  <SkeletonCard 
+    width={width * 0.85} 
+    height={120} 
+    style={[styles.taskCard, isAlternate ? styles.taskCardAlternate : null]}
+  >
+    <View style={styles.taskContent}>
+      <SkeletonCircle size={26} />
+      <View style={styles.taskTextContainer}>
+        <SkeletonText width={140} height={12} />
+        <SkeletonText width="85%" height={16} />
+        <SkeletonText width="70%" height={14} />
       </View>
     </View>
-    <View style={skeletonStyles.taskFooter}>
-      <SkeletonShimmer style={[
-        skeletonStyles.taskAction,
-        isAlternate ? skeletonStyles.taskActionAlternate : null
-      ]} />
-      <SkeletonShimmer style={[
-        skeletonStyles.taskChevron,
-        isAlternate ? skeletonStyles.taskChevronAlternate : null
-      ]} />
+    <View style={styles.taskFooter}>
+      <SkeletonText width={100} height={14} />
+      <SkeletonCircle size={20} />
     </View>
-  </View>
+  </SkeletonCard>
 );
 
 // Skeleton for PopupSection
 const PopupSectionSkeleton = () => (
-  <View style={skeletonStyles.popupSection}>
+  <View style={styles.popupSection}>
     {/* Urgent Messages Section */}
-    <View style={skeletonStyles.sectionWithHeader}>
-      <SkeletonShimmer style={skeletonStyles.sectionHeader} />
+    <View style={styles.sectionWithHeader}>
+      <SkeletonText width={140} height={18} style={styles.sectionHeader} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={skeletonStyles.urgentScrollContent}
+        contentContainerStyle={styles.urgentScrollContent}
       >
         <UrgentMessageCardSkeleton />
         <UrgentMessageCardSkeleton />
@@ -160,12 +133,12 @@ const PopupSectionSkeleton = () => (
     </View>
 
     {/* Tasks Section */}
-    <View style={skeletonStyles.sectionWithHeader}>
-      <SkeletonShimmer style={skeletonStyles.sectionHeader} />
+    <View style={styles.sectionWithHeader}>
+      <SkeletonText width={80} height={18} style={styles.sectionHeader} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={skeletonStyles.taskScrollContent}
+        contentContainerStyle={styles.taskScrollContent}
       >
         <TaskCardSkeleton />
         <TaskCardSkeleton isAlternate={true} />
@@ -175,75 +148,82 @@ const PopupSectionSkeleton = () => (
   </View>
 );
 
-// Skeleton for MiddleSection (Bill Takeover Card)
+// Skeleton for MiddleSection
 const MiddleSectionSkeleton = () => (
-  <View style={skeletonStyles.middleSection}>
-    <SkeletonShimmer style={skeletonStyles.billTakeoverCard}>
-      <View style={skeletonStyles.billTakeoverContent}>
-        <View style={skeletonStyles.billTakeoverText}>
-          <View style={skeletonStyles.billTakeoverLine1} />
-          <View style={skeletonStyles.billTakeoverLine2} />
-          <View style={skeletonStyles.billTakeoverLink} />
-        </View>
+  <View style={styles.middleSection}>
+    <SkeletonCard 
+      width={width * 0.9} 
+      height={height * 0.25} 
+      style={styles.billTakeoverCard}
+    >
+      <View style={styles.billTakeoverContent}>
+        <SkeletonText width="60%" height={16} />
+        <SkeletonText width="40%" height={14} />
       </View>
-    </SkeletonShimmer>
+    </SkeletonCard>
   </View>
 );
 
 // Skeleton for PartnerCard
-const PartnerCardSkeleton = () => (
-  <View style={skeletonStyles.partnerCard}>
-    <SkeletonShimmer style={skeletonStyles.partnerCover} />
-    <View style={skeletonStyles.partnerLogoContainer}>
-      <SkeletonShimmer style={skeletonStyles.partnerLogo} />
-    </View>
-    <View style={skeletonStyles.partnerNameContainer}>
-      <SkeletonShimmer style={skeletonStyles.partnerName} />
-    </View>
-  </View>
-);
+const PartnerCardSkeleton = () => {
+  const cardSize = (width - getSkeletonSpacing.lg * 3) / 2;
+  
+  return (
+    <SkeletonCard 
+      width={cardSize} 
+      height={cardSize + 36} 
+      style={styles.partnerCard}
+    >
+      <SkeletonBox width={cardSize} height={cardSize} borderRadius={16} />
+      <View style={styles.partnerLogoContainer}>
+        <SkeletonCircle size={cardSize * 0.25} />
+      </View>
+      <View style={styles.partnerNameContainer}>
+        <SkeletonText width="70%" height={14} />
+      </View>
+    </SkeletonCard>
+  );
+};
 
 // Skeleton for BottomSection
 const BottomSectionSkeleton = () => (
-  <View style={skeletonStyles.bottomSection}>
-    <View style={skeletonStyles.bottomHeader}>
-      <SkeletonShimmer style={skeletonStyles.bottomTitle} />
-      <SkeletonShimmer style={skeletonStyles.viewAllButton} />
+  <View style={styles.bottomSection}>
+    <View style={styles.sectionWithHeader}>
+      <SkeletonText width={120} height={18} style={styles.sectionHeader} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.partnerScrollContent}
+      >
+        <PartnerCardSkeleton />
+        <PartnerCardSkeleton />
+        <PartnerCardSkeleton />
+      </ScrollView>
     </View>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={skeletonStyles.partnerScrollContent}
-    >
-      <PartnerCardSkeleton />
-      <PartnerCardSkeleton />
-      <PartnerCardSkeleton />
-      <PartnerCardSkeleton />
-    </ScrollView>
   </View>
 );
 
 // Main Dashboard Skeleton Component
 const DashboardSkeleton = () => {
   return (
-    <SafeAreaView style={skeletonStyles.container}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
-        contentContainerStyle={skeletonStyles.scrollContent}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={skeletonStyles.sectionContainer}>
+        <View style={styles.sectionContainer}>
           <TopSectionSkeleton />
         </View>
 
-        <View style={skeletonStyles.sectionContainer}>
+        <View style={styles.sectionContainer}>
           <PopupSectionSkeleton />
         </View>
 
-        <View style={skeletonStyles.sectionContainer}>
+        <View style={styles.sectionContainer}>
           <MiddleSectionSkeleton />
         </View>
 
-        <View style={skeletonStyles.sectionContainer}>
+        <View style={styles.sectionContainer}>
           <BottomSectionSkeleton />
         </View>
       </ScrollView>
@@ -251,403 +231,203 @@ const DashboardSkeleton = () => {
   );
 };
 
-// Comprehensive styles that match your actual components
-const skeletonStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#dff6f0' 
+    backgroundColor: SKELETON_COLORS.background 
   },
   scrollContent: { 
-    paddingTop: 8, 
-    paddingBottom: 12 
+    paddingTop: getSkeletonSpacing.sm, 
+    paddingBottom: getSkeletonSpacing.md 
   },
   sectionContainer: { 
-    marginBottom: 8 
+    marginBottom: getSkeletonSpacing.sm 
   },
 
-  // Top Section Skeletons
+  // Top Section Styles
   topSection: { 
-    marginVertical: 16 
+    marginVertical: getSkeletonSpacing.lg 
   },
   topScrollContent: { 
     paddingLeft: 15, 
-    paddingRight: 16 
+    paddingRight: getSkeletonSpacing.lg 
   },
   cardWrapper: { 
-    width: width * 0.75, 
-    marginRight: 12 
+    marginRight: getSkeletonSpacing.md 
   },
   dawgCardWrapper: { 
-    width: width * 0.38, 
-    marginRight: 12 
+    marginRight: getSkeletonSpacing.md 
   },
 
-  // Financial Card Skeleton
+  // Financial Card Styles
   financialCard: {
-    width: '100%',
-    height: Dimensions.get('window').height * 0.2,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
   },
   cardMain: {
-    height: '75%',
-    padding: 20,
+    height: CARD_HEIGHT * 0.75,
+    padding: getSkeletonSpacing.xl,
     justifyContent: 'space-between',
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  iconSkeleton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#e5e7eb',
-    marginRight: 12,
-  },
-  titleSkeleton: {
-    width: 80,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
+    gap: getSkeletonSpacing.md,
   },
   balanceContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-  },
-  currencySkeleton: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    backgroundColor: '#e5e7eb',
-    marginRight: 4,
-    marginBottom: 4,
-  },
-  amountSkeleton: {
-    width: 120,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
+    gap: getSkeletonSpacing.xs,
   },
   cardFooter: {
-    height: '25%',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: SKELETON_COLORS.secondary,
   },
 
-  // Dawg Mode Card Skeleton
+  // Dawg Mode Card Styles
   dawgModeCard: {
-    width: '100%',
-    height: Dimensions.get('window').height * 0.2,
     backgroundColor: '#a855f7',
-    borderRadius: 16,
+    overflow: 'hidden',
   },
   dawgModeContent: {
     flex: 1,
-    padding: 16,
+    padding: getSkeletonSpacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: getSkeletonSpacing.lg,
   },
   dawgModeTitle: {
-    width: 100,
-    height: 20,
-    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginBottom: 16,
   },
   dawgModeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
 
-  // Popup Section Skeletons
+  // Popup Section Styles
   popupSection: {
-    marginVertical: 8,
+    marginVertical: getSkeletonSpacing.sm,
   },
   sectionWithHeader: {
-    marginBottom: 28,
+    marginBottom: getSkeletonSpacing.xxl + getSkeletonSpacing.xs,
   },
   sectionHeader: {
-    width: 120,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#e5e7eb',
-    marginLeft: 16,
-    marginBottom: 12,
+    marginLeft: getSkeletonSpacing.lg,
+    marginBottom: getSkeletonSpacing.md,
   },
 
-  // Urgent Message Card Skeleton
+  // Urgent Message Card Styles
   urgentScrollContent: {
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: getSkeletonSpacing.lg,
+    paddingRight: getSkeletonSpacing.sm,
   },
   urgentCard: {
-    width: width * 0.75,
-    height: 120,
     backgroundColor: '#f97316',
-    borderRadius: 16,
-    marginRight: 16,
+    marginRight: getSkeletonSpacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
   urgentContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: getSkeletonSpacing.lg,
     height: '100%',
-  },
-  urgentIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    gap: getSkeletonSpacing.lg,
   },
   urgentTextContainer: {
     flex: 1,
-    marginLeft: 16,
-  },
-  urgentTitle: {
-    width: 120,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    marginBottom: 8,
-  },
-  urgentMessage1: {
-    width: '90%',
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginBottom: 4,
-  },
-  urgentMessage2: {
-    width: '70%',
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  urgentChevron: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginLeft: 8,
+    gap: getSkeletonSpacing.sm,
   },
 
-  // Task Card Skeletons
+  // Task Card Styles
   taskScrollContent: {
     paddingLeft: 15,
-    paddingRight: 16,
+    paddingRight: getSkeletonSpacing.lg,
   },
   taskCard: {
-    width: width * 0.85,
-    height: 120,
     backgroundColor: '#34d399',
-    borderRadius: 14,
-    marginRight: 12,
-    overflow: 'hidden',
+    marginRight: getSkeletonSpacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   taskCardAlternate: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#f0f9f6',
   },
   taskContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 16,
+    padding: getSkeletonSpacing.lg,
     flex: 1,
-  },
-  taskIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  taskIconAlternate: {
-    backgroundColor: '#34d399',
+    gap: getSkeletonSpacing.md,
   },
   taskTextContainer: {
     flex: 1,
-    marginLeft: 12,
-  },
-  taskCategory: {
-    width: 100,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    marginBottom: 4,
-  },
-  taskCategoryAlternate: {
-    backgroundColor: '#34d399',
-  },
-  taskTitle: {
-    width: 140,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    marginBottom: 6,
-  },
-  taskTitleAlternate: {
-    backgroundColor: '#1f2937',
-  },
-  taskSubtitle: {
-    width: 180,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  taskSubtitleAlternate: {
-    backgroundColor: '#6b7280',
+    gap: getSkeletonSpacing.xs,
   },
   taskFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  taskAction: {
-    width: 80,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  taskActionAlternate: {
-    backgroundColor: '#34d399',
-  },
-  taskChevron: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  taskChevronAlternate: {
-    backgroundColor: '#34d399',
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.sm,
   },
 
-  // Middle Section (Bill Takeover) Skeleton
+  // Middle Section Styles
   middleSection: {
-    marginVertical: 0,
     alignItems: 'center',
+    marginVertical: getSkeletonSpacing.lg,
   },
   billTakeoverCard: {
-    width: width * 0.9,
-    height: (width * 0.9) / 3,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
   billTakeoverContent: {
-    padding: 16,
-    justifyContent: 'center',
-  },
-  billTakeoverText: {
-    width: '50%',
-  },
-  billTakeoverLine1: {
-    width: '90%',
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 6,
-  },
-  billTakeoverLine2: {
-    width: '75%',
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 12,
-  },
-  billTakeoverLink: {
-    width: 120,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#34d399',
+    padding: getSkeletonSpacing.lg,
+    gap: getSkeletonSpacing.sm,
   },
 
-  // Bottom Section (Partners) Skeleton
+  // Bottom Section Styles
   bottomSection: {
-    marginBottom: 16,
-  },
-  bottomHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  bottomTitle: {
-    width: 80,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#e5e7eb',
-  },
-  viewAllButton: {
-    width: 70,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#34d399',
+    marginVertical: getSkeletonSpacing.lg,
   },
   partnerScrollContent: {
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: getSkeletonSpacing.lg,
+    paddingRight: getSkeletonSpacing.sm,
   },
   partnerCard: {
-    width: width * 0.38,
-    height: width * 0.38 + 36,
-    borderRadius: 12,
-    marginRight: 12,
-    overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    marginRight: getSkeletonSpacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-  },
-  partnerCover: {
-    width: '100%',
-    height: width * 0.38,
-    backgroundColor: '#f5f5f5',
+    elevation: 3,
+    overflow: 'hidden',
   },
   partnerLogoContainer: {
     position: 'absolute',
-    bottom: 36 + 8,
-    left: 8,
-    width: (width * 0.38) * 0.25 + 4,
-    height: (width * 0.38) * 0.25 + 4,
-    borderRadius: ((width * 0.38) * 0.25 + 4) / 2,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  partnerLogo: {
-    width: (width * 0.38) * 0.25,
-    height: (width * 0.38) * 0.25,
-    borderRadius: ((width * 0.38) * 0.25) / 2,
-    backgroundColor: '#e5e7eb',
+    bottom: 36 + getSkeletonSpacing.sm,
+    left: getSkeletonSpacing.sm,
+    backgroundColor: SKELETON_COLORS.cardBackground,
+    padding: 2,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   partnerNameContainer: {
     height: 36,
-    backgroundColor: 'white',
+    backgroundColor: SKELETON_COLORS.cardBackground,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  partnerName: {
-    width: '80%',
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#e5e7eb',
+    paddingHorizontal: getSkeletonSpacing.sm,
   },
 });
 

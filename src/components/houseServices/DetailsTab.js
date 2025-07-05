@@ -19,6 +19,15 @@ const DetailsTab = ({
         </View>
       )}
 
+
+
+              {displayService.serviceFeeTotal && Number(displayService.serviceFeeTotal) > 0 && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Current Fee</Text>
+            <Text style={styles.detailValue}>${Number(displayService.serviceFeeTotal).toFixed(2)}</Text>
+          </View>
+        )}
+
       {displayService.createdAt && (
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Added On</Text>
@@ -57,7 +66,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-   
+    elevation: 1,
   },
   detailRow: {
     flexDirection: 'row',

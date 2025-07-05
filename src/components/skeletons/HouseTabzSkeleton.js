@@ -1,138 +1,121 @@
 // HouseTabzSkeleton.js
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import {
   SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
   ScrollView,
-  Animated,
-  Platform,
-  Dimensions
+  View,
+  StyleSheet,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
+import { 
+  SkeletonShimmer, 
+  SkeletonCard, 
+  SkeletonBox, 
+  SkeletonCircle, 
+  SkeletonText, 
+  SKELETON_COLORS, 
+  getSkeletonSpacing, 
+  getSkeletonSizes 
+} from './SkeletonUtils';
 
 const { width } = Dimensions.get('window');
 
-// Custom skeleton shimmer animation
-const SkeletonShimmer = ({ children, style }) => {
-  const shimmerOpacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const shimmerAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerOpacity, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerOpacity, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    shimmerAnimation.start();
-    return () => shimmerAnimation.stop();
-  }, [shimmerOpacity]);
-
-  return (
-    <Animated.View style={[style, { opacity: shimmerOpacity }]}>
-      {children}
-    </Animated.View>
-  );
-};
-
 // Skeleton for HouseHeader
 const HouseHeaderSkeleton = () => (
-  <View style={skeletonStyles.header}>
-    <SkeletonShimmer style={skeletonStyles.headerTitle} />
-    <View style={skeletonStyles.inviteContainer}>
-      <SkeletonShimmer style={skeletonStyles.inviteCircle} />
-      <SkeletonShimmer style={skeletonStyles.inviteLabel} />
+  <View style={styles.header}>
+    <SkeletonText width={180} height={24} />
+    <View style={styles.inviteContainer}>
+      <SkeletonCircle size={40} />
+      <SkeletonText width={60} height={14} />
     </View>
   </View>
 );
 
 // Skeleton for HSI Component
 const HSIComponentSkeleton = () => (
-  <View style={skeletonStyles.hsiWrapper}>
-    <SkeletonShimmer style={skeletonStyles.hsiTitle} />
+  <View style={styles.hsiWrapper}>
+    <SkeletonText width={160} height={20} style={styles.hsiTitle} />
     
-    <View style={skeletonStyles.hsiCard}>
-      <View style={skeletonStyles.hsiMainContent}>
-        <View style={skeletonStyles.gaugeWrapper}>
+    <SkeletonCard style={styles.hsiCard}>
+      <View style={styles.hsiMainContent}>
+        <View style={styles.gaugeWrapper}>
           {/* Semi-circle gauge background */}
-          <SkeletonShimmer style={skeletonStyles.gaugeBg} />
+          <SkeletonBox 
+            width={120} 
+            height={60} 
+            borderRadius={60}
+            style={styles.gaugeBg}
+          />
           
           {/* Score overlay */}
-          <View style={skeletonStyles.valueOverlay}>
-            <SkeletonShimmer style={skeletonStyles.scoreText} />
+          <View style={styles.valueOverlay}>
+            <SkeletonText width={40} height={32} />
           </View>
         </View>
       </View>
       
-      <SkeletonShimmer style={skeletonStyles.hsiFooter} />
-    </View>
+      <SkeletonText width="80%" height={16} style={styles.hsiFooter} />
+    </SkeletonCard>
   </View>
 );
 
 // Skeleton for Scoreboard
 const ScoreboardSkeleton = () => (
-  <View style={skeletonStyles.scoreboardWrapper}>
-    <SkeletonShimmer style={skeletonStyles.scoreboardTitle} />
+  <View style={styles.scoreboardWrapper}>
+    <SkeletonText width={140} height={20} style={styles.scoreboardTitle} />
     
-    <View style={skeletonStyles.scoreboardCard}>
+    <SkeletonCard style={styles.scoreboardCard}>
       {/* Main scoreboard content */}
-      <View style={skeletonStyles.scoreboardContent}>
+      <View style={styles.scoreboardContent}>
         {/* User stats section */}
-        <View style={skeletonStyles.userStatsSection}>
-          <SkeletonShimmer style={skeletonStyles.statLabel} />
-          <SkeletonShimmer style={skeletonStyles.statValue} />
+        <View style={styles.userStatsSection}>
+          <SkeletonText width={80} height={14} />
+          <SkeletonText width={60} height={24} />
         </View>
         
         {/* Center divider */}
-        <View style={skeletonStyles.scoreboardDivider} />
+        <View style={styles.scoreboardDivider} />
         
         {/* House stats section */}
-        <View style={skeletonStyles.houseStatsSection}>
-          <SkeletonShimmer style={skeletonStyles.statLabel} />
-          <SkeletonShimmer style={skeletonStyles.statValue} />
+        <View style={styles.houseStatsSection}>
+          <SkeletonText width={80} height={14} />
+          <SkeletonText width={60} height={24} />
         </View>
       </View>
       
       {/* Secondary stats row */}
-      <View style={skeletonStyles.secondaryStats}>
-        <View style={skeletonStyles.secondaryStat}>
-          <SkeletonShimmer style={skeletonStyles.secondaryLabel} />
-          <SkeletonShimmer style={skeletonStyles.secondaryValue} />
+      <View style={styles.secondaryStats}>
+        <View style={styles.secondaryStat}>
+          <SkeletonText width={60} height={12} />
+          <SkeletonText width={40} height={16} />
         </View>
-        <View style={skeletonStyles.secondaryStat}>
-          <SkeletonShimmer style={skeletonStyles.secondaryLabel} />
-          <SkeletonShimmer style={skeletonStyles.secondaryValue} />
+        <View style={styles.secondaryStat}>
+          <SkeletonText width={60} height={12} />
+          <SkeletonText width={40} height={16} />
         </View>
       </View>
-    </View>
+    </SkeletonCard>
   </View>
 );
 
 // Skeleton for Action Cards
 const ActionCardsSkeleton = () => (
-  <View style={skeletonStyles.actionCardsWrapper}>
-    <View style={skeletonStyles.actionCards}>
+  <View style={styles.actionCardsWrapper}>
+    <View style={styles.actionCards}>
       {/* CurrentTab Card */}
-      <View style={skeletonStyles.currentTabCard}>
-        <SkeletonShimmer style={skeletonStyles.cardTitle} />
-        <SkeletonShimmer style={skeletonStyles.balanceText} />
-        <SkeletonShimmer style={skeletonStyles.cardIconCircle} />
-      </View>
+      <SkeletonCard style={styles.currentTabCard}>
+        <SkeletonText width={100} height={16} />
+        <SkeletonText width={80} height={24} />
+        <SkeletonCircle size={40} style={styles.cardIconCircle} />
+      </SkeletonCard>
       
       {/* PaidTabz Card */}
-      <View style={skeletonStyles.paidTabCard}>
-        <SkeletonShimmer style={skeletonStyles.cardTitle} />
-        <SkeletonShimmer style={skeletonStyles.paidFeatureText} />
-        <SkeletonShimmer style={skeletonStyles.cardIconCircle} />
-      </View>
+      <SkeletonCard style={styles.paidTabCard}>
+        <SkeletonText width={80} height={16} />
+        <SkeletonText width={100} height={14} />
+        <SkeletonCircle size={40} style={styles.cardIconCircle} />
+      </SkeletonCard>
     </View>
   </View>
 );
@@ -141,29 +124,29 @@ const ActionCardsSkeleton = () => (
 const HouseTabzSkeleton = () => {
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
-      <SafeAreaView style={skeletonStyles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={SKELETON_COLORS.background} />
+      <SafeAreaView style={styles.container}>
         {/* Header */}
-        <View style={skeletonStyles.headerContainer}>
+        <View style={styles.headerContainer}>
           <HouseHeaderSkeleton />
         </View>
 
         <ScrollView
-          contentContainerStyle={skeletonStyles.scrollContent}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* HSI Component Section */}
-          <View style={skeletonStyles.section}>
+          <View style={styles.section}>
             <HSIComponentSkeleton />
           </View>
           
           {/* Scoreboard Section */}
-          <View style={skeletonStyles.section}>
+          <View style={styles.section}>
             <ScoreboardSkeleton />
           </View>
           
           {/* Action Cards Section */}
-          <View style={skeletonStyles.actionCardsSection}>
+          <View style={styles.actionCardsSection}>
             <ActionCardsSkeleton />
           </View>
         </ScrollView>
@@ -172,255 +155,160 @@ const HouseTabzSkeleton = () => {
   );
 };
 
-const skeletonStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#dff6f0",
-  },
-  headerContainer: {
-    paddingBottom: 8,
-    backgroundColor: "#dff6f0",
+    backgroundColor: SKELETON_COLORS.background,
   },
   scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 28,
-  },
-  actionCardsSection: {
-    marginBottom: 24,
+    paddingBottom: getSkeletonSpacing.xxl,
   },
 
-  // Header skeleton
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#dff6f0',
+  // Header styles
+  headerContainer: {
+    paddingHorizontal: getSkeletonSpacing.lg,
+    paddingVertical: getSkeletonSpacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: SKELETON_COLORS.secondary,
   },
-  headerTitle: {
-    width: 150,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#e5e7eb',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   inviteContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  inviteCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#34d399',
-  },
-  inviteLabel: {
-    width: 90,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#e5e7eb',
-    marginTop: 4,
+    gap: getSkeletonSpacing.sm,
   },
 
-  // HSI Component skeleton
+  // HSI Component styles
   hsiWrapper: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: getSkeletonSpacing.lg,
+    marginBottom: getSkeletonSpacing.lg,
   },
   hsiTitle: {
-    width: 160,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 8,
+    marginBottom: getSkeletonSpacing.md,
   },
   hsiCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
+    padding: getSkeletonSpacing.xl,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   hsiMainContent: {
-    paddingTop: 16,
-    paddingBottom: 8,
+    alignItems: 'center',
+    marginBottom: getSkeletonSpacing.lg,
   },
   gaugeWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 90,
+    position: 'relative',
   },
   gaugeBg: {
-    width: 150,
-    height: 75,
-    borderTopLeftRadius: 75,
-    borderTopRightRadius: 75,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: SKELETON_COLORS.secondary,
   },
   valueOverlay: {
     position: 'absolute',
     alignItems: 'center',
-    bottom: 5,
-  },
-  scoreText: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#1e293b',
+    justifyContent: 'center',
   },
   hsiFooter: {
-    height: 48,
-    backgroundColor: '#34d399',
+    textAlign: 'center',
   },
 
-  // Scoreboard skeleton
+  // Scoreboard styles
   scoreboardWrapper: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: getSkeletonSpacing.lg,
+    marginBottom: getSkeletonSpacing.lg,
   },
   scoreboardTitle: {
-    width: 120,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 8,
+    marginBottom: getSkeletonSpacing.md,
   },
   scoreboardCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    padding: getSkeletonSpacing.xl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   scoreboardContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: getSkeletonSpacing.lg,
   },
   userStatsSection: {
-    flex: 1,
     alignItems: 'center',
+    gap: getSkeletonSpacing.sm,
   },
   houseStatsSection: {
-    flex: 1,
     alignItems: 'center',
+    gap: getSkeletonSpacing.sm,
   },
   scoreboardDivider: {
     width: 1,
     height: 60,
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 20,
-  },
-  statLabel: {
-    width: 80,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#f3f4f6',
-    marginBottom: 8,
-  },
-  statValue: {
-    width: 100,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: SKELETON_COLORS.tertiary,
   },
   secondaryStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingTop: getSkeletonSpacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: SKELETON_COLORS.secondary,
   },
   secondaryStat: {
     alignItems: 'center',
-  },
-  secondaryLabel: {
-    width: 60,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-    marginBottom: 6,
-  },
-  secondaryValue: {
-    width: 80,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
+    gap: getSkeletonSpacing.xs,
   },
 
-  // Action Cards skeleton
+  // Action Cards styles
+  actionCardsSection: {
+    paddingHorizontal: getSkeletonSpacing.lg,
+  },
   actionCardsWrapper: {
-    backgroundColor: "#dff6f0",
+    marginTop: getSkeletonSpacing.lg,
   },
   actionCards: {
-    paddingHorizontal: 24,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#dff6f0",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: getSkeletonSpacing.md,
   },
   currentTabCard: {
-    width: "48%",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    height: 160,
-    justifyContent: "space-between",
-    backgroundColor: "#10b981",
-    shadowColor: "#0d9488",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    flex: 1,
+    padding: getSkeletonSpacing.lg,
+    backgroundColor: '#34d399',
+    alignItems: 'center',
+    gap: getSkeletonSpacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   paidTabCard: {
-    width: "48%",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    height: 160,
-    justifyContent: "space-between",
-    backgroundColor: "#7c3aed",
-    shadowColor: "#6d28d9",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  cardTitle: {
-    width: 100,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  balanceText: {
-    width: 120,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    alignSelf: 'center',
-    marginTop: 10,
-  },
-  paidFeatureText: {
-    width: 130,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    alignSelf: 'center',
-    marginTop: 10,
+    flex: 1,
+    padding: getSkeletonSpacing.lg,
+    alignItems: 'center',
+    gap: getSkeletonSpacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cardIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    alignSelf: 'flex-end',
+  },
+
+  // Section spacing
+  section: {
+    marginBottom: getSkeletonSpacing.lg,
   },
 });
 

@@ -161,8 +161,10 @@ const OverviewTab = ({
       
     } else {
       // Fallback to ledger data + house members
-   
-      fundingRequired = Number(currentActiveLedger?.fundingRequired || workingService?.amount || 0);
+      
+      // Use totalRequired from backend (already includes service fee)
+      fundingRequired = Number(currentActiveLedger?.totalRequired || currentActiveLedger?.fundingRequired || workingService?.amount || 0);
+      
       funded = Number(currentActiveLedger?.funded || 0);
       const progress = fundingRequired > 0 ? funded / fundingRequired : 0;
       percentFunded = Math.min(100, Math.round(progress * 100));
@@ -293,6 +295,8 @@ const OverviewTab = ({
             {formatCurrency(fundingData.funded)} of {formatCurrency(fundingData.fundingRequired)}
           </Text>
         </View>
+        
+
         <View style={styles.progressBarContainer}>
           <View style={[
             styles.progressBarFill, 
@@ -475,7 +479,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 12,
+    marginBottom: 10,
     marginTop: 8,
   },
   card: {
@@ -494,7 +498,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   fundingPercentageRow: {
     flexDirection: 'row',
@@ -530,11 +534,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   fundingDetailLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748b',
   },
   fundingDetailValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1e293b',
   },
@@ -554,7 +558,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -641,7 +645,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -679,15 +683,15 @@ const styles = StyleSheet.create({
   emptyBillContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 20,
   },
   emptyBillText: {
     marginTop: 8,
     color: '#94a3b8',
-    fontSize: 16,
+    fontSize: 15,
   },
   totalAmount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
   },
@@ -697,7 +701,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 12,
     margin: 16,
-    padding: 24,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -708,7 +712,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    marginTop: 12,
+    marginTop: 10,
     marginBottom: 8,
   },
   noActiveText: {
@@ -737,10 +741,10 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: 32,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 10,
     fontSize: 14,
     color: '#64748b',
   },

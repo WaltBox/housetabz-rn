@@ -12,7 +12,13 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import apiClient from '../config/api';
+import apiClient, { 
+  getDashboardData, 
+  getHouseTabsData,
+  invalidateCache, 
+  clearUserCache
+} from '../config/api';
+import { startBackgroundPrefetch, getPrefetchStatus } from '../services/PrefetchService';
 
 import DashboardTopSection from '../components/dashboard/DashboardTopSection';
 import DashboardPopupSection from '../components/dashboard/DashboardPopupSection';
@@ -21,6 +27,7 @@ import DashboardBottomSection from '../components/dashboard/DashboardBottomSecti
 import AcceptServicePayment from '../modals/AcceptServicePayment';
 import UrgentMessageModal from '../modals/UrgentMessageModal';
 import BillSubmissionModal from '../modals/BillSubmissionModal';
+
 
 // Import the new skeleton component
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
@@ -49,10 +56,9 @@ const DashboardScreen = () => {
   const [billSubmissions, setBillSubmissions] = useState([]);
   const [userCharges, setUserCharges] = useState([]);
   const [urgentMessages, setUrgentMessages] = useState([]);
-  
-  // FIXED: Add missing state declarations
-  const [house, setHouse] = useState(null);
   const [unpaidBills, setUnpaidBills] = useState([]);
+  
+  const [house, setHouse] = useState(null);
   
   // UI states
   const [isLoading, setIsLoading] = useState(false);
@@ -69,140 +75,144 @@ const DashboardScreen = () => {
   const [isBillSubmissionModalVisible, setIsBillSubmissionModalVisible] = useState(false);
   const [selectedBillSubmission, setSelectedBillSubmission] = useState(null);
 
-  // FIXED: Fetch all dashboard data
+  // Fetch all dashboard data with cached API call
   const fetchDashboardData = async () => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
       setError(null);
       if (!refreshing) setIsLoading(true);
 
-      // Try the new dashboard endpoint
-      const dashboardRes = await apiClient.get(`/api/users/${user.id}/dashboard`);
-      const data = dashboardRes.data;
-      
-      console.log('Dashboard raw data received:', {
-        tasksCount: data.tasks?.length || 0,
-        billSubmissionsCount: data.billSubmissions?.length || 0,
-        urgentMessagesCount: data.urgentMessages?.length || 0,
-        userChargesCount: data.userCharges?.length || 0
-      });
-      
-      // Set state from dashboard response
-      setUserFinance(data.user.finance);
-      setHouseFinance(data.house.finance);
-      
-      // Store the complete house data
-      setHouse(data.house);
-      
-      // FIXED: Store unpaid bills data
-      setUnpaidBills(data.unpaidBills || []);
-      
-      // ENHANCED: Map task data to match your frontend expectations
-      const mappedTasks = data.tasks.map(task => {
-        console.log('Raw task data:', {
-          id: task.id,
-          type: task.type,
-          serviceRequestBundleId: task.serviceRequestBundleId,
-          hasServiceRequestBundle: !!task.serviceRequestBundle,
-          paymentRequired: task.paymentRequired,
-          paymentAmount: task.paymentAmount
-        });
-        
-        return {
-          id: task.id,
-          taskId: task.id, // Ensure both id and taskId are available
-          type: task.type,
-          status: task.status,
-          response: task.response,
-          paymentRequired: task.paymentRequired,
-          amount: task.paymentAmount,
-          paymentAmount: task.paymentAmount, // Keep original field name too
-          monthlyAmount: task.monthlyAmount,
-          paymentStatus: task.paymentStatus,
-          serviceRequestBundle: task.serviceRequestBundle,
-          serviceRequestBundleId: task.serviceRequestBundleId, // Make sure this is included
-          bundleId: task.serviceRequestBundleId, // Alternative field name
-          name: task.type,
-          dueDate: task.createdAt,
-          createdAt: task.createdAt,
-          updatedAt: task.updatedAt,
-          // Include any metadata that might help identify task type
-          metadata: task.metadata || {}
-        };
+      console.log('🚀 Fetching dashboard data for user:', user.id);
+      console.log('🔐 User auth status:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email
       });
 
-      // Enhanced debug log after mapping:
-      console.log('Mapped tasks summary:', mappedTasks.map(t => ({
-        id: t.id,
-        type: t.type,
-        serviceRequestBundleId: t.serviceRequestBundleId,
-        bundleId: t.bundleId,
-        hasBundle: !!t.serviceRequestBundle,
-        paymentRequired: t.paymentRequired,
-        paymentAmount: t.paymentAmount
-      })));
-
-      // Separate tasks by type for debugging
-      const serviceRequestTasks = mappedTasks.filter(t => t.serviceRequestBundleId);
-      const otherTasks = mappedTasks.filter(t => !t.serviceRequestBundleId);
-
-      console.log('Task breakdown:', {
-        total: mappedTasks.length,
-        serviceRequests: serviceRequestTasks.length,
-        otherTasks: otherTasks.length,
-        serviceRequestIds: serviceRequestTasks.map(t => t.serviceRequestBundleId),
-        otherTaskTypes: otherTasks.map(t => t.type)
-      });
+      // ✅ UPDATED: Use cached API function
+      const data = await getDashboardData(user.id);
       
-      setTasks(mappedTasks);
-      setBillSubmissions(data.billSubmissions || []);
-      setUserCharges(data.userCharges || []);
-      setUrgentMessages(data.urgentMessages || []);
-
-      // Debug log to verify data
-      console.log('Dashboard data loaded:', {
-        house: data.house?.name,
-        houseBalance: data.house?.houseBalance,
-        unpaidBillsCount: data.unpaidBills?.length || 0,
-        finalTasksCount: mappedTasks.length,
-        finalBillSubmissionsCount: (data.billSubmissions || []).length,
-        finalUrgentMessagesCount: (data.urgentMessages || []).length
+      console.log('📊 Dashboard data received:', {
+        billSubmissionsCount: Array.isArray(data.billSubmissions) ? data.billSubmissions.length : 0,
+        tasksCount: Array.isArray(data.pendingTasks) ? data.pendingTasks.length : 0,
+        chargesCount: Array.isArray(data.unpaidCharges) ? data.unpaidCharges.length : 0,
+        messagesCount: Array.isArray(data.urgentMessages) ? data.urgentMessages.length : 0,
+        unpaidBillsCount: Array.isArray(data.unpaidBills) ? data.unpaidBills.length : 0,
       });
 
-    } catch (err) {
-      console.error('Dashboard data fetch error:', err);
-      setError(err.message || 'Unable to load dashboard data');
+      // Handle nested data structure from backend
+      const responseData = data.data || data;
+      
+      // Set user finance data
+      if (responseData.user?.finance) {
+        setUserFinance(responseData.user.finance);
+      }
+      
+      // Set house finance data  
+      if (responseData.house?.finance) {
+        setHouseFinance(responseData.house.finance);
+      }
+
+      // Set house data
+      if (responseData.house) {
+        setHouse(responseData.house);
+      }
+
+      // Set arrays with fallbacks
+      setTasks(Array.isArray(responseData.pendingTasks) ? responseData.pendingTasks : []);
+      setBillSubmissions(Array.isArray(responseData.billSubmissions) ? responseData.billSubmissions : []);
+      setUserCharges(Array.isArray(responseData.unpaidCharges) ? responseData.unpaidCharges : []);
+      setUrgentMessages(Array.isArray(responseData.urgentMessages) ? responseData.urgentMessages : []);
+      setUnpaidBills(Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills : []);
+
+      console.log('✅ Dashboard data loaded successfully:', {
+        userBalance: responseData.user?.finance?.balance,
+        houseBalance: responseData.house?.finance?.balance,
+        houseBalanceFromHouse: responseData.house?.houseBalance,
+        tasksCount: Array.isArray(responseData.pendingTasks) ? responseData.pendingTasks.length : 0,
+        messagesCount: Array.isArray(responseData.urgentMessages) ? responseData.urgentMessages.length : 0,
+        unpaidBillsCount: Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills.length : 0,
+        availableDataKeys: Object.keys(responseData),
+      });
+
+      // ✅ Backend now provides complete data with unpaidBills - no fallback needed
+      console.log('✅ Received dashboard data:', {
+        hasUnpaidBills: Array.isArray(responseData.unpaidBills) && responseData.unpaidBills.length > 0,
+        unpaidBillsCount: Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills.length : 0,
+        hasUserCharges: Array.isArray(responseData.unpaidCharges) && responseData.unpaidCharges.length > 0,
+        userChargesCount: Array.isArray(responseData.unpaidCharges) ? responseData.unpaidCharges.length : 0,
+        houseBalance: responseData.house?.houseBalance,
+        houseFinanceBalance: responseData.house?.finance?.balance
+      });
+
+      // 🆕 START BACKGROUND PREFETCH after successful dashboard load
+      if (!refreshing) { // Only on initial load, not on refresh
+        console.log('🚀 Starting background prefetch...');
+        try {
+          // Start prefetching other screens in background
+          startBackgroundPrefetch(user);
+          
+          // Log prefetch status after a short delay
+          setTimeout(() => {
+            const prefetchStatus = getPrefetchStatus();
+            console.log('📊 Prefetch status:', prefetchStatus);
+          }, 2000);
+        } catch (prefetchError) {
+          console.log('⚠️ Background prefetch failed to start:', prefetchError.message);
+          // Don't show error to user - prefetch is background operation
+        }
+      }
+
+    } catch (error) {
+      console.log('❌ Dashboard data fetch failed:', error.message);
+      setError(`Failed to load dashboard: ${error.message}`);
+      
+      // Clear cache on error and retry
+      try {
+        clearUserCache(user?.id);
+        console.log('🧹 Cleared user cache due to error');
+      } catch (cacheError) {
+        console.log('⚠️ Failed to clear cache:', cacheError.message);
+      }
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchDashboardData(); }, [user?.id]);
-
+  // Enhanced refresh function that clears cache first
   const handleRefresh = () => {
     setRefreshing(true);
+    // Clear cache to force fresh data
+    clearUserCache(user.id);
     fetchDashboardData();
   };
+
+  useEffect(() => { fetchDashboardData(); }, [user?.id]);
 
   // Handle message press
   const handleMessagePress = async (message) => {
     try {
-      // Mark the message as read
-      await apiClient.patch(`/api/urgent-messages/${message.id}/read`);
-      
-      // Update the local state to mark the message as read
-      setUrgentMessages(currentMessages =>
-        currentMessages.map(msg => 
-          msg.id === message.id ? { ...msg, isRead: true } : msg
-        )
-      );
-      
-      // Show message details
+      // Show message details immediately (don't wait for API call)
       setSelectedMessage(message);
       setIsMessageModalVisible(true);
+      
+      // Mark the message as read in the background
+      if (message?.id) {
+        await apiClient.patch(`/api/urgent-messages/${message.id}/read`);
+        
+        // Update the local state to mark the message as read
+        setUrgentMessages(currentMessages =>
+          currentMessages.map(msg => 
+            msg.id === message.id ? { ...msg, isRead: true } : msg
+          )
+        );
+      }
     } catch (error) {
-      console.error('Error marking message as read:', error);
+      console.error('Error in handleMessagePress:', error);
+      // Still show the modal even if marking as read fails
+      setSelectedMessage(message);
+      setIsMessageModalVisible(true);
     }
   };
 
@@ -236,67 +246,28 @@ const DashboardScreen = () => {
     }
   };
   
-  // ENHANCED: Task handling functions
-  const handleTaskAction = async (data, action) => {
-    try {
-      console.log('handleTaskAction called with:', { data, action });
-      
-      const taskId = typeof data === 'object' ? (data.id || data.taskId) : data;
-
-      if (!taskId) {
-        console.error("Task ID is undefined. Data received:", data);
-        throw new Error("Task ID is undefined");
-      }
-      
-      if (action === 'accepted' || action === 'view') {
-        // For accepted or view actions, show the payment modal
-        console.log('Opening payment modal with task data:', data);
-        
-        // Ensure we have all necessary fields
-        const updatedTask = { 
-          ...data, 
-          id: taskId,
-          taskId: taskId,
-          // Make sure we have the bundle ID
-          serviceRequestBundleId: data.serviceRequestBundleId || data.bundleId,
-          bundleId: data.serviceRequestBundleId || data.bundleId
-        };
-        
-        console.log('Updated task for modal:', updatedTask);
-        setSelectedPaymentTask(updatedTask);
-        setIsPaymentModalVisible(true);
-      } else {
-        // For other actions (like rejected), update the task directly
-        await apiClient.patch(`/api/tasks/${taskId}`, {
-          response: action,
-          userId: user.id,
-        });
-        fetchDashboardData(); // Refresh data after task action
-      }
-    } catch (error) {
-      console.error(`Error handling task action (${action}):`, error);
+  // Handle task action with cache invalidation
+  const handleTaskAction = (task, action) => {
+    if (action === 'view') {
+      setSelectedPaymentTask(task);
+      setIsPaymentModalVisible(true);
+    } else if (action === 'complete') {
+      // Invalidate cache when task is completed
+      invalidateCache('dashboard');
+      fetchDashboardData();
     }
   };
 
-  const handlePaymentSuccess = async () => {
-    if (selectedPaymentTask) {
-      try {
-        const taskId = selectedPaymentTask.id || selectedPaymentTask.taskId;
-        if (!taskId) {
-          throw new Error('Task ID is missing in selectedPaymentTask');
-        }
-        await apiClient.patch(`/api/tasks/${taskId}`, {
-          response: 'accepted',
-          paymentStatus: 'completed',
-          userId: user.id,
-        });
-        fetchDashboardData(); // Refresh data after successful payment
-      } catch (error) {
-        console.error('Error updating task after payment:', error);
-      }
-    }
+  // Handle successful payment and invalidate cache
+  const handlePaymentSuccess = (taskData) => {
     setIsPaymentModalVisible(false);
     setSelectedPaymentTask(null);
+    
+    // Invalidate cache to refresh data
+    invalidateCache('dashboard');
+    
+    // Refresh dashboard data
+    fetchDashboardData();
   };
   
   // Handle bill submission success

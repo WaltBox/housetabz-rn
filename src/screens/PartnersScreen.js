@@ -14,7 +14,12 @@ import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SwipeableAnnouncements from "../components/SwipeableAnnouncements";
 import { useAuth } from "../context/AuthContext";
-import apiClient from "../config/api";
+import apiClient, { 
+  getPartnersData, 
+  invalidateCache, 
+  clearScreenCache
+} from "../config/api";
+import { isScreenPrefetched, getPrefetchStatus } from '../services/PrefetchService';
 import PartnersSkeleton from "../components/skeletons/PartnersSkeleton";
 
 const { width } = Dimensions.get("window");
@@ -37,20 +42,70 @@ const PartnersScreen = () => {
   const fetchPartners = async () => {
     try {
       setError(null);
-      if (!refreshing) setLoading(true);
-      const { data } = await apiClient.get("/api/partners");
-      setPartners(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("Partners loading error:", e);
-      setError("Couldn't load partners. Pull to retry.");
+      
+      // 🆕 CHECK IF ALREADY PREFETCHED
+      const isPrefetched = isScreenPrefetched('Partners');
+      const prefetchStatus = getPrefetchStatus();
+      
+      if (isPrefetched) {
+        console.log('⚡ Partners already prefetched - loading from cache');
+        setLoading(false); // Skip loading state since data should be cached
+      } else {
+        console.log('🔄 Partners not prefetched - showing loading state');
+        if (!refreshing) setLoading(true);
+      }
+      
+      console.log('🚀 Fetching partners data...');
+      console.log('📊 Prefetch info:', {
+        isPrefetched,
+        prefetchComplete: prefetchStatus.isComplete,
+        completedScreens: prefetchStatus.completedScreens
+      });
+      
+      // ✅ UPDATED: Use cached API function
+      const data = await getPartnersData();
+      
+      console.log('📊 Partners data received:', {
+        partners: Array.isArray(data) ? data.length : 0,
+        dataType: typeof data,
+        isPrefetched,
+        loadTime: isPrefetched ? 'instant' : 'fetched'
+      });
+
+      // Set partners data
+      if (Array.isArray(data)) {
+        setPartners(data);
+      } else if (data?.partners && Array.isArray(data.partners)) {
+        setPartners(data.partners);
+      } else {
+        console.log('⚠️ Partners data not in expected format:', data);
+        setPartners([]);
+      }
+
+      console.log('✅ Partners data loaded successfully');
+
+    } catch (error) {
+      console.log('❌ Partners fetch failed:', error.message);
+      setError(`Failed to load partners: ${error.message}`);
+      
+      // Clear cache on error
+      try {
+        clearScreenCache('partners');
+        console.log('🧹 Cleared partners cache due to error');
+      } catch (cacheError) {
+        console.log('⚠️ Failed to clear partners cache:', cacheError.message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  // Enhanced refresh function that clears cache first
   const onRefresh = () => {
     setRefreshing(true);
+    // Clear cache to force fresh data
+    clearScreenCache('partners');
     fetchPartners();
   };
 

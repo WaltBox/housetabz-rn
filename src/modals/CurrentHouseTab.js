@@ -68,18 +68,17 @@ const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
       </TouchableOpacity>
 
       {/* Expandable Unpaid Users Section */}
-      <Animated.View style={[
-        styles.unpaidUsersContainer,
-        {
-          height: animationValue.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, Math.max(56 * unpaidCharges.length, 56)]
-          }),
-          opacity: animationValue
-        }
-      ]}>
-        {isExpanded && (
-          unpaidCharges.length > 0 ? (
+      {isExpanded && (
+        <Animated.View style={[
+          styles.unpaidUsersContainer,
+          {
+            opacity: animationValue,
+            transform: [{
+              scaleY: animationValue
+            }]
+          }
+        ]}>
+          {unpaidCharges.length > 0 ? (
             unpaidCharges.map((charge, index) => {
               // Get username from multiple possible sources
               const username = charge.userName || 
@@ -129,14 +128,14 @@ const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
                 All roommates have paid
               </Text>
             </View>
-          )
-        )}
-      </Animated.View>
+          )}
+        </Animated.View>
+      )}
     </>
   );
 };
 
-const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
+const CurrentHouseTab = ({ house, onClose, bills = [], isLoading = false }) => {
   const [totalUnpaid, setTotalUnpaid] = useState(0);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [expandedBill, setExpandedBill] = useState(null);
@@ -158,8 +157,8 @@ const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
       useNativeDriver: true
     }).start();
 
-    // Calculate total unpaid from house data
-    const houseBalance = house?.houseBalance || 0;
+    // Calculate total unpaid from house data - use same logic as MyHouseScreen
+    const houseBalance = house?.balance || house?.houseBalance || house?.finance?.balance || 0;
     setTotalUnpaid(houseBalance);
     
     // Initialize animation values for each bill
@@ -172,7 +171,10 @@ const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
     console.log('CurrentHouseTab received data:', {
       billsCount: bills.length,
       houseBalance,
-      houseName: house?.name
+      houseName: house?.name,
+      houseBalanceSource: house?.balance ? 'house.balance' : 
+                         house?.houseBalance ? 'house.houseBalance' : 
+                         house?.finance?.balance ? 'house.finance.balance' : 'default'
     });
   }, [house, bills]);
 
@@ -227,39 +229,45 @@ const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
       <SafeAreaView style={styles.container}>
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <View style={styles.header}>
-            <TouchableOpacity 
-              onPress={onClose} 
-              style={styles.closeButton}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <MaterialIcons name="close" size={28} color="#1e293b" />
-            </TouchableOpacity>
             <Text style={[
               styles.title,
               fontsLoaded && { fontFamily: 'Poppins-Bold' }
             ]}>
               Current Tab
             </Text>
-            <View style={{ width: 28 }} />
+            <TouchableOpacity 
+              onPress={onClose} 
+              style={styles.closeButton}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <MaterialIcons name="close" size={24} color="#1e293b" />
+            </TouchableOpacity>
           </View>
 
-          {/* Summary card with house name */}
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <MaterialIcons name="home" size={28} color="#34d399" />
-              <Text style={[
-                styles.summaryLabel,
-                fontsLoaded && { fontFamily: 'Poppins-Regular' }
-              ]}>
-                {houseName} Currently Owes
-              </Text>
+          {/* Clean Header with Integrated Amount */}
+          <View style={styles.amountHeader}>
+            <View style={styles.amountRow}>
+              <View style={styles.amountInfo}>
+                <Text style={[
+                  styles.amountLabel,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  {houseName} Currently Owes
+                </Text>
+                <Text style={[
+                  styles.amountValue,
+                  fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                ]}>
+                  ${totalUnpaid.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.houseIcon}>
+                <MaterialIcons name="home" size={20} color="#64748b" />
+              </View>
             </View>
-            <Text style={[
-              styles.summaryAmount,
-              fontsLoaded && { fontFamily: 'Poppins-Bold' }
-            ]}>
-              ${totalUnpaid.toFixed(2)}
-            </Text>
+            
+            {/* Subtle divider */}
+            <View style={styles.headerDivider} />
           </View>
 
           <View style={styles.billsSection}>
@@ -267,7 +275,7 @@ const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
               styles.billsHeader,
               fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
             ]}>
-              Unpaid Bills ({unpaidBills.length})
+              Unpaid Bills • {unpaidBills.length}
             </Text>
 
             <FlatList
@@ -298,6 +306,21 @@ const CurrentHouseTab = ({ house, onClose, bills = [] }) => {
             />
           </View>
         </Animated.View>
+        
+        {/* Loading Overlay */}
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#34d399" />
+              <Text style={[
+                styles.loadingText,
+                fontsLoaded && { fontFamily: 'Poppins-Medium' }
+              ]}>
+                Loading complete bill data...
+              </Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </>
   );
@@ -312,78 +335,96 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingHorizontal: 16, 
+    paddingHorizontal: 20, 
     paddingTop: Platform.OS === 'android' ? 28 : 20, 
-    paddingBottom: 12,
+    paddingBottom: 16,
     backgroundColor: '#dff6f0'
   },
   title: { 
-    fontSize: 20, 
+    fontSize: 24, 
     fontWeight: '700', 
     color: '#1e293b',
-    flex: 1,
-    textAlign: 'center'
+    flex: 1
   },
   closeButton: {
-    padding: 8
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
-  summaryCard: {
-    backgroundColor: '#ffffff', 
-    borderRadius: 16, 
-    marginHorizontal: 16,
-    padding: 24, 
-    marginBottom: 16, 
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000', 
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06, 
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 2
-      }
-    }),
-    alignItems: 'flex-start'
+  // Clean Amount Header Styles
+  amountHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
-  summaryHeader: {
+  amountRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  summaryLabel: { 
-    fontSize: 14, 
-    color: '#64748b', 
-    marginLeft: 8,
-    fontWeight: '500'
+  amountInfo: {
+    flex: 1,
   },
-  summaryAmount: {
-    fontSize: 32, 
-    fontWeight: '700', 
+  amountLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  amountValue: {
+    fontSize: 32,
+    fontWeight: '700',
     color: '#1e293b',
-    fontVariant: ['tabular-nums']
+    fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System',
+  },
+  houseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginTop: 20,
+    marginHorizontal: -4,
   },
 
   billsSection: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   billsHeader: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 12,
+    color: '#475569',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 
   billCard: {
-    backgroundColor: '#ffffff', 
-    borderRadius: 12, 
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     ...Platform.select({
       ios: {
-        shadowColor: '#000', 
-        shadowOffset: { width: 0, height: 1 }, 
+        shadowColor: '#0f172a',
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
       },
@@ -393,25 +434,26 @@ const styles = StyleSheet.create({
     })
   },
   billContent: {
-    padding: 16,
+    padding: 20,
   },
   billHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  billName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
+  billName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#1e293b',
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
+    lineHeight: 22,
   },
-  billAmount: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: '#1e293b' 
+  billAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   billFooter: {
     flexDirection: 'row',
@@ -423,13 +465,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 8,
   },
-  dueDate: { 
-    fontSize: 13, 
+  dueDate: {
+    fontSize: 13,
     fontWeight: '500',
-    flex: 1
+    color: '#64748b',
+    letterSpacing: 0.2,
+    flex: 1,
   },
   expandIndicator: {
     marginLeft: 8,
+    padding: 4,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
   },
   progressInfo: {
     marginTop: 8
@@ -442,14 +489,15 @@ const styles = StyleSheet.create({
   
   // Expandable section styles
   unpaidUsersContainer: {
-    overflow: "hidden",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8fafc",
     borderRadius: 12,
-    marginTop: -4,
+    marginTop: 8,
     marginBottom: 8,
-    marginHorizontal: 4,
-    paddingHorizontal: 18,
-    paddingVertical: 4,
+    marginHorizontal: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -556,6 +604,42 @@ const styles = StyleSheet.create({
     color: '#64748b', 
     marginTop: 6, 
     textAlign: 'center' 
+  },
+  
+  // Loading overlay styles
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(223, 246, 240, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8
+      }
+    })
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
   }
 });
 
