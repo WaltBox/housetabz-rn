@@ -115,6 +115,14 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
       userFinanceBalance: userFinance?.balance,
       hasHouseFinance: !!houseFinance,
       houseFinanceBalance: houseFinance?.balance
+      });
+      
+    // ENHANCED: Log when finance data changes for real-time update tracking
+    console.log("💰 DashboardTopSection finance update:", {
+      timestamp: new Date().toISOString(),
+      userBalance: userFinance?.balance || 0,
+      houseBalance: house?.balance || house?.houseBalance || houseFinance?.balance || 0,
+      updateTrigger: 'props changed'
     });
   }, [house, unpaidBills, userFinance, houseFinance]);
 
@@ -192,6 +200,7 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
         <UserTabModal
           visible={isUserModalVisible}
           user={enhancedUser}
+          userCharges={userCharges}
           onClose={() => setUserModalVisible(false)}
         />
       </ModalComponent>

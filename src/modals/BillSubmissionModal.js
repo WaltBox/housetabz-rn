@@ -74,10 +74,81 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
     setIsSubmitting(true);
 
     try {
+      // ENHANCED: Add detailed logging for debugging
+      console.log('🔍 Bill submission attempt:', {
+        billSubmissionId: billSubmission.id,
+        amount: parseFloat(amount),
+        userId: user?.id,
+        userHouseId: user?.houseId,
+        billSubmissionData: billSubmission,
+        endpoint: `/api/bill-submissions/${billSubmission.id}/submit`
+      });
+
+      // ENHANCED: Validate bill submission data
+      if (!billSubmission?.id) {
+        throw new Error('Invalid bill submission: missing ID');
+      }
+
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // ENHANCED: Check if bill is already submitted
+      if (billSubmission.status && billSubmission.status !== 'pending') {
+        Alert.alert(
+          'Already Submitted',
+          `This bill has already been ${billSubmission.status}. Please refresh the page to see the latest status.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ENHANCED: Validate that user is the designated submitter
+      if (billSubmission.submittedBy !== user.id) {
+        console.error('🚨 User mismatch:', {
+          'Current User ID': user.id,
+          'Bill Submitted By': billSubmission.submittedBy,
+          'User House ID': user.houseId,
+          'Bill House Service': billSubmission.houseService
+        });
+        Alert.alert(
+          'Not Authorized',
+          'You are not the designated user for this bill submission. Only the assigned user can submit the bill amount.',
+          [{ text: 'OK' }]
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ENHANCED: Validate amount format
+      const submissionAmount = parseFloat(amount);
+      if (isNaN(submissionAmount) || submissionAmount <= 0) {
+        Alert.alert(
+          'Invalid Amount',
+          'Please enter a valid amount greater than zero.',
+          [{ text: 'OK' }]
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ENHANCED: Add comprehensive pre-submission logging
+      console.log('✅ Pre-submission validation passed:', {
+        'Bill ID': billSubmission.id,
+        'User ID': user.id,
+        'Amount': submissionAmount,
+        'Bill Status': billSubmission.status,
+        'Submitter Match': billSubmission.submittedBy === user.id,
+        'House Service': billSubmission.houseService?.name,
+        'Due Date': billSubmission.dueDate
+      });
+
       // Direct API call to submit the bill amount
       const response = await apiClient.post(`/api/bill-submissions/${billSubmission.id}/submit`, {
-        amount: parseFloat(amount)
+        amount: submissionAmount
       });
+
+      console.log('✅ Bill submission successful:', response.data);
 
       if (onSuccess && typeof onSuccess === 'function') {
         onSuccess(response.data);
@@ -86,11 +157,61 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
       setAmount('');
       onClose();
     } catch (err) {
-      console.error('Error submitting bill amount:', err);
-      Alert.alert(
-        'Submission Failed',
-        err.response?.data?.error || 'Failed to submit bill amount. Please try again.'
-      );
+      console.error('❌ Error submitting bill amount:', err);
+      
+      // ENHANCED: Better error handling with specific messages
+      let errorMessage = 'Failed to submit bill amount. Please try again.';
+      
+      if (err.response?.status === 400) {
+        // Handle 400 errors - validation issues
+        if (err.response.data?.message?.includes('already been processed')) {
+          errorMessage = 'This bill has already been submitted. Please refresh to see the latest status.';
+        } else if (err.response.data?.message?.includes('invalid amount')) {
+          errorMessage = 'Please enter a valid bill amount greater than zero.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        } else {
+          errorMessage = 'Invalid request. Please check the bill amount and try again.';
+        }
+      } else if (err.response?.status === 403) {
+        // Handle 403 errors - authorization issues
+        console.error('🚨 403 Forbidden - Detailed analysis:', {
+          'User ID': user?.id,
+          'Bill Submission ID': billSubmission?.id,
+          'Bill Status': billSubmission?.status,
+          'Bill Submitted By': billSubmission?.submittedBy,
+          'User House ID': user?.houseId,
+          'Bill House Service': billSubmission?.houseService,
+          'Response Data': err.response?.data,
+          'Response Message': err.response?.data?.message || err.response?.data?.error
+        });
+        
+        if (err.response.data?.message?.includes('not authorized') || err.response.data?.message?.includes('designated user')) {
+          errorMessage = 'You are not authorized to submit this bill. Only the designated user can submit bill amounts.';
+        } else if (err.response.data?.message?.includes('already completed')) {
+          errorMessage = 'This bill submission has already been completed. Please refresh your dashboard.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        } else {
+          errorMessage = 'You do not have permission to submit this bill. Please contact support if this issue persists.';
+        }
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Your session has expired. Please log out and log back in.';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'This bill submission could not be found. Please refresh and try again.';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error occurred. Please try again in a few moments.';
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      Alert.alert('Submission Failed', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -144,14 +265,14 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {/* Integrated Service Header */}
             <View style={styles.serviceHeader}>
-              <View style={styles.serviceIcon}>
+                <View style={styles.serviceIcon}>
                 <MaterialIcons name="receipt-long" size={28} color="#34d399" />
-              </View>
+                </View>
               <View style={styles.serviceInfo}>
-                <Text style={[
-                  styles.serviceName,
-                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                ]}>{serviceName}</Text>
+                  <Text style={[
+                    styles.serviceName,
+                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                  ]}>{serviceName}</Text>
                 <View style={styles.dueDateRow}>
                   <MaterialIcons name="schedule" size={16} color="#64748b" />
                   <Text style={[
@@ -161,14 +282,14 @@ const BillSubmissionModal = ({ visible, onClose, billSubmission, onSuccess }) =>
                     Due {formatDueDate(billSubmission?.dueDate)}
                   </Text>
                 </View>
-              </View>
-              {isOverdue() && (
-                <View style={styles.overdueBadge}>
-                  <Text style={styles.overdueText}>OVERDUE</Text>
                 </View>
-              )}
-            </View>
-
+                {isOverdue() && (
+                  <View style={styles.overdueBadge}>
+                    <Text style={styles.overdueText}>OVERDUE</Text>
+                  </View>
+                )}
+              </View>
+              
             {/* Amount Input Section */}
             <View style={styles.inputSection}>
               <Text style={[
@@ -380,11 +501,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#ffffff",
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderWidth: 2,
-    borderColor: "#6ee7b7",
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
     marginBottom: 12,
     width: "100%",
   },
@@ -400,7 +521,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1e293b",
     padding: 0,
-    textAlign: "center",
+    textAlign: "left",
   },
   instructionText: {
     fontSize: 14,

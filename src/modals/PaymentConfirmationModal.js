@@ -37,12 +37,25 @@ const PaymentConfirmationModal = ({
     try {
       setLoading(true);
       setError(null);
+      console.log('🔄 Fetching payment methods in PaymentConfirmationModal');
       // Use apiClient with relative path
       const response = await apiClient.get('/api/payment-methods');
       const methods = response.data?.paymentMethods || [];
-      const defaultMethod = methods.find(m => m.isDefault);
+      console.log('✅ PaymentConfirmationModal payment methods:', methods.map(m => ({ id: m.id, isDefault: m.isDefault, last4: m.last4 })));
+      
       setPaymentMethods(methods);
-      setSelectedMethod(defaultMethod?.id || methods[0]?.id);
+      
+      // Set the default method as selected if no method is currently selected
+      if (!selectedMethod && methods.length > 0) {
+        const defaultMethod = methods.find(m => m.isDefault);
+        if (defaultMethod) {
+          setSelectedMethod(defaultMethod.id);
+          console.log('🎯 Auto-selected default payment method:', { id: defaultMethod.id, isDefault: defaultMethod.isDefault });
+        } else {
+          setSelectedMethod(methods[0]?.id);
+          console.log('🎯 Auto-selected first payment method:', { id: methods[0]?.id });
+        }
+      }
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       setError('Unable to load payment methods');
@@ -56,6 +69,15 @@ const PaymentConfirmationModal = ({
     return `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
   };
 
+  // Get the payment method that will be used for this payment
+  const getEffectivePaymentMethod = () => {
+    if (selectedMethod) {
+      return paymentMethods.find(m => m.id === selectedMethod);
+    }
+    // If no method is selected, find the default method
+    return paymentMethods.find(m => m.isDefault);
+  };
+
   // When the user confirms, simply call the parent's callback
   const handleConfirm = () => {
     onConfirmPayment();
@@ -63,7 +85,7 @@ const PaymentConfirmationModal = ({
 
   if (!visible) return null;
 
-  const selectedPaymentMethod = paymentMethods.find(m => m.id === selectedMethod);
+  const effectivePaymentMethod = getEffectivePaymentMethod();
 
   return (
     <Modal
@@ -118,24 +140,61 @@ const PaymentConfirmationModal = ({
 
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Payment Method</Text>
-                  <TouchableOpacity
-                    style={styles.paymentSelector}
-                    onPress={() => setShowPaymentOptions(!showPaymentOptions)}
-                  >
-                    <View style={styles.paymentMethod}>
-                      <MaterialIcons name="credit-card" size={24} color="#34d399" />
-                      <Text style={styles.paymentMethodText}>
-                        {getDisplayText(selectedPaymentMethod)}
+                  
+                  {/* Enhanced payment method display */}
+                  {effectivePaymentMethod ? (
+                    <View style={styles.paymentMethodContainer}>
+                      <View style={[
+                        styles.paymentMethodDisplay,
+                        effectivePaymentMethod.isDefault && styles.defaultPaymentMethodDisplay
+                      ]}>
+                        <View style={styles.paymentMethodLeft}>
+                          <MaterialIcons 
+                            name="credit-card" 
+                            size={24} 
+                            color={effectivePaymentMethod.isDefault ? "#34d399" : "#64748b"} 
+                          />
+                          <View style={styles.paymentMethodInfo}>
+                            <Text style={styles.paymentMethodText}>
+                              {getDisplayText(effectivePaymentMethod)}
+                            </Text>
+                            {effectivePaymentMethod.isDefault && (
+                              <Text style={styles.defaultMethodNote}>
+                                Your default payment method will be used
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                        {effectivePaymentMethod.isDefault && (
+                          <MaterialIcons name="check-circle" size={20} color="#34d399" />
+                        )}
+                      </View>
+                      
+                      {/* Payment method options */}
+                      {paymentMethods.length > 1 && (
+                        <TouchableOpacity
+                          style={styles.changePaymentMethod}
+                          onPress={() => setShowPaymentOptions(!showPaymentOptions)}
+                        >
+                          <Text style={styles.changePaymentMethodText}>
+                            Change payment method
+                          </Text>
+                          <MaterialIcons
+                            name={showPaymentOptions ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                            size={20}
+                            color="#34d399"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.noPaymentMethodContainer}>
+                      <MaterialIcons name="credit-card-off" size={24} color="#ef4444" />
+                      <Text style={styles.noPaymentMethodText}>
+                        No payment method available
                       </Text>
                     </View>
-                    {paymentMethods.length > 1 && (
-                      <MaterialIcons
-                        name={showPaymentOptions ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                        size={24}
-                        color="#64748b"
-                      />
-                    )}
-                  </TouchableOpacity>
+                  )}
 
                   {showPaymentOptions && paymentMethods.length > 1 && (
                     <View style={styles.paymentOptions}>
@@ -156,7 +215,10 @@ const PaymentConfirmationModal = ({
                             size={20}
                             color={selectedMethod === method.id ? "#34d399" : "#64748b"}
                           />
-                          <Text style={styles.paymentOptionText}>
+                          <Text style={[
+                            styles.paymentOptionText,
+                            method.isDefault && styles.defaultPaymentOptionText
+                          ]}>
                             {getDisplayText(method)}
                           </Text>
                           {selectedMethod === method.id && (
@@ -179,9 +241,12 @@ const PaymentConfirmationModal = ({
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.confirmButton}
+                    style={[
+                      styles.confirmButton,
+                      !effectivePaymentMethod && styles.disabledConfirmButton
+                    ]}
                     onPress={handleConfirm}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !effectivePaymentMethod}
                   >
                     {isProcessing ? (
                       <ActivityIndicator color="#fff" />
@@ -209,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#dff6f0',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',
@@ -220,7 +285,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#dff6f0',
   },
   headerTitle: {
     fontSize: 20,
@@ -241,10 +307,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   chargeItem: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   chargeHeader: {
     flexDirection: 'row',
@@ -290,9 +361,14 @@ const styles = StyleSheet.create({
   },
   paymentOptions: {
     marginTop: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   paymentOption: {
     flexDirection: 'row',
@@ -305,15 +381,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
   },
   paymentOptionText: {
-    flex: 1,
-    marginLeft: 12,
     fontSize: 15,
     color: '#1e293b',
+    fontWeight: '500',
+  },
+  defaultPaymentOptionText: {
+    fontWeight: '600',
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: '#e5e7eb',
     backgroundColor: '#dff6f0',
   },
   totalRow: {
@@ -339,8 +417,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   cancelButtonText: {
     color: '#64748b',
@@ -384,6 +464,68 @@ const styles = StyleSheet.create({
   retryText: {
     color: '#ef4444',
     fontWeight: '500',
+  },
+  paymentMethodContainer: {
+    marginTop: 12,
+  },
+  paymentMethodDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  paymentMethodLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentMethodInfo: {
+    marginLeft: 12,
+  },
+  paymentMethodText: {
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  defaultPaymentMethodDisplay: {
+    borderWidth: 2,
+    borderColor: '#34d399',
+  },
+  defaultMethodNote: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  changePaymentMethod: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  changePaymentMethodText: {
+    color: '#34d399',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  noPaymentMethodContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  noPaymentMethodText: {
+    marginTop: 12,
+    color: '#ef4444',
+    fontSize: 16,
+  },
+  disabledConfirmButton: {
+    opacity: 0.7,
   },
 });
 

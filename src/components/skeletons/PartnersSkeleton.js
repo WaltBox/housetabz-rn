@@ -1,7 +1,7 @@
 // PartnersSkeleton.js
 import React from 'react';
 import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { 
+import {
   SkeletonShimmer, 
   SkeletonCard, 
   SkeletonBox, 
@@ -35,7 +35,7 @@ const AnnouncementCardSkeleton = () => (
       <SkeletonText width={80} height={24} style={styles.announcementButton} />
     </View>
   </SkeletonCard>
-);
+  );
 
 // Skeleton for swipeable announcements section
 const AnnouncementsSkeleton = () => (

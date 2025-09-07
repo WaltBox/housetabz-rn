@@ -4,6 +4,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import ServiceRequestTask from './ServiceRequestTask';
 import BillSubmissionTask from './BillSubmissionTask';
 import BillSubmissionModal from '../modals/BillSubmissionModal';
+import { invalidateCache, clearUserCache } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -12,12 +14,51 @@ const TaskSection = ({ tasks = [], billSubmissions = [], activeTaskIndex, taskCo
   const [selectedBillSubmission, setSelectedBillSubmission] = useState(null);
   const [isBillSubmissionModalVisible, setIsBillSubmissionModalVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { user } = useAuth();
 
-  // Combine regular tasks and bill submissions
-  const pendingTasks = tasks.filter(task => task.response === 'pending');
+  // Helper function to get user ID from task (handle different field names)
+  const getTaskUserId = (task) => {
+    // The task.userId should now be included from the backend fix
+    return task.userId;
+  };
+
+  // Combine regular tasks and bill submissions with user filtering
+  const DISABLE_FRONTEND_USER_FILTERING = false; // We need frontend filtering
+  const pendingTasks = tasks.filter(task => 
+    task.response === 'pending' && (DISABLE_FRONTEND_USER_FILTERING || getTaskUserId(task) === user.id)
+  );
+  
+  // ✅ CRITICAL FIX: Filter bill submissions to only show ones assigned to current user
+  const userBillSubmissions = billSubmissions.filter(submission => 
+    submission.submittedBy === user.id
+  );
+  
+  console.log('🔍 TaskSection DETAILED ANALYSIS:', {
+    'Original tasks': tasks.length,
+    'Pending user tasks': pendingTasks.length,
+    'Original bill submissions': billSubmissions.length,
+    'User bill submissions': userBillSubmissions.length,
+    'Current user ID': user.id,
+    'All tasks details': tasks.map(task => ({
+      id: task.id,
+      type: task.type,
+      userId: task.userId,
+      response: task.response,
+      matchesUser: getTaskUserId(task) === user.id,
+      isPending: task.response === 'pending',
+      passesBothFilters: task.response === 'pending' && getTaskUserId(task) === user.id,
+      detectedUserId: getTaskUserId(task)
+    })),
+    'Final filtered tasks': pendingTasks.map(task => ({
+      id: task.id,
+      type: task.type,
+      response: task.response
+    }))
+  });
+  
   const allTasks = [
     ...pendingTasks,
-    ...billSubmissions.map(submission => ({
+    ...userBillSubmissions.map(submission => ({
       ...submission,
       type: 'billSubmission' // Add a type to distinguish from regular tasks
     }))
@@ -35,6 +76,17 @@ const TaskSection = ({ tasks = [], billSubmissions = [], activeTaskIndex, taskCo
     if (onBillSubmitted && typeof onBillSubmitted === 'function') {
       onBillSubmitted(result);
     }
+    
+    // ENHANCED: Add cache invalidation for immediate updates
+    // Invalidate cache to refresh data
+    invalidateCache('dashboard');
+    invalidateCache('house');
+    
+    // Clear user-specific cache
+    if (user?.id) {
+      clearUserCache(user.id);
+    }
+    
     setIsBillSubmissionModalVisible(false);
     setSelectedBillSubmission(null);
   };

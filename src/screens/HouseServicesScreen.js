@@ -16,7 +16,8 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import apiClient, { 
-  getHouseServicesData, 
+  getAppUserInfo,
+  getHouseServicesData, // DEPRECATED - keeping for fallback
   invalidateCache, 
   clearHouseCache
 } from '../config/api';
@@ -44,53 +45,38 @@ const HouseServicesScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('active');
   const [selectedService, setSelectedService] = useState(null);
 
-  // Optimized fetch function using cached API
+  // ✅ NEW: Use unified endpoint for house services data
   const fetchHouseServices = useCallback(async () => {
     try {
-      if (!user?.houseId) {
-        setError('No house associated with this account');
+      if (!user?.id) {
+        setError('User not authenticated');
         setIsLoading(false);
         return;
       }
 
       setError(null);
+      if (!refreshing) setIsLoading(true);
+
+      console.log('🚀 UNIFIED: Fetching house services from unified endpoint for user:', user.id);
       
-      // 🆕 CHECK IF ALREADY PREFETCHED
-      const isPrefetched = isScreenPrefetched('HouseServices');
-      const prefetchStatus = getPrefetchStatus();
+      // ✅ NEW: Get house services data from unified endpoint
+      const response = await getAppUserInfo(user.id);
       
-      if (isPrefetched) {
-        console.log('⚡ HouseServices already prefetched - loading from cache');
-        setIsLoading(false); // Skip loading state since data should be cached
-      } else {
-        console.log('🔄 HouseServices not prefetched - showing loading state');
-        if (!refreshing) setIsLoading(true);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load house services data');
       }
-
-      console.log('🚀 Fetching house services for house:', user.houseId);
-      console.log('📊 Prefetch info:', {
-        isPrefetched,
-        prefetchComplete: prefetchStatus.isComplete,
-        completedScreens: prefetchStatus.completedScreens
-      });
       
-      // ✅ UPDATED: Use cached API function
-      const data = await getHouseServicesData(user.houseId);
+      const houseServices = response.data.houseServices || [];
       
-      console.log('📊 House services data received:', {
-        rawData: data,
-        dataKeys: Object.keys(data || {}),
-        servicesCount: Array.isArray(data.houseServices) ? data.houseServices.length : 0,
-        activeCount: Array.isArray(data.houseServices) ? data.houseServices.filter(s => s.status === 'active').length : 0,
-        pendingCount: Array.isArray(data.houseServices) ? data.houseServices.filter(s => s.status === 'pending').length : 0,
-        isPrefetched,
-        loadTime: isPrefetched ? 'instant' : 'fetched'
+      console.log('📊 UNIFIED: House services data received:', {
+        servicesCount: houseServices.length,
+        activeCount: houseServices.filter(s => s.status === 'active').length,
+        pendingCount: houseServices.filter(s => s.status === 'pending').length,
+        dataSource: 'unified_endpoint'
       });
-
-
 
       // Set the services data
-      setServices(Array.isArray(data.houseServices) ? data.houseServices : []);
+      setServices(houseServices);
 
       console.log('✅ House services loaded successfully');
 
@@ -145,6 +131,7 @@ const HouseServicesScreen = ({ navigation }) => {
   const filteredServices = services.filter(service => {
     if (activeTab === 'active') return service.status === 'active';
     if (activeTab === 'pending') return service.status === 'pending';
+    if (activeTab === 'deactivated') return service.status === 'inactive' || service.status === 'deactivated';
     return true;
   });
 
@@ -314,6 +301,22 @@ const HouseServicesScreen = ({ navigation }) => {
                 Pending
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.tab,
+                activeTab === 'deactivated' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('deactivated')}
+            >
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'deactivated' && styles.activeTabText,
+                fontsLoaded && { fontFamily: 'Poppins-Medium' }
+              ]}>
+                Deactivated
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -387,18 +390,24 @@ const HouseServicesScreen = ({ navigation }) => {
           </>
         )}
 
-        {/* DEBUG: Modal using embedded data */}
+        {/* Service Detail Modal */}
         {selectedService && (
-          <>
-
-            <HouseServiceDetailModal
-              visible={selectedService !== null}
-              service={selectedService}
-              activeLedger={selectedService.ledgers?.[0]} // Use embedded ledger data
-              fundingSummary={selectedService.calculatedData} // Use calculated data
-              onClose={() => setSelectedService(null)}
-            />
-          </>
+          <HouseServiceDetailModal
+            visible={selectedService !== null}
+            service={selectedService}
+            activeLedger={selectedService.ledgers?.[0]}
+            onClose={() => setSelectedService(null)}
+            onServiceUpdated={(updatedService) => {
+              // Update the service in the local state
+              setServices(prevServices => 
+                prevServices.map(service => 
+                  service.id === updatedService.id ? updatedService : service
+                )
+              );
+              // Close the modal after update
+              setSelectedService(null);
+            }}
+          />
         )}
       </SafeAreaView>
     </>

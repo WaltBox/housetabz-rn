@@ -9,10 +9,12 @@ import {
   Dimensions,
   SafeAreaView,
   Platform,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from '../context/AuthContext';
+
 import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
@@ -84,6 +86,8 @@ const NotificationsModal = ({ onClose }) => {
       console.error('Error marking notification as read:', err);
     }
   };
+
+
   
 
 
@@ -92,6 +96,8 @@ const NotificationsModal = ({ onClose }) => {
     if (filter === 'read') return n.isRead;
     return true;
   });
+
+
 
   const renderNotification = ({ item }) => (
     <TouchableOpacity
@@ -310,6 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: 'transparent',
   },
+
   notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -321,6 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#34d399',
     marginRight: 12,
   },
+
   notificationContent: {
     flex: 1,
     marginRight: 16,
@@ -394,6 +402,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'Quicksand-Medium',
   },
+
 });
 
 export default NotificationsModal;

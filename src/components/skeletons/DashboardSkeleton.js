@@ -75,24 +75,7 @@ const TopSectionSkeleton = () => (
   </View>
 );
 
-// Skeleton for UrgentMessageCard
-const UrgentMessageCardSkeleton = () => (
-  <SkeletonCard 
-    width={width * 0.75} 
-    height={120} 
-    style={styles.urgentCard}
-  >
-    <View style={styles.urgentContent}>
-      <SkeletonCircle size={50} />
-      <View style={styles.urgentTextContainer}>
-        <SkeletonText width={120} height={16} />
-        <SkeletonText width="90%" height={12} />
-        <SkeletonText width="70%" height={12} />
-      </View>
-      <SkeletonCircle size={24} />
-    </View>
-  </SkeletonCard>
-);
+
 
 // Skeleton for TaskCard
 const TaskCardSkeleton = ({ isAlternate = false }) => (
@@ -119,19 +102,6 @@ const TaskCardSkeleton = ({ isAlternate = false }) => (
 // Skeleton for PopupSection
 const PopupSectionSkeleton = () => (
   <View style={styles.popupSection}>
-    {/* Urgent Messages Section */}
-    <View style={styles.sectionWithHeader}>
-      <SkeletonText width={140} height={18} style={styles.sectionHeader} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.urgentScrollContent}
-      >
-        <UrgentMessageCardSkeleton />
-        <UrgentMessageCardSkeleton />
-      </ScrollView>
-    </View>
-
     {/* Tasks Section */}
     <View style={styles.sectionWithHeader}>
       <SkeletonText width={80} height={18} style={styles.sectionHeader} />
@@ -177,12 +147,12 @@ const PartnerCardSkeleton = () => {
       <SkeletonBox width={cardSize} height={cardSize} borderRadius={16} />
       <View style={styles.partnerLogoContainer}>
         <SkeletonCircle size={cardSize * 0.25} />
-      </View>
+    </View>
       <View style={styles.partnerNameContainer}>
         <SkeletonText width="70%" height={14} />
-      </View>
+    </View>
     </SkeletonCard>
-  );
+);
 };
 
 // Skeleton for BottomSection
@@ -190,15 +160,15 @@ const BottomSectionSkeleton = () => (
   <View style={styles.bottomSection}>
     <View style={styles.sectionWithHeader}>
       <SkeletonText width={120} height={18} style={styles.sectionHeader} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.partnerScrollContent}
-      >
-        <PartnerCardSkeleton />
-        <PartnerCardSkeleton />
-        <PartnerCardSkeleton />
-      </ScrollView>
+    >
+      <PartnerCardSkeleton />
+      <PartnerCardSkeleton />
+      <PartnerCardSkeleton />
+    </ScrollView>
     </View>
   </View>
 );
@@ -313,31 +283,7 @@ const styles = StyleSheet.create({
     marginBottom: getSkeletonSpacing.md,
   },
 
-  // Urgent Message Card Styles
-  urgentScrollContent: {
-    paddingLeft: getSkeletonSpacing.lg,
-    paddingRight: getSkeletonSpacing.sm,
-  },
-  urgentCard: {
-    backgroundColor: '#f97316',
-    marginRight: getSkeletonSpacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  urgentContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: getSkeletonSpacing.lg,
-    height: '100%',
-    gap: getSkeletonSpacing.lg,
-  },
-  urgentTextContainer: {
-    flex: 1,
-    gap: getSkeletonSpacing.sm,
-  },
+
 
   // Task Card Styles
   taskScrollContent: {

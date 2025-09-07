@@ -19,7 +19,7 @@ const TopBar = () => {
   const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
-  // Fetch notifications
+  // Fetch notifications (only on demand - no polling)
   const fetchNotifications = async () => {
     if (!authUser?.id) {
       console.log('No authenticated user found for notifications');
@@ -50,8 +50,7 @@ const TopBar = () => {
   useEffect(() => {
     if (authUser?.id) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // ✅ REMOVED: No more polling every 30 seconds - only fetch on app load
     }
   }, [authUser?.id]);
 
@@ -86,12 +85,20 @@ const TopBar = () => {
       {/* Notifications Modal */}
       <ModalComponent
         visible={isNotificationsVisible}
-        onClose={() => setIsNotificationsVisible(false)}
+        onClose={() => {
+          setIsNotificationsVisible(false);
+          // Refresh notification badge when modal closes
+          fetchNotifications();
+        }}
         fullScreen={true}
         backgroundColor="#dff6f0"
       >
         <NotificationsModal 
-          onClose={() => setIsNotificationsVisible(false)} 
+          onClose={() => {
+            setIsNotificationsVisible(false);
+            // Refresh notification badge when modal closes
+            fetchNotifications();
+          }} 
           onMarkAsRead={fetchNotifications} 
         />
       </ModalComponent>

@@ -161,7 +161,7 @@ const OverviewTab = ({
       
     } else {
       // Fallback to ledger data + house members
-      
+   
       // Use totalRequired from backend (already includes service fee)
       fundingRequired = Number(currentActiveLedger?.totalRequired || currentActiveLedger?.fundingRequired || workingService?.amount || 0);
       
@@ -379,13 +379,18 @@ const OverviewTab = ({
                 </View>
                 <View style={[
                   styles.participantStatusBadge,
-                  { backgroundColor: getStatusColor(task.response) + '20' },
+                  { backgroundColor: getStatusColor(task.response, task.paymentStatus) + '20' },
                 ]}>
                   <Text style={[
                     styles.participantStatusText,
-                    { color: getStatusColor(task.response) },
+                    { color: getStatusColor(task.response, task.paymentStatus) },
                   ]}>
-                    {task.response?.toUpperCase() || 'PENDING'}
+                    {task.paymentStatus ? 
+                      (task.paymentStatus === 'authorized' ? 'CONSENTED' : 
+                       task.paymentStatus === 'completed' ? 'PAID' :
+                       task.paymentStatus === 'cancelled' ? 'CANCELLED' :
+                       task.paymentStatus.toUpperCase()) :
+                      (task.response?.toUpperCase() || 'PENDING')}
                   </Text>
                 </View>
               </View>

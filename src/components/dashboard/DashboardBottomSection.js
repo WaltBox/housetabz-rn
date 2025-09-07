@@ -7,10 +7,19 @@ import { useAuth } from '../../context/AuthContext'; // Adjust path as needed
 import ViewCompanyCard from '../../modals/ViewCompanyCard'; // Adjust path as needed
 import PartnerDisplay from '../dashboard/bottomSection/PartnerDisplay'; // Adjust path as needed
 
-const DashboardBottomSection = ({ userData }) => {
+const DashboardBottomSection = ({ userData, partners = [], partnersLoading = false, partnersError = null }) => {
   const navigation = useNavigation();
   const { user, token } = useAuth();
   const [selectedPartner, setSelectedPartner] = useState(null);
+  
+  // ✅ DEBUG: Log partners data received
+  console.log('🏪 DashboardBottomSection received partners:', {
+    partnersCount: partners?.length || 0,
+    isArray: Array.isArray(partners),
+    partnersLoading,
+    partnersError,
+    partnersData: partners
+  });
   
   // Load the Poppins font family, similar to TaskCard
   const [fontsLoaded] = useFonts({
@@ -60,8 +69,11 @@ const DashboardBottomSection = ({ userData }) => {
       </View>
       
       <PartnerDisplay
+        partners={partners}
         onPartnerPress={handlePartnerPress}
         limit={4} // Only show 4 partners initially
+        isLoading={partnersLoading}
+        error={partnersError}
       />
       
       {/* Modal for partner details - same approach as PartnersScreen */}

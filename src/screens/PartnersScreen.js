@@ -14,10 +14,9 @@ import CompanyCardComponent from "../components/CompanyCardComponent";
 import ViewCompanyCard from "../modals/ViewCompanyCard";
 import SwipeableAnnouncements from "../components/SwipeableAnnouncements";
 import { useAuth } from "../context/AuthContext";
-import apiClient, { 
-  getPartnersData, 
-  invalidateCache, 
-  clearScreenCache
+import { 
+  getAppUserInfo,
+  getDashboardData // DEPRECATED - keeping for fallback
 } from "../config/api";
 import { isScreenPrefetched, getPrefetchStatus } from '../services/PrefetchService';
 import PartnersSkeleton from "../components/skeletons/PartnersSkeleton";
@@ -43,58 +42,52 @@ const PartnersScreen = () => {
     try {
       setError(null);
       
-      // 🆕 CHECK IF ALREADY PREFETCHED
-      const isPrefetched = isScreenPrefetched('Partners');
+      // 🆕 CHECK IF DASHBOARD DATA IS ALREADY PREFETCHED
+      const isPrefetched = isScreenPrefetched('Dashboard') || isScreenPrefetched('Partners');
       const prefetchStatus = getPrefetchStatus();
       
       if (isPrefetched) {
-        console.log('⚡ Partners already prefetched - loading from cache');
+        console.log('⚡ Dashboard/Partners already prefetched - loading from cache');
         setLoading(false); // Skip loading state since data should be cached
       } else {
-        console.log('🔄 Partners not prefetched - showing loading state');
+        console.log('🔄 Dashboard/Partners not prefetched - showing loading state');
         if (!refreshing) setLoading(true);
       }
       
-      console.log('🚀 Fetching partners data...');
+      console.log('🚀 Fetching partners data from dashboard API...');
       console.log('📊 Prefetch info:', {
         isPrefetched,
         prefetchComplete: prefetchStatus.isComplete,
         completedScreens: prefetchStatus.completedScreens
       });
       
-      // ✅ UPDATED: Use cached API function
-      const data = await getPartnersData();
+      // ✅ NEW: Get partners from unified endpoint
+      const response = await getAppUserInfo(user.id);
       
-      console.log('📊 Partners data received:', {
-        partners: Array.isArray(data) ? data.length : 0,
-        dataType: typeof data,
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to load partners data');
+      }
+      
+      console.log('📊 UNIFIED: Partners data received:', {
+        partnersCount: Array.isArray(response.data.partners) ? response.data.partners.length : 0,
+        dataType: typeof response.data,
         isPrefetched,
         loadTime: isPrefetched ? 'instant' : 'fetched'
       });
 
-      // Set partners data
-      if (Array.isArray(data)) {
-        setPartners(data);
-      } else if (data?.partners && Array.isArray(data.partners)) {
-        setPartners(data.partners);
+      // Extract partners from unified response
+      if (Array.isArray(response.data.partners)) {
+        setPartners(response.data.partners);
+        console.log('✅ Partners data loaded from unified endpoint:', response.data.partners.length);
       } else {
-        console.log('⚠️ Partners data not in expected format:', data);
+        console.log('⚠️ Partners data not found in unified response:', response.data);
         setPartners([]);
       }
 
-      console.log('✅ Partners data loaded successfully');
-
-    } catch (error) {
-      console.log('❌ Partners fetch failed:', error.message);
-      setError(`Failed to load partners: ${error.message}`);
-      
-      // Clear cache on error
-      try {
-        clearScreenCache('partners');
-        console.log('🧹 Cleared partners cache due to error');
-      } catch (cacheError) {
-        console.log('⚠️ Failed to clear partners cache:', cacheError.message);
-      }
+    } catch (err) {
+      console.error('❌ Error loading partners from dashboard:', err);
+      setError('Unable to load partners. Please check your connection and try again.');
+      setPartners([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -104,8 +97,6 @@ const PartnersScreen = () => {
   // Enhanced refresh function that clears cache first
   const onRefresh = () => {
     setRefreshing(true);
-    // Clear cache to force fresh data
-    clearScreenCache('partners');
     fetchPartners();
   };
 
@@ -155,11 +146,11 @@ const PartnersScreen = () => {
             </View>
           ) : (
             partners.map((p) => (
-              <Animated.View key={p.id} style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
-                <CompanyCardComponent
-                  name={p.name}
-                  logoUrl={p.logo}
-                  coverUrl={p.marketplace_cover}
+                <Animated.View key={p.id} style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
+                  <CompanyCardComponent
+                    name={p.name}
+                    logoUrl={p.logo}
+                    coverUrl={p.marketplace_cover}
                   onPress={() => handlePress(p)}
                   cardWidth={CARD_WIDTH}
                 />

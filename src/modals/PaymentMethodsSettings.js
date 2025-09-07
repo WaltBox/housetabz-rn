@@ -19,9 +19,9 @@ import apiClient from '../config/api';
 
 const { width } = Dimensions.get('window');
 
-const PaymentMethodsSettings = ({ visible = false, onClose }) => {
+const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpdated }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { user } = useAuth();
+  const { user, refreshPaymentMethods } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -59,7 +59,9 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       }
       setLoading(true);
       const response = await apiClient.get('/api/payment-methods');
-      setPaymentMethods(response.data.paymentMethods || []);
+      const methods = response.data.paymentMethods || [];
+      setPaymentMethods(methods);
+      console.log('✅ Fetched payment methods:', methods.map(m => ({ id: m.id, isDefault: m.isDefault, last4: m.last4 })));
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       Alert.alert('Error', 'Failed to fetch payment methods');
@@ -118,7 +120,15 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       
       await apiClient.post('/api/payment-methods/complete', { setupIntentId });
       Alert.alert('Success', 'Payment method added successfully');
+      
+      // Refresh payment methods and notify parent components
       await fetchPaymentMethods();
+      if (refreshPaymentMethods) {
+        await refreshPaymentMethods();
+      }
+      if (onPaymentMethodsUpdated) {
+        onPaymentMethodsUpdated();
+      }
     } catch (error) {
       console.error('Error adding payment method:', error);
       Alert.alert(
@@ -136,11 +146,45 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       if (!user) return;
       setProcessing(true);
       
+      console.log('🔄 Setting payment method as default:', methodId);
+      
+      // Call the backend API to set the default
       await apiClient.put(`/api/payment-methods/${methodId}/default`);
+      console.log('✅ Backend API call successful');
+      
+      // Update local state immediately to reflect the change
+      // Only the selected method should have isDefault: true, all others should be false
+      setPaymentMethods(prev => {
+        const updated = prev.map(method => ({
+          ...method,
+          isDefault: method.id === methodId
+        }));
+        console.log('🔄 Updated local state:', updated.map(m => ({ id: m.id, isDefault: m.isDefault })));
+        return updated;
+      });
+      
+      // Refresh from server to ensure consistency
       await fetchPaymentMethods();
+      
+      // Update the auth context payment methods status
+      if (refreshPaymentMethods) {
+        await refreshPaymentMethods();
+      }
+      
+      // Notify parent components that payment methods have been updated
+      if (onPaymentMethodsUpdated) {
+        console.log('🔔 Notifying parent components of payment method update');
+        onPaymentMethodsUpdated();
+      }
+      
+      Alert.alert('Success', 'Default payment method updated successfully');
+      
     } catch (error) {
       console.error('Error setting default payment method:', error);
       Alert.alert('Error', 'Failed to set default payment method');
+      
+      // Revert local state on error
+      await fetchPaymentMethods();
     } finally {
       setProcessing(false);
     }
@@ -174,13 +218,14 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
     );
   };
 
-  // Uber-style payment method card
+  // Enhanced payment method card with explicit "Set as Default" button
   const renderPaymentMethod = (method) => (
-    <TouchableOpacity 
+    <View 
       key={method.id} 
-      style={styles.methodCard}
-      onPress={() => handleSetDefault(method.id)}
-      disabled={processing || method.isDefault}
+      style={[
+        styles.methodCard,
+        method.isDefault && styles.defaultMethodCard
+      ]}
     >
       <View style={styles.methodLeft}>
         <View style={styles.iconContainer}>
@@ -198,12 +243,26 @@ const PaymentMethodsSettings = ({ visible = false, onClose }) => {
       </View>
       
       <View style={styles.methodRight}>
-        {method.isDefault && (
-          <Text style={styles.defaultText}>Default</Text>
+        {method.isDefault ? (
+          <View style={styles.defaultBadge}>
+            <MaterialIcons name="check-circle" size={16} color="#34d399" />
+            <Text style={styles.defaultBadgeText}>Default</Text>
+          </View>
+        ) : (
+          <TouchableOpacity 
+            style={[
+              styles.setDefaultButton,
+              processing && styles.setDefaultButtonDisabled
+            ]}
+            onPress={() => handleSetDefault(method.id)}
+            disabled={processing}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.setDefaultButtonText}>Set as Default</Text>
+          </TouchableOpacity>
         )}
-        <MaterialIcons name="chevron-right" size={24} color="#94a3b8" />
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   // Render empty payment method in Uber style
@@ -302,7 +361,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -312,11 +371,12 @@ const styles = StyleSheet.create({
   methodLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
@@ -330,6 +390,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#1e293b',
+    flex: 1,
   },
   // Style for empty payment method text
   emptyMethodTitle: {
@@ -337,11 +398,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#94a3b8',
   },
-  defaultText: {
+  defaultMethodCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#34d399',
+  },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  defaultBadgeText: {
     color: '#34d399',
-    fontSize: 14,
-    fontWeight: '500',
-    marginRight: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 3,
+  },
+  setDefaultButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#34d399',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#34d399',
+  },
+  setDefaultButtonDisabled: {
+    backgroundColor: '#94a3b8',
+    borderColor: '#94a3b8',
+  },
+  setDefaultButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   addButton: {
     flexDirection: 'row',
@@ -367,7 +457,7 @@ const styles = StyleSheet.create({
   },
   addButtonDisabled: {
     opacity: 0.7,
-  }
+  },
 });
 
 export default PaymentMethodsSettings;

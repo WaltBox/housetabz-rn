@@ -10,12 +10,15 @@ import {
   SafeAreaView,
   Platform,
   ScrollView,
-  Modal
+  Modal,
+  Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import apiClient from '../config/api';
+import { useAuth } from '../context/AuthContext';
 import OverviewTab from '../components/houseServices/OverviewTab';
 import DetailsTab from '../components/houseServices/DetailsTab';
+import AddChargeModal from './AddChargeModal';
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -30,25 +33,182 @@ const formatDate = (dateString) => {
 const capitalizeFirstLetter = (s) =>
   s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
-const getStatusColor = (status) => {
+const getStatusColor = (status, paymentStatus) => {
+  // Handle combined status display for consent-based payments
+  if (paymentStatus) {
+    switch (paymentStatus?.toLowerCase()) {
+      case 'authorized': return '#3b82f6'; // Blue for consent given
+      case 'completed': return '#34d399'; // Green for payment completed
+      case 'cancelled': return '#dc2626'; // Red for payment cancelled
+      case 'pending': return '#f59e0b'; // Orange for pending consent
+      default: break;
+    }
+  }
+  
+  // Fallback to regular status colors
   switch (status?.toLowerCase()) {
     case 'active':   return '#34d399';
     case 'pending':  return '#f59e0b';
     case 'accepted': return '#34d399';
     case 'inactive':
+    case 'deactivated': return '#94a3b8'; // Gray for deactivated
     case 'cancelled':
     case 'rejected': return '#dc2626';
     default:         return '#64748b';
   }
 };
 
-const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose, visible }) => {
+const getStatusDisplayText = (status, paymentStatus) => {
+  // Handle combined status display for consent-based payments
+  if (paymentStatus) {
+    switch (paymentStatus?.toLowerCase()) {
+      case 'authorized': return 'CONSENTED';
+      case 'completed': return 'PAID';
+      case 'cancelled': return 'CANCELLED';
+      case 'pending': return 'PENDING';
+      default: break;
+    }
+  }
+  
+  // Fallback to regular status text
+  switch (status?.toLowerCase()) {
+    case 'active': return 'ACTIVE';
+    case 'pending': return 'PENDING';
+    case 'accepted': return 'ACCEPTED';
+    case 'inactive': 
+    case 'deactivated': return 'DEACTIVATED';
+    case 'cancelled': return 'CANCELLED';
+    case 'rejected': return 'REJECTED';
+    default: return status?.toUpperCase() || 'UNKNOWN';
+  }
+};
+
+const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose, visible, onServiceUpdated }) => {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [detailedService, setDetailedService] = useState(null);
   const [activeLedger, setActiveLedger] = useState(initialLedger);
   const [ledgers, setLedgers] = useState([]);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [showAddChargeModal, setShowAddChargeModal] = useState(false);
+
+  // Check if current user is the designated user for this service
+  const isDesignatedUser = user?.id === (detailedService?.designatedUserId || service?.designatedUserId);
+  
+
+  
+  // Handle deactivation
+  const handleDeactivate = async () => {
+    Alert.alert(
+      'Deactivate Service',
+      'This will stop automatic bill generation for this service. You can reactivate it later if needed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Deactivate',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeactivating(true);
+            try {
+              const response = await apiClient.patch(`/api/houseServices/${service.id}/deactivate`);
+              
+              // Update local state
+              const updatedService = {
+                ...detailedService,
+                status: 'inactive',
+                previousStatus: response.data.previousStatus,
+                deactivatedAt: response.data.timestamps?.deactivatedAt
+              };
+              setDetailedService(updatedService);
+              
+              // Notify parent component
+              if (onServiceUpdated) {
+                onServiceUpdated(updatedService);
+              }
+              
+              Alert.alert(
+                'Service Deactivated',
+                response.data.message || `${response.data.serviceName} has been deactivated successfully.`,
+                [{ text: 'OK' }]
+              );
+            } catch (error) {
+              console.error('Deactivation failed:', error);
+              let errorMessage = 'Failed to deactivate service. Please try again.';
+              
+              if (error.response?.status === 403) {
+                errorMessage = 'You are not authorized to deactivate this service. Only the designated user can perform this action.';
+              } else if (error.response?.status === 404) {
+                errorMessage = 'Service not found. It may have been deleted.';
+              } else if (error.response?.status === 400) {
+                errorMessage = error.response.data?.message || 'Cannot deactivate this service in its current state.';
+              }
+              
+              Alert.alert('Deactivation Failed', errorMessage, [{ text: 'OK' }]);
+            } finally {
+              setIsDeactivating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Handle reactivation
+  const handleReactivate = async () => {
+    Alert.alert(
+      'Reactivate Service',
+      'This will resume automatic bill generation for this service.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reactivate',
+          onPress: async () => {
+            setIsDeactivating(true);
+            try {
+              const response = await apiClient.patch(`/api/houseServices/${service.id}/reactivate`);
+              
+              // Update local state
+              const updatedService = {
+                ...detailedService,
+                status: 'active',
+                previousStatus: response.data.previousStatus,
+                reactivatedAt: response.data.timestamps?.reactivatedAt
+              };
+              setDetailedService(updatedService);
+              
+              // Notify parent component
+              if (onServiceUpdated) {
+                onServiceUpdated(updatedService);
+              }
+              
+              Alert.alert(
+                'Service Reactivated',
+                response.data.message || `${response.data.serviceName} has been reactivated successfully.`,
+                [{ text: 'OK' }]
+              );
+            } catch (error) {
+              console.error('Reactivation failed:', error);
+              let errorMessage = 'Failed to reactivate service. Please try again.';
+              
+              if (error.response?.status === 403) {
+                errorMessage = 'You are not authorized to reactivate this service. Only the designated user can perform this action.';
+              } else if (error.response?.status === 404) {
+                errorMessage = 'Service not found. It may have been deleted.';
+              } else if (error.response?.status === 400) {
+                errorMessage = error.response.data?.message || 'Cannot reactivate this service in its current state.';
+              }
+              
+              Alert.alert('Reactivation Failed', errorMessage, [{ text: 'OK' }]);
+            } finally {
+              setIsDeactivating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   if (!visible || !service) return null;
 
@@ -145,6 +305,62 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
           </TouchableOpacity>
         </View>
 
+        {/* Action Buttons - Below service name */}
+        {isDesignatedUser && (
+          <View style={styles.actionButtonsContainer}>
+            {/* Add Charge Button - Only show when service is active */}
+            {displayService.status === 'active' && (
+              <TouchableOpacity
+                onPress={() => setShowAddChargeModal(true)}
+                style={[styles.actionButton, styles.addChargeButton]}
+              >
+                <MaterialIcons 
+                  name="add-circle-outline" 
+                  size={18} 
+                  color="#3b82f6" 
+                  style={styles.actionButtonIcon}
+                />
+                <Text style={[styles.actionButtonText, { color: '#3b82f6' }]}>Add Charge</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Deactivate/Reactivate Button */}
+            <TouchableOpacity
+              onPress={displayService.status === 'active' ? handleDeactivate : handleReactivate}
+              style={[
+                styles.actionButton,
+                displayService.status === 'active' 
+                  ? styles.deactivateButton 
+                  : styles.reactivateButton,
+                isDeactivating && styles.actionButtonDisabled
+              ]}
+              disabled={isDeactivating}
+            >
+              {isDeactivating ? (
+                <ActivityIndicator 
+                  size="small" 
+                  color={displayService.status === 'active' ? '#ef4444' : '#34d399'} 
+                />
+              ) : (
+                <>
+                  <MaterialIcons 
+                    name={displayService.status === 'active' ? 'pause-circle-outline' : 'play-circle-outline'} 
+                    size={18} 
+                    color={displayService.status === 'active' ? '#ef4444' : '#34d399'} 
+                    style={styles.actionButtonIcon}
+                  />
+                  <Text style={[
+                    styles.actionButtonText, 
+                    { color: displayService.status === 'active' ? '#ef4444' : '#34d399' }
+                  ]}>
+                    {displayService.status === 'active' ? 'Deactivate' : 'Reactivate'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Tab Bar */}
         <View style={styles.tabContainer}>
           <View style={styles.tabsWrapper}>
@@ -234,6 +450,21 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
           </ScrollView>
         )}
       </SafeAreaView>
+      
+      {/* Add Charge Modal */}
+      <AddChargeModal
+        visible={showAddChargeModal}
+        onClose={() => setShowAddChargeModal(false)}
+        service={displayService}
+        onSuccess={(result) => {
+          console.log('Manual charge created successfully:', result);
+          // Optionally refresh the service data or notify parent
+          if (onServiceUpdated) {
+            // Trigger a refresh by updating the service
+            onServiceUpdated({ ...displayService, lastUpdated: new Date() });
+          }
+        }}
+      />
     </Modal>
   );
 };
@@ -256,6 +487,44 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "android"
       ? "sans-serif-black"
       : "Montserrat-Black",
+    flex: 1,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 12,
+    backgroundColor: "#dff6f0",
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  deactivateButton: {
+    borderColor: '#ef4444',
+  },
+  reactivateButton: {
+    borderColor: '#34d399',
+  },
+  addChargeButton: {
+    borderColor: '#3b82f6',
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
+  actionButtonIcon: {
+    marginRight: 6,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   closeButton: { 
     padding: 8,

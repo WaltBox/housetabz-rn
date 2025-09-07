@@ -1,10 +1,10 @@
 // BillingSkeleton.js
 import React from 'react';
-import { 
+import {
   SafeAreaView, 
   ScrollView, 
-  View, 
-  StyleSheet, 
+  View,
+  StyleSheet,
   StatusBar 
 } from 'react-native';
 import { 
@@ -24,7 +24,7 @@ const HeaderSkeleton = () => (
     <SkeletonText width={200} height={28} />
     <SkeletonText width={150} height={16} />
   </View>
-);
+  );
 
 // Skeleton for charge card
 const ChargeCardSkeleton = ({ isSelected = false }) => (
@@ -77,11 +77,11 @@ const PaymentSummarySkeleton = () => (
       <View style={styles.summaryRow}>
         <SkeletonText width={100} height={16} />
         <SkeletonText width={80} height={16} />
-      </View>
+  </View>
       <View style={styles.summaryRow}>
         <SkeletonText width={120} height={16} />
         <SkeletonText width={60} height={16} />
-      </View>
+        </View>
       <View style={styles.summaryDivider} />
       <View style={styles.summaryRow}>
         <SkeletonText width={80} height={18} />
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: SKELETON_COLORS.background,
   },
-
+  
   // Header styles
   header: {
     paddingHorizontal: getSkeletonSpacing.lg,

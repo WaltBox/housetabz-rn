@@ -108,7 +108,35 @@ const RequestConfirmationScreen = ({ paymentData, houseServiceStatus, onSuccess,
       );
 
       if (response.status === 201 || response.data.success) {
-        onSuccess(response.data);
+        // ✅ NEW: After creating staged request, immediately consent the creator
+        const createdRequest = response.data;
+        
+        // Find the creator's task ID from the response
+        const creatorTaskId = createdRequest.tasks?.find(task => task.userId === user.id)?.id;
+        
+        if (creatorTaskId && upfront > 0) {
+          console.log('🎯 Auto-consenting creator for staged request:', creatorTaskId);
+          
+          // Immediately accept/consent for the creator
+          const consentResponse = await apiClient.patch(`/api/tasks/${creatorTaskId}`, {
+            response: 'accepted'
+          });
+          
+          console.log('✅ Creator consent response:', consentResponse.data);
+          
+          // Pass both the original request data and the consent data
+          onSuccess({
+            ...createdRequest,
+            creatorConsent: {
+              paymentAuthorized: consentResponse.data.paymentAuthorized,
+              paymentIntentId: consentResponse.data.paymentIntentId,
+              message: consentResponse.data.message
+            }
+          });
+        } else {
+          // No payment required or no task found, proceed normally
+          onSuccess(createdRequest);
+        }
       } else {
         throw new Error(response.data.message || 'Request failed');
       }

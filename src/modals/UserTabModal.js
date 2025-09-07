@@ -19,7 +19,7 @@ import { useFonts } from 'expo-font';
 const getDueDateStatus = (charge) => {
   // Backend now provides proper dueDate, but fallback to bill.dueDate if needed
   const dueDate = charge?.dueDate || charge?.Bill?.dueDate || charge?.bill?.dueDate;
-                  
+
   if (!dueDate) return { color: '#64748b', label: 'No due date' };
   
   const now = new Date();
@@ -55,11 +55,14 @@ const ChargeItem = ({ charge }) => {
   );
 };
 
-const UserTabModal = ({ visible, onClose }) => {
-  const { user } = useAuth();
+const UserTabModal = ({ visible, onClose, userCharges: propUserCharges, user: propUser }) => {
+  const { user: authUser } = useAuth();
   const navigation = useNavigation();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Use propUser if provided (ProfileModal usage), otherwise use authUser (Dashboard usage)
+  const user = propUser || authUser;
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -70,36 +73,128 @@ const UserTabModal = ({ visible, onClose }) => {
   });
 
   const fetchUserData = async () => {
+    // If we have userCharges prop with actual charges, use it instead of making API call
+    if (propUserCharges && Array.isArray(propUserCharges) && propUserCharges.length > 0) {
+      console.log("👤 UserTabModal using provided userCharges:", {
+        chargesCount: propUserCharges.length,
+        unpaidCharges: propUserCharges.filter(c => c.status === 'unpaid').length,
+        firstCharge: propUserCharges[0],
+        chargesWithDueDates: propUserCharges.filter(c => c.dueDate).length,
+        firstChargeStructure: propUserCharges[0] ? {
+          id: propUserCharges[0].id,
+          name: propUserCharges[0].name,
+          amount: propUserCharges[0].amount,
+          status: propUserCharges[0].status,
+          dueDate: propUserCharges[0].dueDate,
+          hasUser: !!propUserCharges[0].User,
+          hasBill: !!propUserCharges[0].Bill,
+          hasLowerBill: !!propUserCharges[0].bill,
+          allKeys: Object.keys(propUserCharges[0])
+        } : null
+      });
+      
+      setUserData({ 
+        ...user, 
+        charges: propUserCharges 
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Also check if we have an empty array prop
+    if (propUserCharges && Array.isArray(propUserCharges) && propUserCharges.length === 0) {
+      console.log("👤 UserTabModal received empty userCharges array, using fallback API call");
+    }
+
+    // Fallback to API call if no userCharges prop provided or if it's empty
     if (!user?.id) return;
     setLoading(true);
     try {
-      const res = await apiClient.get(`/api/users/${user.id}`);
-      console.log("👤 UserTabModal received user data:", {
-        hasCharges: !!res.data?.charges,
-        chargesCount: res.data?.charges?.length || 0,
-        unpaidCharges: res.data?.charges?.filter(c => c.status === 'unpaid')?.length || 0,
-        firstCharge: res.data?.charges?.[0],
-        chargeKeys: res.data?.charges?.[0] ? Object.keys(res.data.charges[0]) : 'no charges'
+      // Try the unpaid charges endpoint first (like MakePaymentScreen)
+      console.log('Fetching unpaid charges...');
+      const response = await apiClient.get(`/api/users/${user.id}/charges/unpaid`);
+      console.log(`👤 UserTabModal found ${response.data.length} unpaid charges`);
+      
+      console.log("👤 UserTabModal fetched user data (unpaid endpoint):", {
+        hasCharges: !!response.data,
+        chargesCount: response.data?.length || 0,
+        firstCharge: response.data?.[0],
+        chargeKeys: response.data?.[0] ? Object.keys(response.data[0]) : 'no charges',
+        firstChargeStructure: response.data?.[0] ? {
+          id: response.data[0].id,
+          name: response.data[0].name,
+          amount: response.data[0].amount,
+          status: response.data[0].status,
+          dueDate: response.data[0].dueDate,
+          hasUser: !!response.data[0].User,
+          hasBill: !!response.data[0].Bill,
+          hasLowerBill: !!response.data[0].bill,
+          allKeys: Object.keys(response.data[0])
+        } : null
       });
       
-      // ✅ Backend now provides complete data with due dates - no additional fetching needed
-      console.log("✅ Received user charges with due dates:", {
-        chargesWithDueDates: res.data?.charges?.filter(c => c.dueDate).length || 0,
-        totalCharges: res.data?.charges?.length || 0,
-        sampleCharge: res.data?.charges?.[0]
+      // ✅ Set data with charges directly from unpaid endpoint
+      setUserData({ 
+        ...user, 
+        charges: response.data 
       });
       
-      setUserData(res.data);
-    } catch (err) {
-      console.error(err);
+      console.log("✅ Received unpaid charges with due dates:", {
+        chargesWithDueDates: response.data?.filter(c => c.dueDate).length || 0,
+        totalCharges: response.data?.length || 0,
+        sampleCharge: response.data?.[0]
+      });
+      
+    } catch (error) {
+      console.error('Error fetching unpaid charges:', error);
+      
+      // Fallback to all charges endpoint (like MakePaymentScreen)
+      try {
+        console.log('Trying fallback to all charges...');
+        const fallbackResponse = await apiClient.get(`/api/users/${user.id}/charges`);
+        
+        console.log("👤 UserTabModal fetched user data (fallback all charges):", {
+          hasCharges: !!fallbackResponse.data?.charges,
+          chargesCount: fallbackResponse.data?.charges?.length || 0,
+          unpaidCharges: fallbackResponse.data?.charges?.filter(c => c.status === 'unpaid')?.length || 0,
+          firstCharge: fallbackResponse.data?.charges?.[0],
+          chargeKeys: fallbackResponse.data?.charges?.[0] ? Object.keys(fallbackResponse.data.charges[0]) : 'no charges',
+          firstChargeStructure: fallbackResponse.data?.charges?.[0] ? {
+            id: fallbackResponse.data.charges[0].id,
+            name: fallbackResponse.data.charges[0].name,
+            amount: fallbackResponse.data.charges[0].amount,
+            status: fallbackResponse.data.charges[0].status,
+            dueDate: fallbackResponse.data.charges[0].dueDate,
+            hasUser: !!fallbackResponse.data.charges[0].User,
+            hasBill: !!fallbackResponse.data.charges[0].Bill,
+            hasLowerBill: !!fallbackResponse.data.charges[0].bill,
+            allKeys: Object.keys(fallbackResponse.data.charges[0])
+          } : null
+        });
+        
+        setUserData(fallbackResponse.data);
+        
+        console.log("✅ Received fallback charges with due dates:", {
+          chargesWithDueDates: fallbackResponse.data?.charges?.filter(c => c.dueDate).length || 0,
+          totalCharges: fallbackResponse.data?.charges?.length || 0,
+          sampleCharge: fallbackResponse.data?.charges?.[0]
+        });
+        
+      } catch (fallbackError) {
+        console.error('Fallback error fetching charges:', fallbackError);
+        setUserData({ ...user, charges: [] });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (visible) fetchUserData();
-  }, [visible]);
+    // For ProfileModal usage, visible prop might not be passed, so always fetch when component mounts
+    if (visible !== false) {
+      fetchUserData();
+    }
+  }, [visible, propUserCharges, user?.id]);
 
   const charges = useMemo(
     () => (userData?.charges || []).filter(c => c.status === 'unpaid'),
@@ -149,15 +244,15 @@ const UserTabModal = ({ visible, onClose }) => {
                 <View style={styles.amountInfo}>
                   <Text style={styles.amountLabel}>Outstanding Balance</Text>
                   <Text style={styles.amountValue}>${totalUnpaid.toFixed(2)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.payButton}
-                  onPress={handleNavigateToPayment}
-                  activeOpacity={0.8}
-                >
+              </View>
+              <TouchableOpacity
+                style={styles.payButton}
+                onPress={handleNavigateToPayment}
+                activeOpacity={0.8}
+              >
                   <MaterialIcons name="payment" size={18} color="white" />
                   <Text style={styles.payButtonText}>Pay</Text>
-                </TouchableOpacity>
+              </TouchableOpacity>
               </View>
               
               {/* Subtle divider */}
@@ -246,7 +341,7 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 14,
-    color: '#64748b',
+    color: '#64748b', 
     fontWeight: '500',
     marginBottom: 4,
     letterSpacing: 0.3,
@@ -254,7 +349,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#1e293b', 
     fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System',
   },
   headerDivider: {
@@ -264,7 +359,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -4,
   },
   payButton: {
-    backgroundColor: '#34d399',
+    backgroundColor: '#34d399', 
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 20,
@@ -278,8 +373,8 @@ const styles = StyleSheet.create({
     elevation: 3,
     gap: 6,
   },
-  payButtonText: {
-    color: 'white',
+  payButtonText: { 
+    color: 'white', 
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.2,
@@ -299,7 +394,7 @@ const styles = StyleSheet.create({
   },
 
   chargeItem: {
-    backgroundColor: 'white',
+    backgroundColor: 'white', 
     borderRadius: 16,
     marginBottom: 8,
     shadowColor: '#0f172a',
@@ -310,7 +405,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f1f5f9',
   },
-  chargeRow: {
+  chargeRow: { 
     padding: 20,
   },
   chargeContent: {
@@ -322,17 +417,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 10,
   },
-  chargeName: {
-    fontSize: 16,
-    fontWeight: '600',
+  chargeName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
     color: '#1e293b',
     flex: 1,
     marginRight: 16,
     lineHeight: 22,
   },
-  chargeAmount: {
-    fontSize: 18,
-    fontWeight: '700',
+  chargeAmount: { 
+    fontSize: 18, 
+    fontWeight: '700', 
     color: '#1e293b',
   },
   chargeFooter: {
@@ -345,7 +440,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 8,
   },
-  dueDate: {
+  dueDate: { 
     fontSize: 13,
     fontWeight: '500',
     color: '#64748b',

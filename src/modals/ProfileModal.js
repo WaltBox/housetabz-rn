@@ -341,6 +341,7 @@ const ProfileModal = ({ visible = false, onClose }) => {
         backgroundColor="#dff6f0"
       >
         <UserTabModal 
+          visible={isUserTabVisible}
           user={userData} 
           onClose={() => setIsUserTabVisible(false)}
         />

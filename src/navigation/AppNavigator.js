@@ -33,6 +33,10 @@ import CreateHouseScreen from '../screens/CreateHouseScreen';
 import JoinHouseScreen from '../screens/JoinHouseScreen';
 import PaymentMethodOnboardingScreen from '../screens/PaymentMethodOnboardingScreen';
 
+// Rent Proposal Screens
+import CreateRentProposalScreen from '../screens/CreateRentProposalScreen';
+import ViewRentProposalScreen from '../screens/ViewRentProposalScreen';
+
 const Stack = createStackNavigator();
 
 const AuthStack = () => (
@@ -56,6 +60,10 @@ const MainStack = () => (
       
       {/* Add Bill Takeover Screen */}
       <Stack.Screen name="BillTakeover" component={BillTakeoverScreen} />
+      
+      {/* Add Rent Proposal Screens */}
+      <Stack.Screen name="CreateRentProposal" component={CreateRentProposalScreen} />
+      <Stack.Screen name="ViewRentProposal" component={ViewRentProposalScreen} />
     </Stack.Group>
 
     {/* Modal Screens */}
@@ -168,7 +176,7 @@ const AppNavigator = () => {
       ) : (
         <>
           {console.log('🔐 Navigating to AuthStack (no user)')}
-          <AuthStack />
+        <AuthStack />
         </>
       )}
     </NavigationContainer>

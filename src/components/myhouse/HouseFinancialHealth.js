@@ -237,37 +237,37 @@ const HouseFinancialHealth = ({ house, onInfoPress }) => {
               </View>
 
               {/* Advance Allowance Info - compact on the right */}
-              <View style={styles.allowanceInfo}>
-                <Text style={[
-                  styles.allowanceLabel,
-                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
-                ]}>
-                  Advance Allowance
-                </Text>
-                <Text style={[
-                  styles.allowanceAmount,
-                  fontsLoaded && { fontFamily: 'Poppins-Bold' }
-                ]}>
+                <View style={styles.allowanceInfo}>
+                  <Text style={[
+                    styles.allowanceLabel,
+                    fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                  ]}>
+                    Advance Allowance
+                  </Text>
+                  <Text style={[
+                    styles.allowanceAmount,
+                    fontsLoaded && { fontFamily: 'Poppins-Bold' }
+                  ]}>
                   ${(advanceData?.remaining || 0).toFixed(0)} available
-                </Text>
-                <Text style={[
-                  styles.allowanceTotal,
-                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
-                ]}>
+                  </Text>
+                  <Text style={[
+                    styles.allowanceTotal,
+                    fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                  ]}>
                   of ${(advanceData?.allowance || 0).toFixed(0)}
-                </Text>
-                <View style={styles.allowanceBar}>
-                  <View 
-                    style={[
-                      styles.allowanceProgress,
-                      { 
+                  </Text>
+                  <View style={styles.allowanceBar}>
+                    <View 
+                      style={[
+                        styles.allowanceProgress,
+                        { 
                         width: `${Math.min(advanceData?.utilizationPercentage || 0, 100)}%`,
                         backgroundColor: (advanceData?.utilizationPercentage || 0) > 70 ? '#f59e0b' : colors[0]
-                      }
-                    ]}
-                  />
+                        }
+                      ]}
+                    />
+                  </View>
                 </View>
-              </View>
             </View>
           </View>
           

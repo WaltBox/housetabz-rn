@@ -1,10 +1,10 @@
 // HouseServicesSkeleton.js
 import React from 'react';
-import { 
-  SafeAreaView, 
+import {
+  SafeAreaView,
   ScrollView, 
   View, 
-  StyleSheet, 
+  StyleSheet,
   StatusBar 
 } from 'react-native';
 import { 
@@ -23,7 +23,7 @@ const HeaderSkeleton = () => (
   <View style={styles.header}>
     <SkeletonText width={160} height={24} />
   </View>
-);
+  );
 
 // Skeleton for individual service card
 const ServiceCardSkeleton = () => (
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: SKELETON_COLORS.background,
   },
-
+  
   // Header styles
   header: {
     paddingHorizontal: getSkeletonSpacing.lg,

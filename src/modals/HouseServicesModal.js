@@ -45,6 +45,7 @@ const HouseServicesModal = ({ house, onClose }) => {
   const filteredServices = services.filter(service => {
     if (activeTab === 'active') return service.status === 'active';
     if (activeTab === 'pending') return service.status === 'pending';
+    if (activeTab === 'deactivated') return service.status === 'inactive' || service.status === 'deactivated';
     return true;
   });
 
@@ -112,6 +113,7 @@ const HouseServicesModal = ({ house, onClose }) => {
   // Count services by status
   const activeCount = services.filter(s => s.status === 'active').length;
   const pendingCount = services.filter(s => s.status === 'pending').length;
+  const deactivatedCount = services.filter(s => s.status === 'inactive' || s.status === 'deactivated').length;
 
   return (
     <>
@@ -163,6 +165,21 @@ const HouseServicesModal = ({ house, onClose }) => {
               {pendingCount > 0 && (
                 <View style={styles.pendingDot} />
               )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.tab,
+                activeTab === 'deactivated' && styles.activeTab
+              ]}
+              onPress={() => setActiveTab('deactivated')}
+            >
+              <Text style={[
+                styles.tabText,
+                activeTab === 'deactivated' && styles.activeTabText
+              ]}>
+                Deactivated ({deactivatedCount})
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -216,13 +233,22 @@ const HouseServicesModal = ({ house, onClose }) => {
         
         {/* Detail Modal */}
         {selectedService && (
-      <HouseServiceDetailModal
-      visible={selectedService !== null}
-      service={selectedService}  // ← This should have calculatedData
-      activeLedger={selectedService.ledgers?.[0]}
-      fundingSummary={selectedService.calculatedData} // ← This line looks wrong
-      onClose={() => setSelectedService(null)}
-    />
+          <HouseServiceDetailModal
+            visible={selectedService !== null}
+            service={selectedService}
+            activeLedger={selectedService.ledgers?.[0]}
+            onClose={() => setSelectedService(null)}
+            onServiceUpdated={(updatedService) => {
+              // Update the service in the local state
+              setServices(prevServices => 
+                prevServices.map(service => 
+                  service.id === updatedService.id ? updatedService : service
+                )
+              );
+              // Optionally close the modal after update
+              setSelectedService(null);
+            }}
+          />
         )}
       </SafeAreaView>
     </>

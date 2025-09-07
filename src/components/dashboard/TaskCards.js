@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -6,11 +6,13 @@ import {
   TouchableOpacity, 
   ScrollView, 
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  Animated
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import apiClient from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -28,7 +30,7 @@ const COLORS = {
   whiteCardBorder: '#34d399',
 };
 
-const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
+const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress, processingTasks = new Set(), recentlyCompletedTasks = new Set(), recentlyCompletedBillSubmissions = new Set() }) => {
   // Load the Poppins font family
   const [fontsLoaded] = useFonts({
     'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
@@ -37,18 +39,28 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
     'Poppins-Regular': require('../../../assets/fonts/Poppins/Poppins-Regular.ttf'),
   });
   
-  // Filter tasks to only show incomplete ones (where completed=false)
-  const incompleteTasks = tasks.filter(task => !task.completed);
+  // ✅ TRUST BACKEND: Backend now properly filters tasks and bill submissions by user
+  // Only filter by status since backend handles user filtering
+  const pendingTasks = tasks.filter(task => {
+    const isPending = task.response === 'pending';
+    const isRecentlyCompleted = recentlyCompletedTasks.has(task.id);
+    return isPending && !isRecentlyCompleted;
+  });
+  const pendingBillSubmissions = billSubmissions.filter(submission => {
+    const isPending = submission.status === 'pending';
+    const isRecentlyCompleted = recentlyCompletedBillSubmissions.has(submission.id);
+    return isPending && !isRecentlyCompleted;
+  });
   
-  // Filter bill submissions to only show pending ones
-  const pendingBillSubmissions = billSubmissions.filter(submission => 
-    submission.status === 'pending'
-  );
+  console.log('✅ TaskCards - Backend-filtered data:', {
+    'Tasks count': pendingTasks.length,
+    'Bill submissions count': pendingBillSubmissions.length,
+    'Task IDs': pendingTasks.map(t => t.id),
+    'Bill submission IDs': pendingBillSubmissions.map(b => b.id)
+  });
   
-  console.log('Filtered Tasks:', incompleteTasks.length, 'Filtered Bill Submissions:', pendingBillSubmissions.length);
-  
-  // Check if we have any content to show after filtering
-  const hasContent = (incompleteTasks && incompleteTasks.length > 0) || 
+  // Check if we have any content to show
+  const hasContent = (pendingTasks && pendingTasks.length > 0) || 
                     (pendingBillSubmissions && pendingBillSubmissions.length > 0);
   
   if (!hasContent) return null;
@@ -66,15 +78,16 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
         decelerationRate="fast"
         snapToInterval={CARD_WIDTH + 12} // Add the margin to snap properly
       >
-        {/* Render filtered incomplete Tasks */}
-        {incompleteTasks.map((task, idx) => (
+        {/* Render filtered pending Tasks */}
+        {pendingTasks.map((task, idx) => (
           <TaskCard 
             key={`task-${task.id || idx}`} 
             task={task}
             type="task"
             isAlternate={idx % 2 === 1}
-            onPress={() => onTaskPress?.(task)}
+            onPress={() => processingTasks.has(task.id) ? null : onTaskPress?.(task)}
             fontsLoaded={fontsLoaded}
+            isProcessing={processingTasks.has(task.id)}
           />
         ))}
         
@@ -84,7 +97,7 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
             key={`bill-${submission.id || idx}`} 
             task={submission}
             type="billSubmission"
-            isAlternate={(incompleteTasks.length + idx) % 2 === 1}
+            isAlternate={(pendingTasks.length + idx) % 2 === 1}
             onPress={() => onTaskPress?.(submission)}
             fontsLoaded={fontsLoaded}
           />
@@ -95,14 +108,45 @@ const TaskCards = ({ tasks = [], billSubmissions = [], onTaskPress }) => {
 };
 
 // Separate TaskCard component to handle requester fetching
-const TaskCard = ({ task, type = "task", isAlternate, onPress, fontsLoaded }) => {
+const TaskCard = ({ task, type = "task", isAlternate, onPress, fontsLoaded, isProcessing = false }) => {
   const [requesterUsername, setRequesterUsername] = useState(null);
   const [loading, setLoading] = useState(true);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Start pulsing animation when processing
+  useEffect(() => {
+    if (isProcessing) {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.7,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
+      
+      return () => pulseAnimation.stop();
+    } else {
+      // Reset to normal opacity when not processing
+      Animated.timing(pulseAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isProcessing, pulseAnim]);
 
   // Determine the service name based on the type and structure
 // Add this enhanced getServiceName function with debugging to your TaskCard component
 
-const getServiceName = () => {
+  const getServiceName = () => {
   // Debug logging to see the actual task structure
   console.log('=== TaskCard Debug Info ===');
   console.log('Task ID:', task.id);
@@ -110,17 +154,17 @@ const getServiceName = () => {
   console.log('Task object keys:', Object.keys(task));
   console.log('Full task object:', JSON.stringify(task, null, 2));
   
-  // For bill submissions
-  if (type === 'billSubmission') {
+    // For bill submissions
+    if (type === 'billSubmission') {
     console.log('Processing as bill submission');
-    return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
-  }
-  
+      return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
+    }
+    
   // For regular tasks - enhanced debugging
   console.log('ServiceRequestBundle exists:', !!task.serviceRequestBundle);
   console.log('ServiceRequestBundleId:', task.serviceRequestBundleId);
   
-  if (!task.serviceRequestBundle) {
+    if (!task.serviceRequestBundle) {
     // Check if we have alternative fields that might contain the service name
     console.log('No serviceRequestBundle found. Checking alternatives...');
     console.log('Task.name:', task.name);
@@ -131,7 +175,7 @@ const getServiceName = () => {
     if (task.name && task.name !== task.type) {
       return task.name;
     }
-    
+
     if (task.metadata?.serviceName) {
       return task.metadata.serviceName;
     }
@@ -153,18 +197,18 @@ const getServiceName = () => {
     return task.serviceRequestBundle.takeOverRequest.serviceName || 
            task.serviceRequestBundle.takeOverRequest.name || 
            'Service Request';
-  }
+    }
 
-  if (task.serviceRequestBundle.stagedRequest) {
+    if (task.serviceRequestBundle.stagedRequest) {
     console.log('StagedRequest data:', task.serviceRequestBundle.stagedRequest);
     return task.serviceRequestBundle.stagedRequest.name || 
            task.serviceRequestBundle.stagedRequest.serviceName ||
            'Service Request';
-  }
+    }
 
   console.log('No nested request data found');
-  return 'Task';
-};
+    return 'Task';
+  };
 
   // Fetch the requester username
   useEffect(() => {
@@ -249,14 +293,21 @@ const getServiceName = () => {
 
   return (
     <View style={styles.cardWrapper}>
-      <TouchableOpacity
+      <Animated.View
         style={[
-          styles.cardInner,
-          isAlternate ? styles.cardInnerAlternate : null
+          { opacity: pulseAnim },
+          { transform: [{ scale: isProcessing ? 0.98 : 1 }] }
         ]}
-        activeOpacity={0.8}
-        onPress={() => onPress(task)}
       >
+        <TouchableOpacity
+          style={[
+            styles.cardInner,
+            isAlternate ? styles.cardInnerAlternate : null,
+            isProcessing ? styles.cardProcessing : null
+          ]}
+          activeOpacity={isProcessing ? 1 : 0.8}
+          onPress={() => isProcessing ? null : onPress(task)}
+        >
         {/* Inner border inset */}
         <View 
           style={[
@@ -323,22 +374,51 @@ const getServiceName = () => {
         </View>
 
         <View style={styles.bottomBar}>
-          <Text 
-            style={[
-              styles.viewDetailsText,
-              isAlternate ? styles.viewDetailsTextAlternate : null,
-              fontsLoaded && { fontFamily: 'Poppins-Medium' }
-            ]}
-          >
-            {type === 'billSubmission' ? 'SUBMIT NOW' : 'CLICK TO VIEW'}
-          </Text>
-          <MaterialIcons 
-            name="chevron-right" 
-            size={20} 
-            color={isAlternate ? COLORS.green : "#FFFFFF"} 
-          />
+          {isProcessing ? (
+            <View style={styles.processingContainer}>
+              <View style={styles.processingIconContainer}>
+                <ActivityIndicator 
+                  size="small" 
+                  color={isAlternate ? COLORS.green : "#FFFFFF"} 
+                />
+              </View>
+              <Text 
+                style={[
+                  styles.processingText,
+                  isAlternate ? styles.processingTextAlternate : null,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}
+              >
+                PROCESSING...
+              </Text>
+              <MaterialIcons 
+                name="check-circle" 
+                size={18} 
+                color={isAlternate ? COLORS.green : "#FFFFFF"} 
+                style={styles.processingCheckIcon}
+              />
+            </View>
+          ) : (
+            <>
+              <Text 
+                style={[
+                  styles.viewDetailsText,
+                  isAlternate ? styles.viewDetailsTextAlternate : null,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}
+              >
+                {type === 'billSubmission' ? 'SUBMIT NOW' : 'CLICK TO VIEW'}
+              </Text>
+              <MaterialIcons 
+                name="chevron-right" 
+                size={20} 
+                color={isAlternate ? COLORS.green : "#FFFFFF"} 
+              />
+            </>
+          )}
         </View>
       </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -373,6 +453,19 @@ const styles = StyleSheet.create({
   // Alternate card style (mint white background)
   cardInnerAlternate: {
     backgroundColor: COLORS.mintWhite,
+  },
+  // Processing card style (enhanced visual feedback)
+  cardProcessing: {
+    borderWidth: 2,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+    shadowColor: '#22c55e',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   innerBorder: {
     position: 'absolute',
@@ -446,6 +539,30 @@ const styles = StyleSheet.create({
   // Alternate view details text style (green text)
   viewDetailsTextAlternate: {
     color: COLORS.green,
+  },
+  // Processing container styles
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    paddingVertical: 4,
+  },
+  processingIconContainer: {
+    marginRight: 8,
+  },
+  processingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginRight: 8,
+  },
+  processingTextAlternate: {
+    color: COLORS.green,
+  },
+  processingCheckIcon: {
+    opacity: 0.7,
   },
 });
 

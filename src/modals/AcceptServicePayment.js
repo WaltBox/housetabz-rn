@@ -8,10 +8,12 @@ import {
   ScrollView,
   SafeAreaView,
   StyleSheet,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import apiClient from '../config/api';
+import BundleStatusOverview from '../components/BundleStatusOverview';
 
 const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaymentMethod }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,14 +35,19 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
     : 0;
 
   // Determine if payment methods should be shown
-  // Only show if there's an upfront payment or it's a one-time marketplace service
+  // For consent-based flow: Don't show payment methods for staged requests (marketplace_onetime)
+  // Users give consent instead of selecting payment methods
   const shouldShowPaymentMethods = () => {
     if (!bundleDetails) return false;
     
     const isOneTimeService = bundleDetails.type === 'marketplace_onetime';
     const hasUpfrontPayment = effectivePaymentAmount > 0;
     
-    return isOneTimeService || hasUpfrontPayment;
+    // For staged requests (marketplace_onetime), users give consent instead of selecting payment methods
+    if (isOneTimeService) return false;
+    
+    // Only show payment methods for non-staged requests with upfront payments
+    return hasUpfrontPayment;
   };
 
   useEffect(() => {
@@ -62,11 +69,18 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
         // Only fetch payment methods if they'll be needed
         if (bundleData.type === 'marketplace_onetime' || 
             (taskData?.paymentAmount != null && Number(taskData.paymentAmount) > 0)) {
+          console.log('🔄 Fetching payment methods in AcceptServicePayment');
           const methodsResponse = await apiClient.get('/api/payment-methods');
           const methods = methodsResponse.data?.paymentMethods || [];
+          console.log('✅ AcceptServicePayment payment methods:', methods.map(m => ({ id: m.id, isDefault: m.isDefault, last4: m.last4 })));
+          
           setPaymentMethods(methods);
           if (methods.length > 0) {
-            setSelectedMethod(methods.find(m => m.isDefault)?.id || methods[0]?.id);
+            // Select the default method first, then fallback to first method
+            const defaultMethod = methods.find(m => m.isDefault);
+            const methodToSelect = defaultMethod ? defaultMethod.id : methods[0]?.id;
+            setSelectedMethod(methodToSelect);
+            console.log('🎯 Selected payment method in AcceptServicePayment:', methodToSelect);
           }
         }
       } catch (error) {
@@ -88,13 +102,44 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
       if (!taskId) {
         throw new Error('Task ID is missing. Cannot proceed with acceptance.');
       }
+
+      // For staged requests (consent flow), check if user has valid payment method for consent
+      const isStaged = bundleDetails?.type === 'marketplace_onetime';
+      if (isStaged && effectivePaymentAmount > 0 && paymentMethods.length === 0) {
+        Alert.alert(
+          'Payment Method Required',
+          'You need to add a payment method before giving consent to pay. Would you like to add one now?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Add Payment Method', 
+              onPress: () => {
+                if (onAddPaymentMethod) {
+                  onAddPaymentMethod();
+                } else {
+                  Alert.alert('Error', 'Unable to add payment method at this time.');
+                }
+              }
+            }
+          ]
+        );
+        return;
+      }
   
       if (effectivePaymentAmount > 0) {
-        await onSuccess({
+        // For consent flow: Don't require specific payment method selection
+        // Backend will handle payment method validation during consent
+        const acceptData = {
           taskId,
-          paymentMethod: selectedMethod,
           amount: effectivePaymentAmount,
-        });
+        };
+        
+        // Only include paymentMethod if a specific one is selected (for non-staged requests)
+        if (selectedMethod && !isStaged) {
+          acceptData.paymentMethod = selectedMethod;
+        }
+        
+        await onSuccess(acceptData);
       } else {
         if (onSuccess) {
           await onSuccess({
@@ -109,13 +154,50 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
       onClose();
     } catch (error) {
       console.error('Acceptance failed:', error);
-      setError(error.message || 'Failed to accept task');
+      
+      let errorMessage = error.message || 'Failed to accept task';
+      
+      // Enhanced error handling for new backend error messages
+      if (error.response && error.response.data) {
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        // Handle specific new backend error messages
+        if (errorMessage.includes('No payment method provided and no default payment method found')) {
+          Alert.alert(
+            "No Default Payment Method",
+            "Please set a default payment method or add a payment method to continue.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Add Payment Method", onPress: onAddPaymentMethod }
+            ]
+          );
+          return;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
   
-  const getStatusColor = (status) => {
+  const getStatusColor = (status, paymentStatus) => {
+    // Handle combined status display for consent-based payments
+    if (paymentStatus) {
+      switch (paymentStatus?.toLowerCase()) {
+        case 'authorized': return '#3b82f6'; // Blue for consent given
+        case 'completed': return '#34d399'; // Green for payment completed
+        case 'cancelled': return '#dc2626'; // Red for payment cancelled
+        case 'pending': return '#f59e0b'; // Orange for pending consent
+        default: break;
+      }
+    }
+    
+    // Fallback to regular status colors
     switch (status?.toLowerCase()) {
       case 'pending': return '#f59e0b';
       case 'accepted': return '#34d399';
@@ -124,15 +206,45 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
     }
   };
 
+  const getStatusDisplayText = (status, paymentStatus) => {
+    // Handle combined status display for consent-based payments
+    if (paymentStatus) {
+      switch (paymentStatus?.toLowerCase()) {
+        case 'authorized': return 'CONSENTED';
+        case 'completed': return 'PAID';
+        case 'cancelled': return 'CANCELLED';
+        case 'pending': return 'PENDING';
+        default: break;
+      }
+    }
+    
+    // Fallback to regular status text
+    switch (status?.toLowerCase()) {
+      case 'pending': return 'PENDING';
+      case 'accepted': return 'ACCEPTED';
+      case 'rejected': return 'REJECTED';
+      default: return status?.toUpperCase() || 'UNKNOWN';
+    }
+  };
+
   const getPaymentMethodDisplay = (method) => {
     if (!method) return 'Select payment method';
     return method.type === 'card'
-      ? `${method.brand} •••• ${method.last4}`
-      : `Bank Account •••• ${method.last4}`;
+      ? `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
+      : `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
   };
 
   const getMethodIcon = (type) => {
     return type === 'card' ? 'credit-card' : 'account-balance';
+  };
+
+  // Get the payment method that will be used for this payment
+  const getEffectivePaymentMethod = () => {
+    if (selectedMethod) {
+      return paymentMethods.find(m => m.id === selectedMethod);
+    }
+    // If no method is selected, find the default method
+    return paymentMethods.find(m => m.isDefault);
   };
 
   if (loading) return <LoadingModal visible={visible} />;
@@ -152,8 +264,11 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
   const pendingParticipants = tasks.filter(task => task.response === 'pending') || [];
 
   // Check if accept button should be disabled
+  // For consent flow: Only disable if processing or if non-staged request needs payment methods
   const isAcceptButtonDisabled = isProcessing || 
-                              (effectivePaymentAmount > 0 && paymentMethods.length === 0);
+                              (shouldShowPaymentMethods() && effectivePaymentAmount > 0 && paymentMethods.length === 0);
+
+  const effectivePaymentMethod = getEffectivePaymentMethod();
 
   return (
     <Modal visible={visible} transparent onRequestClose={onClose}>
@@ -282,64 +397,110 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                   </TouchableOpacity>
                 </View>
               ) : (
-                !showPaymentOptions ? (
-                  <TouchableOpacity 
-                    style={styles.paymentMethodSelector}
-                    onPress={() => setShowPaymentOptions(true)}
-                  >
-                    <View style={styles.paymentMethodInfo}>
-                      <MaterialIcons
-                        name={getMethodIcon(paymentMethods.find(m => m.id === selectedMethod)?.type)}
-                        size={24}
-                        color="#34d399"
-                        style={styles.methodIcon}
-                      />
-                      <View style={styles.paymentMethodDetails}>
-                        <Text style={styles.paymentMethodName}>
-                          {getPaymentMethodDisplay(paymentMethods.find(m => m.id === selectedMethod))}
-                        </Text>
-                        {paymentMethods.find(m => m.id === selectedMethod)?.isDefault && (
-                          <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
-                        )}
-                      </View>
-                    </View>
-                    <MaterialIcons name="chevron-right" size={24} color="#cbd5e1" />
-                  </TouchableOpacity>
-                ) : (
-                  <View>
-                    {paymentMethods.map(method => (
-                      <TouchableOpacity
-                        key={method.id}
-                        style={[
-                          styles.paymentMethodOption,
-                          selectedMethod === method.id ? styles.selectedPaymentMethod : styles.unselectedPaymentMethod
-                        ]}
-                        onPress={() => {
-                          setSelectedMethod(method.id);
-                          setShowPaymentOptions(false);
-                        }}
-                      >
-                        <View style={styles.paymentMethodInfo}>
+                <View>
+                  {/* Enhanced payment method display */}
+                  {effectivePaymentMethod ? (
+                    <View style={styles.paymentMethodContainer}>
+                      <View style={[
+                        styles.paymentMethodDisplay,
+                        effectivePaymentMethod.isDefault && styles.defaultPaymentMethodDisplay
+                      ]}>
+                        <View style={styles.paymentMethodLeft}>
                           <MaterialIcons
-                            name={getMethodIcon(method.type)}
+                            name={getMethodIcon(effectivePaymentMethod.type)}
                             size={24}
-                            color={selectedMethod === method.id ? "#34d399" : "#64748b"}
+                            color={effectivePaymentMethod.isDefault ? "#34d399" : "#64748b"}
                             style={styles.methodIcon}
                           />
                           <View style={styles.paymentMethodDetails}>
-                            <Text style={styles.paymentMethodName}>{getPaymentMethodDisplay(method)}</Text>
-                            {method.isDefault && (
-                              <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
+                            <Text style={styles.paymentMethodName}>
+                              {getPaymentMethodDisplay(effectivePaymentMethod)}
+                            </Text>
+                            {effectivePaymentMethod.isDefault && (
+                              <Text style={styles.defaultMethodNote}>
+                                Your default payment method will be used
+                              </Text>
                             )}
                           </View>
                         </View>
-                        {selectedMethod === method.id && (
+                        {effectivePaymentMethod.isDefault && (
                           <MaterialIcons name="check-circle" size={20} color="#34d399" />
                         )}
+                      </View>
+                      
+                      {/* Payment method options */}
+                      {paymentMethods.length > 1 && (
+                        <TouchableOpacity
+                          style={styles.changePaymentMethod}
+                          onPress={() => setShowPaymentOptions(!showPaymentOptions)}
+                        >
+                          <Text style={styles.changePaymentMethodText}>
+                            Change payment method
+                          </Text>
+                          <MaterialIcons
+                            name={showPaymentOptions ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                            size={20}
+                            color="#34d399"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.noPaymentMethodsContainer}>
+                      <Text style={styles.noPaymentMethodsText}>
+                        No default payment method found
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.addMethodButton}
+                        onPress={onAddPaymentMethod}
+                      >
+                        <Text style={styles.addMethodButtonText}>Add Payment Method</Text>
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                )
+                    </View>
+                  )}
+
+                  {/* Payment options dropdown */}
+                  {showPaymentOptions && paymentMethods.length > 1 && (
+                    <View style={styles.paymentOptionsContainer}>
+                      {paymentMethods.map(method => (
+                        <TouchableOpacity
+                          key={method.id}
+                          style={[
+                            styles.paymentMethodOption,
+                            selectedMethod === method.id ? styles.selectedPaymentMethod : styles.unselectedPaymentMethod
+                          ]}
+                          onPress={() => {
+                            setSelectedMethod(method.id);
+                            setShowPaymentOptions(false);
+                          }}
+                        >
+                          <View style={styles.paymentMethodInfo}>
+                            <MaterialIcons
+                              name={getMethodIcon(method.type)}
+                              size={24}
+                              color={selectedMethod === method.id ? "#34d399" : "#64748b"}
+                              style={styles.methodIcon}
+                            />
+                            <View style={styles.paymentMethodDetails}>
+                              <Text style={[
+                                styles.paymentMethodName,
+                                method.isDefault && styles.defaultPaymentMethodName
+                              ]}>
+                                {getPaymentMethodDisplay(method)}
+                              </Text>
+                              {method.isDefault && (
+                                <Text style={styles.paymentMethodDefaultLabel}>Default</Text>
+                              )}
+                            </View>
+                          </View>
+                          {selectedMethod === method.id && (
+                            <MaterialIcons name="check-circle" size={20} color="#34d399" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
               )}
             </View>
           )}
@@ -349,17 +510,24 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
             <MaterialIcons name="info" size={22} color="#34d399" style={styles.infoIcon} />
             <Text style={styles.infoText}>
               {bundleDetails.type === 'marketplace_onetime'
-                ? "Your payment will only be processed after all roommates have agreed to their pledges."
+                ? "You'll give consent to be charged when all roommates accept. No payment will be taken until everyone agrees."
                 : effectivePaymentAmount > 0
-                  ? "By confirming, you agree to both your upfront pledge and monthly expense responsibility."
-                  : "By confirming, you're claiming responsibility for your portion of this recurring expense."
+                  ? "By accepting, you consent to be charged when all roommates accept. You'll also claim responsibility for the monthly expense."
+                  : "By accepting, you're claiming responsibility for your portion of this recurring expense."
               }
             </Text>
           </View>
 
+          {/* Bundle Status Overview */}
+          <BundleStatusOverview 
+            tasks={tasks}
+            bundleType={bundleDetails?.type}
+            onPress={() => {}}
+          />
+
           {/* Participants List */}
           <View style={styles.participantsCard}>
-            <Text style={styles.participantsTitle}>Roommate Status</Text>
+            <Text style={styles.participantsTitle}>Individual Status</Text>
             
             {tasks.map(task => (
               <View 
@@ -372,9 +540,9 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                   </View>
                   <Text style={styles.participantName}>{task.user?.username || "Unknown"}</Text>
                 </View>
-                <View style={[styles.participantStatusBadge, { backgroundColor: getStatusColor(task.response) + '20' }]}>
-                  <Text style={[styles.participantStatusText, { color: getStatusColor(task.response) }]}>
-                    {task.response === 'pending' ? 'PENDING' : task.response === 'accepted' ? 'ACCEPTED' : 'REJECTED'}
+                <View style={[styles.participantStatusBadge, { backgroundColor: getStatusColor(task.response, task.paymentStatus) + '20' }]}>
+                  <Text style={[styles.participantStatusText, { color: getStatusColor(task.response, task.paymentStatus) }]}>
+                    {getStatusDisplayText(task.response, task.paymentStatus)}
                   </Text>
                 </View>
               </View>
@@ -386,11 +554,13 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
         <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: "#e2e8f0" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <Text style={{ fontSize: 16 }}>
-              {isRecurring && effectivePaymentAmount > 0 
-                ? "Upfront Payment" 
-                : isRecurring 
-                  ? "Monthly Ownership" 
-                  : "Payment Amount"}
+              {bundleDetails?.type === 'marketplace_onetime'
+                ? "Consent Amount"
+                : isRecurring && effectivePaymentAmount > 0 
+                  ? "Upfront Consent" 
+                  : isRecurring 
+                    ? "Monthly Ownership" 
+                    : "Payment Amount"}
             </Text>
             {isVariableRecurring && effectiveMonthlyAmount === 0 ? (
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>Variable</Text>
@@ -449,7 +619,11 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
                 <>
                   <MaterialIcons name="check-circle" size={20} color="white" style={{ marginRight: 8 }} />
                   <Text style={{ fontWeight: "bold", color: "white" }}>
-                    {effectivePaymentAmount > 0 ? "Pledge Payment" : "Accept Ownership"}
+                    {bundleDetails?.type === 'marketplace_onetime' 
+                      ? "Accept & Consent to Pay" 
+                      : effectivePaymentAmount > 0 
+                        ? "Accept & Consent to Pay" 
+                        : "Accept Ownership"}
                   </Text>
                 </>
               )}
@@ -895,6 +1069,60 @@ const styles = StyleSheet.create({
   errorButtonText: {
     color: "#dc2626",
     fontWeight: "bold",
+  },
+  // New styles for enhanced payment method display
+  paymentMethodContainer: {
+    marginBottom: 16,
+  },
+  paymentMethodDisplay: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
+    backgroundColor: "#f0fdf4",
+  },
+  defaultPaymentMethodDisplay: {
+    borderColor: "#34d399",
+    borderWidth: 2,
+    borderRadius: 8,
+  },
+  paymentMethodLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  changePaymentMethod: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  changePaymentMethodText: {
+    color: "#34d399",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  paymentOptionsContainer: {
+    marginTop: 8,
+    backgroundColor: "white",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  defaultMethodNote: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 4,
+  },
+  defaultPaymentMethodName: {
+    fontWeight: "600",
+    color: "#34d399",
   },
 });
 

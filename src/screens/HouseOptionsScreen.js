@@ -62,22 +62,22 @@ const HouseOptionsScreen = ({ navigation }) => {
               style={styles.optionGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.optionContent}>
+          >
+            <View style={styles.optionContent}>
                 <View style={styles.optionIconContainer}>
                   <MaterialIcons name="add-home" size={32} color="#ffffff" />
-                </View>
+              </View>
                 
                 <View style={styles.optionTextContainer}>
-                  <Text style={[
-                    styles.optionTitle,
-                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                <Text style={[
+                  styles.optionTitle,
+                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
                   ]}>
                     Create New House
                   </Text>
-                  <Text style={[
+                <Text style={[
                     styles.optionDescription,
-                    fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
                   ]}>
                     Start fresh and invite your roommates to join
                   </Text>
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  
+
   // Options Container
   optionsContainer: {
     gap: 16,

@@ -48,7 +48,7 @@ const FinancialSummaryCard = ({
           ]}>
             $
           </Text>
-          <Text style={styles.amount}>{balance.toFixed(2)}</Text>
+          <Text style={styles.amount}>{(Number(balance) || 0).toFixed(2)}</Text>
         </View>
       </View>
       

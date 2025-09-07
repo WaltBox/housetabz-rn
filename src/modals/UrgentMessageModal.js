@@ -25,6 +25,7 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
   const [expandedUsers, setExpandedUsers] = useState({});
   const [reminderMessages, setReminderMessages] = useState({});
   const [sendingReminders, setSendingReminders] = useState({});
+  const [userCooldowns, setUserCooldowns] = useState({});
   
   const [fontsLoaded] = useFonts({
     'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
@@ -49,6 +50,43 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
   
   const metadata = getMetadata();
   
+  // ✅ NEW: Check cooldown status for all users when modal opens
+  useEffect(() => {
+    if (visible && message) {
+      const checkCooldowns = async () => {
+        const users = getAllUsers();
+        console.log('🔍 Checking cooldown status for users:', users.map(u => ({ id: u.id, name: u.name })));
+        
+        for (const user of users) {
+          try {
+            console.log(`🔍 Checking cooldown for user ${user.id} (${user.name})`);
+            const response = await apiClient.get(`/api/users/${user.id}/reminder-status`);
+            console.log(`🔍 Cooldown response for ${user.name}:`, response.data);
+            console.log(`🔍 Cooldown response structure:`, {
+              hasInCooldown: 'inCooldown' in response.data,
+              hasCooldownEnds: 'cooldownEnds' in response.data,
+              hasNextReminderTime: 'nextReminderTime' in response.data,
+              hasLastReminderSent: 'lastReminderSent' in response.data,
+              allKeys: Object.keys(response.data)
+            });
+            
+            setUserCooldowns(prev => ({
+              ...prev,
+              [user.id]: {
+                inCooldown: response.data.inCooldown,
+                cooldownEnds: response.data.cooldownEnds,
+              }
+            }));
+          } catch (error) {
+            console.error(`❌ Error checking cooldown for user ${user.id}:`, error);
+          }
+        }
+      };
+      
+      checkCooldowns();
+    }
+  }, [visible, message]);
+  
   const handleGoToPayments = () => {
     onClose();
     setTimeout(() => {
@@ -60,34 +98,25 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
   };
   
   const toggleUserExpansion = async (userId) => {
+    console.log(`🔍 toggleUserExpansion called for user ${userId}`);
+    console.log(`🔍 Current cooldown state for user ${userId}:`, userCooldowns[userId]);
+    
     if (expandedUsers[userId]) {
+      console.log(`🔍 Collapsing user ${userId}`);
       setExpandedUsers(prev => ({ ...prev, [userId]: false }));
     } else {
-      try {
-        const response = await apiClient.get(`/api/users/${userId}/reminder-status`);
-        
-        if (!response.data.inCooldown) {
-          setExpandedUsers(prev => ({ ...prev, [userId]: true }));
-          if (!reminderMessages[userId]) {
-            setReminderMessages(prev => ({ 
-              ...prev, 
-              [userId]: `Hey! Just a friendly reminder about your bill payment. Thanks! 😊` 
-            }));
-          }
-      } else {
-          const userName = getUserNameById(userId);
-        Alert.alert(
-            "Reminder sent today",
-            `You've already sent ${userName} a reminder today. Please wait 24 hours.`,
-            [{ text: "Got it" }]
-        );
-      }
-    } catch (error) {
-        Alert.alert("Error", "Couldn't check reminder status. Please try again.");
+      console.log(`✅ Expanding user ${userId}`);
+      // Always allow expansion - cooldown only affects the Send button
+      setExpandedUsers(prev => ({ ...prev, [userId]: true }));
+      if (!reminderMessages[userId]) {
+        setReminderMessages(prev => ({ 
+          ...prev, 
+          [userId]: `Hey! Just a friendly reminder about your bill payment. Thanks! 😊` 
+        }));
       }
     }
   };
-
+  
   const getUserNameById = (userId) => {
     if (metadata.roommates) {
       const roommate = metadata.roommates.find(r => r.id === userId);
@@ -113,9 +142,21 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
     }
     
     console.log('🚀 Starting reminder send process...');
-    console.log('📝 Message object:', JSON.stringify(message, null, 2));
+    console.log('📝 Raw message object:', message);
+    console.log('📝 Message object stringified:', JSON.stringify(message, null, 2));
     console.log('👤 Target userId:', userId);
     console.log('💬 Message text:', messageText);
+    
+    // SPECIFIC DEBUGGING FOR BILL ID ISSUE
+    console.log('🔍 BILL ID DEBUGGING:', {
+      'message': !!message,
+      'message.billId': message?.billId,
+      'message.billId type': typeof message?.billId,
+      'message.billId value': message?.billId,
+      'message.id': message?.id,
+      'message.chargeId': message?.chargeId,
+      'message keys': message ? Object.keys(message) : 'no message'
+    });
     
     // Verify the message structure
     console.log('🔍 Message structure analysis:', {
@@ -135,6 +176,8 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
       // NOTE: The urgent message has charge_id: 95 and billId: 27
       // We need billId: 27 for the reminder API (not charge_id: 95)
       const billId = message?.billId || 
+                    message?.bill?.id ||  // ✅ NEW: Check nested bill
+                    message?.bill?.billId ||  // ✅ NEW: Check nested bill
                     message?.metadata?.billId || 
                     message?.metadata?.bill_id ||
                     message?.relatedBillId ||
@@ -153,21 +196,13 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
                     (message?.metadata?.roommates && message.metadata.roommates.length > 0 && message.metadata.roommates[0].billId) ||
                     // Check if unpaidUser has bill reference
                     (message?.metadata?.unpaidUser && message.metadata.unpaidUser.billId) ||
-                    // AVOID: Don't use charge_id as billId - these are different!
-                    // message?.metadata?.chargeId || message?.metadata?.charge_id ||
-                    // DANGEROUS: Only use message.id as last resort and warn about it
-                    (() => {
-                      if (message?.id) {
-                        console.warn('⚠️ FALLBACK: Using message.id as billId - this is likely incorrect!');
-                        console.warn('⚠️ Message ID:', message.id, 'should NOT be used as billId');
-                        console.warn('⚠️ We need billId: 27, not charge_id: 95 or message.id');
-                        return message.id;
-                      }
-                      return null;
-                    })();
+                    // REMOVED DANGEROUS FALLBACK: Don't use message.id as billId!
+                    null;
       
       console.log('🔍 Searching for billId in message:', {
         'message.billId': message?.billId,
+        'message.bill.id': message?.bill?.id,  // ✅ NEW: Check nested bill
+        'message.bill.billId': message?.bill?.billId,  // ✅ NEW: Check nested bill
         'message.metadata.billId': message?.metadata?.billId,
         'message.id': message?.id,
         'message.relatedId': message?.relatedId,
@@ -233,23 +268,48 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
       
       if (!billId) {
         console.error('❌ No billId found in message object');
-        Alert.alert("Error", "Cannot send reminder - missing bill information");
+        console.error('🔍 Message structure for debugging:', {
+          messageKeys: Object.keys(message || {}),
+          metadataKeys: Object.keys(message?.metadata || {}),
+          hasMetadata: !!message?.metadata,
+          messageBillId: message?.billId,
+          metadataBillId: message?.metadata?.billId,
+          messageType: message?.type,
+          messageTitle: message?.title
+        });
+        
+        // Provide more helpful error message
+        Alert.alert(
+          "Cannot Send Reminder", 
+          "This message doesn't contain valid bill information. The reminder feature may not be available for this type of message.",
+          [{ text: "OK" }]
+        );
         return;
       }
       
-      // Ensure billId is a string or number (not undefined/null)
-      const cleanBillId = billId.toString();
+      // Validate that billId is a valid number
+      const billIdNum = parseInt(billId);
+      if (isNaN(billIdNum) || billIdNum <= 0) {
+        console.error('❌ Invalid billId format:', billId);
+        Alert.alert(
+          "Invalid Bill Information", 
+          "The bill ID is not in a valid format. Please contact support if this issue persists.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
       
+      // Use the validated integer billId
       const payload = {
         message: messageText.trim(),
-        billId: cleanBillId
+        billId: billIdNum
       };
       
       console.log('🔍 Pre-send validation:', {
         messageValid: !!messageText.trim(),
-        billIdValid: !!cleanBillId,
+        billIdValid: !!billIdNum,
         messageLength: messageText.trim().length,
-        billIdLength: cleanBillId.length
+        billIdLength: billIdNum.toString().length
       });
       
       console.log('📤 Sending API request to:', `/api/users/${userId}/send-reminder`);
@@ -274,6 +334,22 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
       const response = await apiClient.post(`/api/users/${userId}/send-reminder`, payload);
       
       console.log('✅ Reminder sent successfully:', response.data);
+      
+      // ✅ NEW: Refresh cooldown status from backend after sending
+      try {
+        const cooldownResponse = await apiClient.get(`/api/users/${userId}/reminder-status`);
+        console.log(`🔍 Updated cooldown status for user ${userId}:`, cooldownResponse.data);
+        setUserCooldowns(prev => ({
+          ...prev,
+          [userId]: {
+            inCooldown: cooldownResponse.data.inCooldown,
+            cooldownEnds: cooldownResponse.data.cooldownEnds,
+          }
+        }));
+      } catch (error) {
+        console.error('Error refreshing cooldown status:', error);
+      }
+      
       Alert.alert("✅ Sent!", `Reminder sent to ${getUserNameById(userId)}.`);
       setExpandedUsers(prev => ({ ...prev, [userId]: false }));
       
@@ -349,84 +425,104 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
     return getAllUsers().reduce((sum, user) => sum + parseFloat(user.amount || 0), 0);
   };
 
-  const renderUserCard = (user) => (
-    <View key={user.id} style={styles.userCard}>
-      <TouchableOpacity
-        style={styles.userHeader}
-        onPress={() => toggleUserExpansion(user.id)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.userInfo}>
-          <View style={styles.userIcon}>
-            <MaterialIcons name="person" size={18} color="#64748b" />
-          </View>
-          <View style={styles.userTextInfo}>
-            <Text style={[styles.userName, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-              {user.name}
-            </Text>
-            <Text style={[styles.userStatus, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
-              Unpaid
-            </Text>
-          </View>
-          <View style={styles.amountContainer}>
-            <Text style={[styles.userAmount, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
-              ${parseFloat(user.amount).toFixed(2)}
-              </Text>
-          </View>
-        </View>
-        <MaterialIcons 
-          name={expandedUsers[user.id] ? "expand-less" : "expand-more"} 
-          size={20} 
-          color="#64748b" 
-        />
-      </TouchableOpacity>
-      
-      {expandedUsers[user.id] && (
-        <View style={styles.reminderSection}>
-          <View style={styles.reminderHeader}>
-            <MaterialIcons name="edit" size={16} color="#34d399" />
-            <Text style={[styles.reminderLabel, fontsLoaded && { fontFamily: 'Poppins-Medium' }]}>
-              Message to {user.name}
-            </Text>
-          </View>
-                <TextInput
-            style={[styles.reminderInput, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}
-                  multiline
-                  maxLength={MAX_MESSAGE_LENGTH}
-            value={reminderMessages[user.id] || ''}
-            onChangeText={(text) => updateReminderMessage(user.id, text)}
-            placeholder="Write your message..."
-            placeholderTextColor="#9ca3af"
-          />
-          <View style={styles.reminderFooter}>
-            <Text style={[styles.characterCount, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
-              {(reminderMessages[user.id] || '').length}/{MAX_MESSAGE_LENGTH}
-                </Text>
-                <TouchableOpacity 
-                  style={[
-                    styles.sendButton,
-                (!reminderMessages[user.id]?.trim() || sendingReminders[user.id]) && styles.sendButtonDisabled
-              ]}
-              onPress={() => handleSendReminder(user.id)}
-              disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id]}
-              activeOpacity={0.8}
-            >
-              {sendingReminders[user.id] ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <>
-                  <MaterialIcons name="send" size={14} color="#ffffff" />
-                  <Text style={[styles.sendButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                    Send
-                  </Text>
-                </>
-              )}
-                </TouchableOpacity>
-              </View>
+  const renderUserCard = (user) => {
+    const cooldownInfo = userCooldowns[user.id];
+    const inCooldown = cooldownInfo?.inCooldown || false;
+    
+    console.log(`🎨 Rendering user card for ${user.name} (${user.id}):`, {
+      cooldownInfo,
+      inCooldown,
+      hasExpandedState: expandedUsers[user.id],
+      sendButtonDisabled: inCooldown,
+      cooldownEnds: cooldownInfo?.cooldownEnds
+    });
+    
+    return (
+      <View key={user.id} style={styles.userCard}>
+        <TouchableOpacity
+          style={styles.userHeader}
+          onPress={() => toggleUserExpansion(user.id)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.userInfo}>
+            <View style={styles.userIcon}>
+              <MaterialIcons name="person" size={18} color="#64748b" />
             </View>
-      )}
-    </View>
+            <View style={styles.userTextInfo}>
+              <Text style={[styles.userName, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                {user.name}
+              </Text>
+              <Text style={[styles.userStatus, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                {inCooldown ? "Reminder sent today" : "Unpaid"}
+              </Text>
+            </View>
+            <View style={styles.amountContainer}>
+              <Text style={[styles.userAmount, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+                ${parseFloat(user.amount).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+          <MaterialIcons 
+            name={expandedUsers[user.id] ? "expand-less" : "expand-more"} 
+            size={20} 
+            color="#64748b" 
+          />
+        </TouchableOpacity>
+        
+        {expandedUsers[user.id] && (
+          <View style={styles.reminderSection}>
+            <View style={styles.reminderHeader}>
+              <MaterialIcons name="edit" size={16} color="#34d399" />
+              <Text style={[styles.reminderLabel, fontsLoaded && { fontFamily: 'Poppins-Medium' }]}>
+                Message to {user.name}
+              </Text>
+            </View>
+                    <TextInput
+              style={[styles.reminderInput, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}
+                    multiline
+                    maxLength={MAX_MESSAGE_LENGTH}
+              value={reminderMessages[user.id] || ''}
+              onChangeText={(text) => updateReminderMessage(user.id, text)}
+              placeholder="Write your message..."
+              placeholderTextColor="#9ca3af"
+                    />
+            <View style={styles.reminderFooter}>
+              <Text style={[styles.characterCount, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                {(reminderMessages[user.id] || '').length}/{MAX_MESSAGE_LENGTH}
+                    </Text>
+                    <TouchableOpacity 
+                      style={[
+                        styles.sendButton,
+                        (!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown) && styles.sendButtonDisabled
+                      ]}
+                  onPress={() => handleSendReminder(user.id)}
+                  disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown}
+                  activeOpacity={0.8}
+                    >
+                  {sendingReminders[user.id] ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : inCooldown ? (
+                    <>
+                      <MaterialIcons name="schedule" size={14} color="#ffffff" />
+                      <Text style={[styles.sendButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                        Sent Today
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons name="send" size={14} color="#ffffff" />
+                      <Text style={[styles.sendButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                        Send
+                      </Text>
+                    </>
+                  )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+        )}
+      </View>
     );
+  };
   
   if (!message) {
     return (

@@ -14,18 +14,34 @@ const CompanyCardComponent = ({ name, logoUrl, coverUrl, onPress, cardWidth }) =
     >
       {/* Cover Image */}
       <View style={[styles.coverContainer, { width: cardWidth, height: coverHeight }]}>
-        <Image 
-          source={{ uri: coverUrl }} 
-          style={styles.coverImage} 
-          resizeMode="cover" 
-        />
+        {coverUrl ? (
+          <Image 
+            source={{ uri: coverUrl }} 
+            style={styles.coverImage} 
+            resizeMode="cover"
+            onError={(error) => console.log('Cover image failed to load:', coverUrl, error)}
+          />
+        ) : (
+          <View style={[styles.coverImage, styles.placeholderCover]}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
+        )}
         {/* Logo overlaid at the bottom left of the cover */}
         <View style={styles.logoOverlay}>
-          <Image 
-            source={{ uri: logoUrl }} 
-            style={styles.logo} 
-            resizeMode="contain" 
-          />
+          {logoUrl ? (
+            <Image 
+              source={{ uri: logoUrl }} 
+              style={styles.logo} 
+              resizeMode="contain"
+              onError={(error) => console.log('Logo failed to load:', logoUrl, error)}
+            />
+          ) : (
+            <View style={[styles.logo, styles.placeholderLogo]}>
+              <Text style={styles.logoPlaceholderText}>
+                {name ? name.substring(0, 1).toUpperCase() : '?'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -91,6 +107,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
     paddingHorizontal: 4,
+  },
+  placeholderCover: {
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  placeholderLogo: {
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoPlaceholderText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
   },
 });
 

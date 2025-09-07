@@ -82,7 +82,27 @@ const PaymentFlow = ({ visible, onClose, paymentData, onSuccess, onError }) => {
   const handleConfirmSuccess = (data) => {
     console.log('PaymentFlow: Confirmation successful:', data);
     setRequestData(data);
-    goToStep('success'); // Go to success screen, don't complete yet
+    
+    // ✅ NEW: Check if creator gave consent and show consent confirmation
+    if (data.creatorConsent && data.creatorConsent.paymentAuthorized) {
+      console.log('🎯 Creator consent detected, showing consent confirmation');
+      
+      // Call onSuccess immediately with consent data for the parent to show consent modal
+      if (onSuccess) {
+        onSuccess({ 
+          status: 'consent_given', 
+          data: data,
+          consentData: {
+            paymentAuthorized: true,
+            paymentIntentId: data.creatorConsent.paymentIntentId,
+            message: data.creatorConsent.message
+          }
+        });
+      }
+      return; // Don't proceed to success screen, let parent handle consent flow
+    }
+    
+    goToStep('success'); // Go to success screen for non-consent flows
   };
   
   const handleDone = () => {

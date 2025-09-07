@@ -1,7 +1,7 @@
 import { 
-  getHouseServicesData, 
+  getAppUserInfo,
+  getHouseServicesData, // DEPRECATED - keeping for fallback
   getHouseTabsData, 
-  getPartnersData,
   getHouseAdvanceSummaryData,
   getCacheMetrics,
   invalidateCache
@@ -24,32 +24,23 @@ let prefetchStatus = {
   endTime: null,
 };
 
-// Screen prefetch queue (in order of priority)
+// ✅ NEW: Simplified prefetch queue - HouseServices now included in unified endpoint
 const PREFETCH_QUEUE = [
-  {
-    name: 'HouseServices',
-    fetchFunction: getHouseServicesData,
-    requiresHouseId: true,
-    priority: 1,
-  },
+  // ✅ REMOVED: HouseServices - now included in unified /api/app/userinfo endpoint
   {
     name: 'MyHouse', 
     fetchFunction: getHouseTabsData,
     requiresHouseId: true,
-    priority: 2,
+    priority: 1,
   },
   // {
   //   name: 'HouseAdvanceSummary',
   //   fetchFunction: getHouseAdvanceSummaryData,
   //   requiresHouseId: true,
-  //   priority: 3,
+  //   priority: 2,
   // },
-  {
-    name: 'Partners',
-    fetchFunction: getPartnersData,
-    requiresHouseId: false,
-    priority: 3,
-  },
+  // ✅ REMOVED: Partners - now included in unified endpoint
+  // ✅ REMOVED: HouseServices - now included in unified endpoint
 ];
 
 /**

@@ -134,7 +134,7 @@ const HouseTabzScreen = () => {
         isPrefetched,
         loadTime: isPrefetched ? 'instant' : 'fetched'
       });
-
+      
       // Set house data
       if (data.house) {
         setHouse(data.house);
@@ -146,11 +146,11 @@ const HouseTabzScreen = () => {
           finance: data.house.finance
         });
       }
-
+      
       // Store the bills data for modals (if available)
       setUnpaidBills(data.unpaidBills || []);
       setPaidBills(data.paidBills || []);
-
+      
       // 🚨 DEBUG: Check bill structure from House tabs endpoint
       console.log("🚨 MYHOUSE BILLS STRUCTURE DEBUG:", {
         billsCount: (data.unpaidBills || []).length,

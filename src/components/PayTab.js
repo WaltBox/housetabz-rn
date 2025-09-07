@@ -3,12 +3,13 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator
 import { MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import PaymentConfirmationModal from '../modals/PaymentConfirmationModal';
-import PaymentMethodsSettings from '../modals/PaymentMethodsSettings';
-import apiClient from '../config/api';
+import apiClient, { invalidateCache, clearUserCache, getDashboardData } from '../config/api';
 import { useFonts } from 'expo-font';
+import { useAuth } from '../context/AuthContext';
 
 const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   // Load fonts
   const [fontsLoaded] = useFonts({
     'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
@@ -28,31 +29,23 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [localUnpaidCharges, setLocalUnpaidCharges] = useState(unpaidCharges);
   
-  // Add state for payment methods
+  // Simplified state - no payment method management needed here
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   
-  // Add state for payment methods modal
-  const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
-  
-  // Fetch payment methods
+  // Fetch payment methods just for validation
   useEffect(() => {
     const fetchPaymentMethods = async () => {
       try {
         const response = await apiClient.get('/api/payment-methods');
-        if (response.data.paymentMethods && response.data.paymentMethods.length > 0) {
-          setPaymentMethods(response.data.paymentMethods);
-          // Set default or first payment method
-          const defaultMethod = response.data.paymentMethods.find(m => m.isDefault) || response.data.paymentMethods[0];
-          setSelectedPaymentMethod(defaultMethod);
-        }
+        setPaymentMethods(response.data.paymentMethods || []);
       } catch (error) {
         console.error('Error fetching payment methods:', error);
+        setPaymentMethods([]);
       }
     };
     
     fetchPaymentMethods();
-  }, [isPaymentMethodsVisible]); // Re-fetch when modal closes
+  }, []);
   
   // Update local charges when props change
   useEffect(() => {
@@ -109,39 +102,14 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
     });
   };
 
-  // Handle opening payment methods modal
-  const handleOpenPaymentMethodsModal = () => {
-    setIsPaymentMethodsVisible(true);
-  };
-
   const handlePayAll = () => {
-    if (!selectedPaymentMethod) {
-      Alert.alert(
-        "Missing Payment Method", 
-        "Please add a payment method to continue.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Add Payment Method", onPress: handleOpenPaymentMethodsModal }
-        ]
-      );
-      return;
-    }
+    // Payment methods are managed in the confirmation modal
     setSelectedCharges(localUnpaidCharges);
     setShowConfirmation(true);
   };
 
   const handlePaySelected = () => {
-    if (!selectedPaymentMethod) {
-      Alert.alert(
-        "Missing Payment Method", 
-        "Please add a payment method to continue.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Add Payment Method", onPress: handleOpenPaymentMethodsModal }
-        ]
-      );
-      return;
-    }
+    // Payment methods are managed in the confirmation modal
     if (selectedCharges.length > 0) {
       setShowConfirmation(true);
     }
@@ -149,9 +117,11 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
 
   // Centralized API call
   const handleConfirmPayment = async () => {
-    if (!selectedPaymentMethod) {
+    // With new backend logic, payment methods are now optional
+    // The backend will use the user's default payment method if none is specified
+    if (paymentMethods.length === 0) {
       Alert.alert(
-        "Missing Payment Method", 
+        "No Payment Methods", 
         "Please add a payment method to continue.",
         [
           { text: "Cancel", style: "cancel" },
@@ -165,10 +135,13 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       setIsProcessingPayment(true);
       const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
       
+      // Build payment request - paymentMethodId is now optional
       const paymentRequest = {
         chargeIds: selectedCharges.map(charge => charge.id),
-        paymentMethodId: selectedPaymentMethod.id
       };
+      
+      // Payment method management is now handled in the PaymentConfirmationModal
+      // Backend will use the user's default payment method
       
       console.log('Sending payment request with:', { ...paymentRequest, idempotencyKey });
       
@@ -189,8 +162,15 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
         onChargesUpdated(paidChargeIds);
       }
       
-      // Invalidate the dashboard query to trigger a refresh when the user returns to the dashboard
+      // Invalidate both React Query cache and custom cache system
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Clear custom cache to ensure fresh data on next load
+      if (user?.id) {
+        clearUserCache(user.id);
+      }
+      invalidateCache('dashboard');
+      invalidateCache('house');
       
       Alert.alert(
         "Payment Successful",
@@ -203,7 +183,7 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       
       let errorMessage = 'An error occurred while processing your payment.';
       
-      // Log detailed error information
+      // Enhanced error handling for new backend error messages
       if (error.response) {
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
@@ -214,6 +194,16 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
           errorMessage = error.response.data.details;
         } else if (error.response.data.message) {
           errorMessage = error.response.data.message;
+        }
+        
+        // Handle specific new backend error messages
+        if (errorMessage.includes('No payment method provided and no default payment method found')) {
+          Alert.alert(
+            "No Default Payment Method",
+            "Please set a default payment method to continue. You can manage payment methods from the confirmation modal.",
+            [{ text: "OK", style: "cancel" }]
+          );
+          return;
         }
       }
       
@@ -341,28 +331,16 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
             )}
           </View>
           
-          <TouchableOpacity 
-            style={styles.addPaymentMethodBtn}
-            onPress={handleOpenPaymentMethodsModal}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="credit-card" size={18} color="#34d399" />
-            <Text style={[
-              styles.addPaymentMethodText,
-              fontsLoaded && { fontFamily: 'Poppins-Medium' }
-            ]}>
-              Add Payment Method
-            </Text>
-          </TouchableOpacity>
+
         </View>
         
         <TouchableOpacity 
           style={[
             styles.paymentButton,
-            (localUnpaidCharges.length === 0 || isProcessingPayment || !selectedPaymentMethod) && styles.disabledButton
+            (localUnpaidCharges.length === 0 || isProcessingPayment) && styles.disabledButton
           ]}
           onPress={localUnpaidCharges.length === 0 ? null : (selectedCharges.length ? handlePaySelected : handlePayAll)}
-          disabled={localUnpaidCharges.length === 0 || isProcessingPayment || !selectedPaymentMethod}
+          disabled={localUnpaidCharges.length === 0 || isProcessingPayment}
         >
           {isProcessingPayment ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -402,12 +380,6 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
           </View>
         )}
       </ScrollView>
-
-      {/* Payment Methods Modal */}
-      <PaymentMethodsSettings 
-        visible={isPaymentMethodsVisible}
-        onClose={() => setIsPaymentMethodsVisible(false)}
-      />
 
       <PaymentConfirmationModal
         visible={showConfirmation}
@@ -455,21 +427,6 @@ const styles = StyleSheet.create({
   },
   selectedAmount: { 
     color: '#34d399' 
-  },
-  addPaymentMethodBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
-  },
-  addPaymentMethodText: {
-    color: '#34d399',
-    fontSize: 13,
-    fontWeight: '500',
-    marginLeft: 6,
   },
   paymentButton: {
     backgroundColor: '#34d399',

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 import PaymentFlow from '../modals/PaymentFlow';
+import ConsentConfirmationModal from './ConsentConfirmationModal';
 import { LinearGradient } from "expo-linear-gradient";
+import { getPartnerDetails } from '../config/api';
 
 const { height } = Dimensions.get("window");
 const MODAL_HEIGHT = height * 0.94;
@@ -24,6 +26,45 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
   // Add these new state variables
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
+  
+  // Consent modal state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentData, setConsentData] = useState(null);
+  
+  // State for detailed partner data
+  const [detailedPartner, setDetailedPartner] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [detailsError, setDetailsError] = useState(null);
+  
+  // Fetch detailed partner information when component opens
+  useEffect(() => {
+    const fetchPartnerDetails = async () => {
+      if (!visible || !partner?.id) return;
+      
+      setLoadingDetails(true);
+      setDetailsError(null);
+      
+      try {
+        console.log('🔍 Fetching details for partner:', partner.id, partner.name);
+        const response = await getPartnerDetails(partner.id);
+        
+        if (response?.partner) {
+          setDetailedPartner(response.partner);
+          console.log('✅ Partner details loaded:', response.partner.name);
+        } else {
+          console.warn('⚠️ No partner data in response:', response);
+          setDetailsError('Partner details not found');
+        }
+      } catch (error) {
+        console.error('❌ Error loading partner details:', error);
+        setDetailsError('Failed to load partner details');
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    fetchPartnerDetails();
+  }, [visible, partner?.id]);
   
   const webviewRef = React.useRef(null);
   if (!visible || !partner) return null;
@@ -72,8 +113,8 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
   
   const constructShopUrl = () => {
     try {
-      // Extract partner data - handle both nested and direct formats
-      const partnerData = partner.partner || partner;
+      // Use detailed partner data if available, otherwise fallback to basic partner data
+      const partnerData = detailedPartner || partner.partner || partner;
       
       // Get the base URL from partner.link
       const baseUrl = partnerData.link;
@@ -103,101 +144,153 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
     }
   };
 
-  const renderMainContent = () => (
-    <>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero Image Section */}
-        <View style={styles.heroSection}>
-          <Image
-            source={{
-              uri: partner.company_cover || 'https://via.placeholder.com/400',
-              headers: { Pragma: 'no-cache' }
+  const renderMainContent = () => {
+    // Use detailed partner data if available, otherwise fallback to basic partner data
+    const displayPartner = detailedPartner || partner;
+    
+    // Show loading state while fetching details
+    if (loadingDetails) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#22c55e" />
+          <Text style={styles.loadingText}>Loading partner details...</Text>
+        </View>
+      );
+    }
+    
+    // Show error state if details failed to load
+    if (detailsError) {
+      return (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={48} color="#ef4444" />
+          <Text style={styles.errorTitle}>Failed to Load Details</Text>
+          <Text style={styles.errorText}>{detailsError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              // Retry fetching details
+              setDetailsError(null);
+              setLoadingDetails(true);
+              getPartnerDetails(partner.id)
+                .then(response => {
+                  if (response?.partner) {
+                    setDetailedPartner(response.partner);
+                  } else {
+                    setDetailsError('Partner details not found');
+                  }
+                })
+                .catch(error => {
+                  console.error('❌ Retry error:', error);
+                  setDetailsError('Failed to load partner details');
+                })
+                .finally(() => setLoadingDetails(false));
             }}
-            style={styles.coverImage}
-            onLoadStart={() => setImageLoading(true)}
-            onLoadEnd={() => setImageLoading(false)}
-          />
-          {imageLoading && (
-            <View style={styles.imageLoadingContainer}>
-              <ActivityIndicator size="large" color="#22c55e" />
-            </View>
-          )}
-          <LinearGradient
-            colors={['transparent', '#dff6f0']}
-            style={styles.imageGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Company Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.companyName}>{partner.name}</Text>
-          <View style={styles.ratingRow}>
-            <MaterialIcons name="star" size={16} color="#f59e0b" />
-            <Text style={styles.ratingText}>4.8</Text>
-            <Text style={styles.reviewCount}>(243 reviews)</Text>
+      );
+    }
+    
+    return (
+      <>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Image Section */}
+          <View style={styles.heroSection}>
+            <Image
+              source={{
+                uri: displayPartner.company_cover || displayPartner.marketplace_cover || 'https://via.placeholder.com/400',
+                headers: { Pragma: 'no-cache' }
+              }}
+              style={styles.coverImage}
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+            />
+            {imageLoading && (
+              <View style={styles.imageLoadingContainer}>
+                <ActivityIndicator size="large" color="#22c55e" />
+              </View>
+            )}
+            <LinearGradient
+              colors={['transparent', '#dff6f0']}
+              style={styles.imageGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
           </View>
-      
-        </View>
 
-        {/* Content Sections */}
-        <View style={styles.contentSection}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.sectionText}>
-            {partner.about || "No description available."}
+          {/* Company Info Card */}
+          <View style={styles.infoCard}>
+            <Text style={styles.companyName}>{displayPartner.name}</Text>
+            <View style={styles.ratingRow}>
+              <MaterialIcons name="star" size={16} color="#f59e0b" />
+              <Text style={styles.ratingText}>4.8</Text>
+              <Text style={styles.reviewCount}>(243 reviews)</Text>
+            </View>
+        
+          </View>
+
+          {/* Content Sections */}
+          <View style={styles.contentSection}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.sectionText}>
+              {displayPartner.about || "No description available."}
+            </Text>
+          </View>
+
+          <View style={styles.contentSection}>
+            <Text style={styles.sectionTitle}>How to Use</Text>
+            <Text style={styles.sectionText}>
+              {displayPartner.how_to || "No instructions available at the moment."}
+            </Text>
+          </View>
+
+          <View style={styles.contentSection}>
+            <Text style={styles.sectionTitle}>Important Information</Text>
+            <Text style={styles.sectionText}>
+              {displayPartner.important_information || "No additional information available."}
+            </Text>
+          </View>
+        </ScrollView>
+
+        {/* Action Button */}
+        <View style={styles.actionContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setShowBrowser(true)}
+          >
+            <MaterialIcons name="shopping-cart" size={20} color="white" />
+            <Text style={styles.actionButtonText}>
+              Shop {displayPartner.name}
+            </Text>
+          </TouchableOpacity>
+        
+        </View>
+      </>
+    );
+  };
+
+  const renderBrowser = () => {
+    const displayPartner = detailedPartner || partner;
+    
+    return (
+      <View style={styles.browserContainer}>
+        <View style={styles.browserHeader}>
+          <TouchableOpacity
+            style={styles.browserBackButton}
+            onPress={() => setShowBrowser(false)}
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#22c55e" />
+          </TouchableOpacity>
+          <Text style={styles.browserTitle} numberOfLines={1}>
+            {displayPartner.name}
           </Text>
         </View>
-
-        <View style={styles.contentSection}>
-          <Text style={styles.sectionTitle}>How to Use</Text>
-          <Text style={styles.sectionText}>
-            {partner.how_to || "No instructions available at the moment."}
-          </Text>
-        </View>
-
-        <View style={styles.contentSection}>
-          <Text style={styles.sectionTitle}>Important Information</Text>
-          <Text style={styles.sectionText}>
-            {partner.important_information || "No additional information available."}
-          </Text>
-        </View>
-      </ScrollView>
-
-      {/* Action Button */}
-      <View style={styles.actionContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setShowBrowser(true)}
-        >
-          <MaterialIcons name="shopping-cart" size={20} color="white" />
-          <Text style={styles.actionButtonText}>
-            Shop {partner.name}
-          </Text>
-        </TouchableOpacity>
-      
-      </View>
-    </>
-  );
-
-  const renderBrowser = () => (
-    <View style={styles.browserContainer}>
-      <View style={styles.browserHeader}>
-        <TouchableOpacity
-          style={styles.browserBackButton}
-          onPress={() => setShowBrowser(false)}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#22c55e" />
-        </TouchableOpacity>
-        <Text style={styles.browserTitle} numberOfLines={1}>
-          {partner.name}
-        </Text>
-      </View>
 
       <WebView
         ref={webviewRef}
@@ -233,7 +326,8 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
         )}
       />
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -276,10 +370,45 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
           }}
           paymentData={paymentData}
           onSuccess={(result) => {
-            // FIXED: Only handle final success, not intermediate steps
-            console.log('PaymentFlow: Final success received:', result);
+            console.log('PaymentFlow: Success received:', result);
             
-            // Handle different success types
+            // ✅ NEW: Handle consent flow
+            if (result.status === 'consent_given') {
+              console.log('🎯 Creator consent detected, showing consent modal');
+              
+              // Close payment modal and show consent confirmation
+              setShowPaymentModal(false);
+              setConsentData({
+                taskData: { 
+                  paymentAmount: paymentData?.amount,
+                  serviceRequestBundle: {
+                    stagedRequest: {
+                      serviceName: paymentData?.serviceName
+                    }
+                  }
+                },
+                paymentIntentId: result.consentData?.paymentIntentId,
+                message: result.consentData?.message
+              });
+              setShowConsentModal(true);
+              
+              // Send consent response back to WebView
+              if (webviewRef.current) {
+                webviewRef.current.injectJavaScript(`
+                  window.dispatchEvent(new MessageEvent('message', {
+                    data: JSON.stringify({
+                      type: 'housetabz_payment_response',
+                      status: 'consent_given',
+                      data: ${JSON.stringify(result.data)}
+                    })
+                  }));
+                  true;
+                `);
+              }
+              return;
+            }
+            
+            // Handle other success types (existing logic)
             let responseData = {};
             let responseStatus = 'success';
             
@@ -340,6 +469,18 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
           }}
         />
       )}
+      
+      {/* Consent Confirmation Modal */}
+      <ConsentConfirmationModal
+        visible={showConsentModal}
+        onClose={() => {
+          setShowConsentModal(false);
+          setConsentData(null);
+        }}
+        taskData={consentData?.taskData}
+        paymentIntentId={consentData?.paymentIntentId}
+        message={consentData?.message}
+      />
     </View>
   );
 };
@@ -541,6 +682,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'white',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ef4444',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#34d399',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

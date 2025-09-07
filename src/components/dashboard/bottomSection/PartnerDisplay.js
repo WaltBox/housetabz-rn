@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
   View, 
   Text, 
@@ -10,36 +10,12 @@ import {
   Image
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import apiClient from '../../../config/api';
 
 const { width } = Dimensions.get('window');
 const CARD_SIZE = width * 0.38; // Square cards
 const LOGO_SIZE = CARD_SIZE * 0.25; // Small circular logo
 
-const PartnerDisplay = ({ onPartnerPress, limit = 6 }) => {
-  const [partners, setPartners] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetchPartners();
-  }, []);
-
-  const fetchPartners = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data } = await apiClient.get('/api/partners');
-      // Only take the first 'limit' partners
-      setPartners(Array.isArray(data) ? data.slice(0, limit) : []);
-    } catch (err) {
-      setError('Unable to load service providers.');
-      console.error('Fetch error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+const PartnerDisplay = ({ partners = [], onPartnerPress, limit = 6, isLoading = false, error = null }) => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -52,9 +28,6 @@ const PartnerDisplay = ({ onPartnerPress, limit = 6 }) => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity onPress={fetchPartners} style={styles.retryButton}>
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -62,10 +35,16 @@ const PartnerDisplay = ({ onPartnerPress, limit = 6 }) => {
   if (partners.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No service providers available.</Text>
+        <MaterialIcons name="store" size={48} color="#94a3b8" />
+        <Text style={styles.emptyTitle}>Services Coming Soon</Text>
+        <Text style={styles.emptyText}>We're working on bringing you amazing service providers.</Text>
+        <Text style={styles.emptySubtext}>Check back soon for updates!</Text>
       </View>
     );
   }
+
+  // Only take the first 'limit' partners
+  const displayPartners = partners.slice(0, limit);
 
   return (
     <View style={styles.container}>
@@ -74,13 +53,13 @@ const PartnerDisplay = ({ onPartnerPress, limit = 6 }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {partners.map((partner, index) => (
-          <TouchableOpacity
-            key={partner.id}
-            style={styles.card}
-            onPress={() => onPartnerPress(partner)}
-            activeOpacity={0.9}
-          >
+        {displayPartners.map((partner, index) => (
+            <TouchableOpacity
+              key={partner.id}
+              style={styles.card}
+              onPress={() => onPartnerPress(partner)}
+              activeOpacity={0.9}
+            >
             {/* Cover image as background */}
             <View style={styles.coverContainer}>
               {partner.marketplace_cover ? (
@@ -254,10 +233,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
   },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
   emptyText: {
     color: '#64748b',
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptySubtext: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });
 

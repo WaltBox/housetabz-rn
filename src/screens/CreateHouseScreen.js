@@ -87,17 +87,17 @@ const CreateHouseScreen = ({ navigation }) => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
-        {/* Decorative background circles */}
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <View style={styles.circle3} />
-        <View style={styles.circle4} />
-        <View style={styles.circle5} />
-        <View style={styles.circle6} />
-        
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <View style={styles.container}>
+      {/* Decorative background circles */}
+      <View style={styles.circle1} />
+      <View style={styles.circle2} />
+      <View style={styles.circle3} />
+      <View style={styles.circle4} />
+      <View style={styles.circle5} />
+      <View style={styles.circle6} />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
@@ -105,7 +105,7 @@ const CreateHouseScreen = ({ navigation }) => {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-          >
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -219,10 +219,10 @@ const CreateHouseScreen = ({ navigation }) => {
               ]}>Create House</Text>
             )}
           </TouchableOpacity>
-          </View>
+        </View>
           </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
+      </KeyboardAvoidingView>
+    </View>
     </TouchableWithoutFeedback>
   );
 };

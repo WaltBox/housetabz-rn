@@ -69,15 +69,15 @@ const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
 
       {/* Expandable Unpaid Users Section */}
       {isExpanded && (
-        <Animated.View style={[
-          styles.unpaidUsersContainer,
-          {
+      <Animated.View style={[
+        styles.unpaidUsersContainer,
+        {
             opacity: animationValue,
             transform: [{
               scaleY: animationValue
             }]
-          }
-        ]}>
+        }
+      ]}>
           {unpaidCharges.length > 0 ? (
             unpaidCharges.map((charge, index) => {
               // Get username from multiple possible sources
@@ -128,8 +128,8 @@ const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
                 All roommates have paid
               </Text>
             </View>
-          )}
-        </Animated.View>
+        )}
+      </Animated.View>
       )}
     </>
   );
@@ -159,7 +159,21 @@ const CurrentHouseTab = ({ house, onClose, bills = [], isLoading = false }) => {
 
     // Calculate total unpaid from house data - use same logic as MyHouseScreen
     const houseBalance = house?.balance || house?.houseBalance || house?.finance?.balance || 0;
-    setTotalUnpaid(houseBalance);
+    
+    // ✅ FIX: Ensure totalUnpaid is always a number
+    const numericBalance = Number(houseBalance) || 0;
+    setTotalUnpaid(numericBalance);
+    
+    console.log('🏠 CurrentHouseTab received data:', {
+      houseBalance: houseBalance,
+      houseBalanceType: typeof houseBalance,
+      numericBalance: numericBalance,
+      houseName: house?.name,
+      billsCount: bills?.length || 0,
+      houseBalanceSource: houseBalance === house?.balance ? 'house.balance' : 
+                         houseBalance === house?.houseBalance ? 'house.houseBalance' : 
+                         houseBalance === house?.finance?.balance ? 'house.finance.balance' : 'fallback'
+    });
     
     // Initialize animation values for each bill
     let newAnimationValues = {};
@@ -248,18 +262,18 @@ const CurrentHouseTab = ({ house, onClose, bills = [], isLoading = false }) => {
           <View style={styles.amountHeader}>
             <View style={styles.amountRow}>
               <View style={styles.amountInfo}>
-                <Text style={[
+              <Text style={[
                   styles.amountLabel,
-                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
-                ]}>
-                  {houseName} Currently Owes
-                </Text>
-                <Text style={[
+                fontsLoaded && { fontFamily: 'Poppins-Regular' }
+              ]}>
+                {houseName} Currently Owes
+              </Text>
+            <Text style={[
                   styles.amountValue,
-                  fontsLoaded && { fontFamily: 'Poppins-Bold' }
-                ]}>
-                  ${totalUnpaid.toFixed(2)}
-                </Text>
+              fontsLoaded && { fontFamily: 'Poppins-Bold' }
+            ]}>
+              ${totalUnpaid.toFixed(2)}
+            </Text>
               </View>
               <View style={styles.houseIcon}>
                 <MaterialIcons name="home" size={20} color="#64748b" />
@@ -353,8 +367,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+        shadowColor: '#000', 
+        shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
@@ -375,15 +389,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   amountLabel: {
-    fontSize: 14,
-    color: '#64748b',
+    fontSize: 14, 
+    color: '#64748b', 
     fontWeight: '500',
     marginBottom: 4,
     letterSpacing: 0.3,
   },
   amountValue: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: 32, 
+    fontWeight: '700', 
     color: '#1e293b',
     fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System',
   },
@@ -416,7 +430,7 @@ const styles = StyleSheet.create({
   },
 
   billCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff', 
     borderRadius: 16,
     marginBottom: 8,
     borderWidth: 1,
@@ -424,7 +438,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#0f172a',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 1 }, 
         shadowOpacity: 0.05,
         shadowRadius: 2,
       },
@@ -442,17 +456,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 10,
   },
-  billName: {
-    fontSize: 16,
-    fontWeight: '600',
+  billName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
     color: '#1e293b',
     flex: 1,
     marginRight: 16,
     lineHeight: 22,
   },
-  billAmount: {
-    fontSize: 18,
-    fontWeight: '700',
+  billAmount: { 
+    fontSize: 18, 
+    fontWeight: '700', 
     color: '#1e293b',
   },
   billFooter: {
@@ -465,8 +479,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 8,
   },
-  dueDate: {
-    fontSize: 13,
+  dueDate: { 
+    fontSize: 13, 
     fontWeight: '500',
     color: '#64748b',
     letterSpacing: 0.2,
