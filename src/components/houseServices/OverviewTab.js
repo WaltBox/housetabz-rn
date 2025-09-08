@@ -45,6 +45,7 @@ const OverviewTab = ({
   // Use stable enhanced data if available, otherwise use current displayService
   const workingService = stableEnhancedData || displayService;
   
+  
   // Fetch house members if we don't have enhanced data
   useEffect(() => {
     const fetchHouseMembers = async () => {
@@ -130,32 +131,57 @@ const OverviewTab = ({
     let allHouseMembers = [];
 
     if (workingService?.calculatedData) {
-      // Use enhanced backend data
-  
+      // Use enhanced backend data from unified endpoint
       const calc = workingService.calculatedData;
       fundingRequired = calc.fundingRequired || 0;
-      funded = calc.funded || 0;
+      funded = calc.fundedAmount || calc.funded || 0;
       percentFunded = calc.percentFunded || 0;
       remaining = calc.remainingAmount || 0;
       
-      // Map enhanced data to display format
-      usersFunded = (calc.contributorDetails || []).map(contributor => ({
-        userId: contributor.userId,
-        username: contributor.username,
-        fundedAmount: contributor.amount,
-        fundedDate: contributor.timestamp || contributor.lastUpdated,
-        hasFunded: true
-      }));
-      
-      unfundedUsers = (calc.nonContributors || []).map(nonContributor => ({
-        userId: nonContributor.userId,
-        username: nonContributor.username,
-        expectedAmount: nonContributor.expectedAmount || 0,
-        hasFunded: false
-      }));
-      
-      // Combine all house members for total count
-      allHouseMembers = [...usersFunded, ...unfundedUsers];
+      // Use new userPaymentStatus data if available, otherwise fallback to old structure
+      if (calc.userPaymentStatus && calc.userPaymentStatus.length > 0) {
+        // NEW: Use comprehensive user payment status data
+        allHouseMembers = calc.userPaymentStatus.map(user => ({
+          userId: user.userId,
+          username: user.username,
+          paymentStatus: user.paymentStatus, // "paid", "unpaid", "no_charges"
+          amountPaid: user.amountPaid || 0,
+          amountOwed: user.amountOwed || 0,
+          totalObligation: user.totalObligation || 0,
+          hasFunded: user.paymentStatus === 'paid',
+          fundedAmount: user.amountPaid || 0,
+          fundedDate: user.lastPaymentDate || null
+        }));
+        
+      } else {
+        // FALLBACK: Use old contributorDetails structure
+        usersFunded = (calc.contributorDetails || []).map(contributor => ({
+          userId: contributor.userId,
+          username: contributor.username,
+          fundedAmount: contributor.amount,
+          fundedDate: contributor.timestamp || contributor.lastUpdated,
+          hasFunded: true,
+          paymentStatus: 'paid',
+          amountPaid: contributor.amount || 0,
+          amountOwed: 0,
+          totalObligation: contributor.amount || 0
+        }));
+        
+        unfundedUsers = (calc.nonContributors || []).map(nonContributor => ({
+          userId: nonContributor.userId,
+          username: nonContributor.username,
+          expectedAmount: nonContributor.expectedAmount || 0,
+          hasFunded: false,
+          paymentStatus: 'unpaid',
+          amountPaid: 0,
+          amountOwed: nonContributor.expectedAmount || 0,
+          totalObligation: nonContributor.expectedAmount || 0
+        }));
+        
+        // Combine all house members for total count
+        allHouseMembers = [...usersFunded, ...unfundedUsers];
+        
+      }
       
 
       
@@ -292,7 +318,7 @@ const OverviewTab = ({
         <View style={styles.fundingPercentageRow}>
           <Text style={styles.fundingPercentage}>{fundingData.percentFunded}%</Text>
           <Text style={styles.fundingAmount}>
-            {formatCurrency(fundingData.funded)} of {formatCurrency(fundingData.fundingRequired)}
+            {formatCurrency(fundingData.fundedAmount || fundingData.funded)} of {formatCurrency(fundingData.fundingRequired)}
           </Text>
         </View>
         
@@ -314,9 +340,12 @@ const OverviewTab = ({
         <>
           <Text style={styles.sectionHeader}>Funding Status</Text>
           <View style={styles.participantsCard}>
-            {/* Show all members with their status */}
+            {/* Show all members with their enhanced payment status */}
             {fundingData.allHouseMembers.map((member) => {
-              const isPaid = member.hasFunded;
+              const paymentStatus = member.paymentStatus || (member.hasFunded ? 'paid' : 'unpaid');
+              const isPaid = paymentStatus === 'paid';
+              const hasCharges = paymentStatus !== 'no_charges';
+              
               return (
                 <View key={`member-${member.userId}`} style={styles.participantRow}>
                   <View style={styles.participantInfo}>
@@ -327,9 +356,23 @@ const OverviewTab = ({
                     </View>
                     <View style={styles.participantDetails}>
                       <Text style={styles.participantName}>{member.username}</Text>
+                      
+                      {/* Enhanced payment details */}
+                      {hasCharges && (
+                        <Text style={styles.paymentDetails}>
+                          {isPaid ? (
+                            `Paid ${formatCurrency(member.amountPaid || member.fundedAmount)}`
+                          ) : (
+                            member.amountPaid > 0 ? 
+                            `Paid ${formatCurrency(member.amountPaid)} of ${formatCurrency(member.totalObligation)}` :
+                            `Owes ${formatCurrency(member.amountOwed || member.totalObligation)}`
+                          )}
+                        </Text>
+                      )}
+                      
                       {isPaid && member.fundedDate && (
                         <Text style={styles.fundedDate}>
-                          Paid {formatDate(new Date(member.fundedDate))}
+                          {formatDate(new Date(member.fundedDate))}
                         </Text>
                       )}
                     </View>
@@ -337,13 +380,17 @@ const OverviewTab = ({
                   <View style={styles.statusContainer}>
                     <View style={[
                       styles.statusPill,
-                      isPaid ? styles.paidPill : styles.unpaidPill
+                      isPaid ? styles.paidPill : 
+                      !hasCharges ? styles.noChargesPill : 
+                      styles.unpaidPill
                     ]}>
                       <Text style={[
                         styles.statusText,
-                        isPaid ? styles.paidText : styles.unpaidText
+                        isPaid ? styles.paidText : 
+                        !hasCharges ? styles.noChargesText : 
+                        styles.unpaidText
                       ]}>
-                        {isPaid ? 'Paid' : 'Unpaid'}
+                        {isPaid ? 'Paid' : !hasCharges ? 'No Charges' : 'Unpaid'}
                       </Text>
                     </View>
                   </View>
@@ -403,12 +450,21 @@ const OverviewTab = ({
       <Text style={styles.sectionHeader}>Bill History</Text>
       <View style={styles.participantsCard}>
         {allLedgers.length > 0 ? (
-          allLedgers.map((ledger, index) => (
+          allLedgers.map((ledger, index) => {
+            console.log('📊 Bill History Ledger Data:', {
+              id: ledger.id,
+              totalRequired: ledger.totalRequired,
+              fundingRequired: ledger.fundingRequired,
+              amount: ledger.amount,
+              createdAt: ledger.createdAt,
+              status: ledger.status
+            });
+            return (
             <View key={ledger.id || `ledger-${index}`} style={styles.billRow}>
               <View style={styles.billInfo}>
                 <Text style={styles.billDate}>{formatDate(ledger.createdAt)}</Text>
                 <View style={styles.billAmountRow}>
-                  <Text style={styles.billAmount}>{formatCurrency(ledger.fundingRequired)}</Text>
+                  <Text style={styles.billAmount}>{formatCurrency(ledger.totalRequired || ledger.fundingRequired || ledger.amount)}</Text>
                   
                   {ledger.metadata?.fundedUsers?.length > 0 && (
                     <Text style={styles.contributorCount}>
@@ -430,7 +486,8 @@ const OverviewTab = ({
                 </Text>
               </View>
             </View>
-          ))
+            );
+          })
         ) : (
           <View style={styles.emptyBillContainer}>
             <MaterialIcons name="receipt" size={40} color="#cbd5e1" />
@@ -605,6 +662,12 @@ const styles = StyleSheet.create({
   unpaidText: {
     color: '#f59e0b',
   },
+  noChargesPill: {
+    backgroundColor: '#e2e8f0',
+  },
+  noChargesText: {
+    color: '#64748b',
+  },
   participantInitial: {
     color: '#1e293b',
     fontWeight: '600',
@@ -620,6 +683,11 @@ const styles = StyleSheet.create({
   },
   fundedDate: {
     fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  paymentDetails: {
+    fontSize: 13,
     color: '#64748b',
     marginTop: 2,
   },

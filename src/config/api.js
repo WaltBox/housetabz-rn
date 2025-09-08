@@ -604,6 +604,9 @@ export const clearScreenCache = (screenName) => {
 
 // Clear cache for specific user
 export const clearUserCache = (userId) => {
+  // CRITICAL FIX: Clear NEW unified endpoint cache
+  cache.clearByPattern(`/api/app/userinfo/${userId}`);
+  // Also clear OLD dashboard endpoint cache (for backward compatibility)
   cache.clearByPattern(`/api/dashboard/user/${userId}`);
 };
 
@@ -715,6 +718,7 @@ export const invalidateCache = (type, id) => {
   switch (type) {
     case 'dashboard':
       cache.clearByPattern('/api/dashboard/user/');
+      cache.clearByPattern('/api/app/userinfo/');
       break;
     case 'houseService':
       cache.clearByPattern('/api/houseServices/house/');
@@ -747,4 +751,4 @@ export const API_ENDPOINTS = {
 
 // Export the pre-configured axios instance as default
 export default apiClient;
-// get r
+

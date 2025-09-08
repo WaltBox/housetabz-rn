@@ -48,6 +48,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.10",
     "react-native-webview": "13.6.4",
+    "socket.io-client": "^4.8.1",
     "victory-core": "^36.9.1",
     "victory-native": "^36.9.1"
   },

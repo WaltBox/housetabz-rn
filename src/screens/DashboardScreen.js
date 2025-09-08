@@ -26,6 +26,7 @@ import apiClient, {
   getPerformanceMetrics
 } from '../config/api';
 import { startBackgroundPrefetch, getPrefetchStatus } from '../services/PrefetchService';
+import FinancialWebSocket from '../services/FinancialWebSocket';
 
 
 import DashboardTopSection from '../components/dashboard/DashboardTopSection';
@@ -171,7 +172,7 @@ const AnimatedLoadingScreen = ({ visible, type = 'task' }) => {
 };
 
 const DashboardScreen = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigation = useNavigation();
 
   // ✅ NEW: Unified Dashboard Data State (replaces all individual states)
@@ -211,6 +212,10 @@ const DashboardScreen = () => {
   const [isLoading, setIsLoading] = useState(true); // Single loading state for unified endpoint
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ✅ NEW: Real-time WebSocket for Financial Updates
+  const [financialSocket, setFinancialSocket] = useState(null);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   
   // ✅ DEPRECATED: Progressive Loading States (no longer needed with unified endpoint)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -234,6 +239,78 @@ const DashboardScreen = () => {
 
   // Consent confirmation modal states
   const [isConsentModalVisible, setIsConsentModalVisible] = useState(false);
+
+  // ✅ NEW: Real-time WebSocket Event Handlers
+  const handleFinancialUpdate = (data) => {
+    console.log('💰 Processing financial update:', data);
+    
+    // Show immediate feedback
+    console.log(`💰 Balance updated: ${data.transactionType}`);
+    
+    // Clear cache and refresh dashboard data to get latest balances
+    setTimeout(() => {
+      // Clear all relevant caches before refreshing
+      clearUserCache(user.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      
+      loadDashboardData();
+    }, 500);
+  };
+
+  const handleHouseFinancialUpdate = (data) => {
+    console.log('🏠 Processing house financial update:', data);
+    
+    // Show immediate feedback
+    console.log('🏠 House balance updated');
+    
+    // Clear cache and refresh dashboard data to get latest house balance
+    setTimeout(() => {
+      // Clear all relevant caches before refreshing
+      clearUserCache(user.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      
+      loadDashboardData();
+    }, 500);
+  };
+
+  const handleBillUpdate = (data) => {
+    console.log('📄 Processing bill update:', data);
+    
+    // Clear cache and refresh dashboard data to get updated bills
+    setTimeout(() => {
+      // Clear all relevant caches before refreshing
+      clearUserCache(user.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      
+      loadDashboardData();
+    }, 500);
+  };
+
+  const handleChargeUpdate = (data) => {
+    console.log('💳 Processing charge update:', data);
+    
+    // Clear cache and refresh dashboard data to get updated charges
+    setTimeout(() => {
+      // Clear all relevant caches before refreshing
+      clearUserCache(user.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      
+      loadDashboardData();
+    }, 500);
+  };
+
+  const handleSocketConnectionChange = (connected) => {
+    console.log(`🔌 WebSocket connection: ${connected ? 'connected' : 'disconnected'}`);
+    setIsSocketConnected(connected);
+  };
 
   // ✅ NEW: Unified Dashboard Data Loading Function
   const loadDashboardData = async () => {
@@ -661,6 +738,50 @@ const DashboardScreen = () => {
       loadDashboardData(); 
     }
   }, [user?.id]);
+
+  // ✅ NEW: WebSocket Initialization for Real-time Updates
+  useEffect(() => {
+    // WebSocket enabled - testing connection to api.housetabz.com
+    const WEBSOCKET_ENABLED = true;
+    
+    if (!WEBSOCKET_ENABLED) {
+      console.log('📡 WebSocket disabled - waiting for backend server to be ready');
+      return;
+    }
+    
+    if (user?.id && token) {
+      console.log('🚀 Initializing financial WebSocket...');
+      
+      if (!token) {
+        console.warn('⚠️ No auth token found for WebSocket connection');
+        return;
+      }
+
+      // Create and configure WebSocket
+      const socket = new FinancialWebSocket(token);
+      
+      // Set event handlers
+      socket.setFinancialUpdateHandler(handleFinancialUpdate);
+      socket.setHouseFinancialUpdateHandler(handleHouseFinancialUpdate);
+      socket.setBillUpdateHandler(handleBillUpdate);
+      socket.setChargeUpdateHandler(handleChargeUpdate);
+      socket.setConnectionChangeHandler(handleSocketConnectionChange);
+      
+      // Connect
+      socket.connect();
+      
+      // Store socket reference
+      setFinancialSocket(socket);
+      
+      // Cleanup on unmount
+      return () => {
+        console.log('🔌 Cleaning up financial WebSocket...');
+        socket.disconnect();
+        setFinancialSocket(null);
+        setIsSocketConnected(false);
+      };
+    }
+  }, [user?.id, token]);
 
   // Handle message press
   const handleMessagePress = async (message) => {

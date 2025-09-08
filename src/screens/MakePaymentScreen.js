@@ -13,8 +13,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import PayTab from '../components/PayTab';
 import HistoryTab from '../components/HistoryTab';
-import apiClient from '../config/api';
+import apiClient, { clearUserCache, invalidateCache } from '../config/api';
 import { useFonts } from 'expo-font';
+import FinancialWebSocket from '../services/FinancialWebSocket';
 
 // Import the skeleton component
 import BillingSkeleton from '../components/skeletons/BillingSkeleton';
@@ -25,13 +26,16 @@ const TABS = {
 };
 
 const BillingScreen = () => {
-  const { user: authUser } = useAuth();
+  const { user: authUser, token } = useAuth();
   const [activeTab, setActiveTab] = useState(TABS.PAY);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [charges, setCharges] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
+  
+  // WebSocket state for real-time charge updates
+  const [financialSocket, setFinancialSocket] = useState(null);
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -142,6 +146,51 @@ const BillingScreen = () => {
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
   };
+
+  // WebSocket event handlers for real-time charge updates
+  const handleFinancialUpdate = useCallback((data) => {
+    console.log('💰 Pay screen received financial update:', data);
+    
+    // Clear cache and refresh charges when financial transactions occur
+    clearUserCache(authUser.id);
+    invalidateCache('dashboard');
+    invalidateCache('house');
+    invalidateCache('user');
+    
+    setRefreshTrigger(prev => prev + 1);
+  }, [authUser?.id]);
+
+  const handleChargeUpdate = useCallback((data) => {
+    console.log('💳 Pay screen received charge update:', data);
+    
+    // Clear cache and refresh charges when charges are updated
+    clearUserCache(authUser.id);
+    invalidateCache('dashboard');
+    invalidateCache('house');
+    invalidateCache('user');
+    
+    setRefreshTrigger(prev => prev + 1);
+  }, [authUser?.id]);
+
+  // WebSocket initialization
+  useEffect(() => {
+    if (authUser?.id && token) {
+      console.log('🚀 Pay screen: Initializing WebSocket for charge updates...');
+      
+      const socket = new FinancialWebSocket(token);
+      socket.setFinancialUpdateHandler(handleFinancialUpdate);
+      socket.setChargeUpdateHandler(handleChargeUpdate);
+      socket.connect();
+      
+      setFinancialSocket(socket);
+      
+      return () => {
+        console.log('🔌 Pay screen: Cleaning up WebSocket...');
+        socket.disconnect();
+        setFinancialSocket(null);
+      };
+    }
+  }, [authUser?.id, token, handleFinancialUpdate, handleChargeUpdate]);
 
   // Show skeleton while loading
   if (loading || !authUser?.id) {

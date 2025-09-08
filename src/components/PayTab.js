@@ -168,6 +168,8 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       // Clear custom cache to ensure fresh data on next load
       if (user?.id) {
         clearUserCache(user.id);
+        // Also manually clear charges cache since it's not in clearUserCache yet
+        invalidateCache('user', user.id);
       }
       invalidateCache('dashboard');
       invalidateCache('house');

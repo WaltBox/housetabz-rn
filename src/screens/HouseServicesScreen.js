@@ -154,17 +154,33 @@ const HouseServicesScreen = ({ navigation }) => {
   };
 
   const getServiceDetails = (service) => {
+    // Enhanced unified endpoint now provides calculatedData for all services
     if (service.calculatedData) {
       return service.calculatedData;
     }
     
-    // Fallback for services without calculatedData - use totalRequired from backend
+    // Check if we have the enhanced data from individual service fetch (detail modal)
+    if (service.ledgers && service.ledgers.length > 0) {
+      const ledger = service.ledgers[0];
+      return {
+        fundingRequired: Number(ledger.totalRequired) || Number(ledger.fundingRequired) || 0,
+        funded: Number(ledger.funded) || Number(ledger.fundedAmount) || 0,
+        fundedAmount: Number(ledger.fundedAmount) || Number(ledger.funded) || 0,
+        remainingAmount: Number(ledger.remainingAmount) || 0,
+        percentFunded: ledger.percentFunded || 0,
+        contributorCount: ledger.contributorCount || 0,
+        userContributions: ledger.userContributions || []
+      };
+    }
+    
+    // Fallback for services without calculatedData (should be rare now)
     const fundingRequired = Number(service.totalRequired) || Number(service.amount) || 0;
     const funded = Number(service.fundedAmount) || 0;
     
     return {
       fundingRequired: fundingRequired,
       funded: funded,
+      fundedAmount: funded,
       remainingAmount: Math.max(0, fundingRequired - funded),
       percentFunded: getPercentFunded(service),
       contributorCount: 0,
@@ -228,7 +244,7 @@ const HouseServicesScreen = ({ navigation }) => {
                 styles.amountText,
                 fontsLoaded && { fontFamily: 'Poppins-Regular' }
               ]}>
-                {formatCurrency(serviceDetails.funded)} of {formatCurrency(serviceDetails.fundingRequired)}
+                {formatCurrency(serviceDetails.fundedAmount || serviceDetails.funded)} of {formatCurrency(serviceDetails.fundingRequired)}
               </Text>
               
 

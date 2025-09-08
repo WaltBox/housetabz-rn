@@ -20,8 +20,10 @@ import { useAuth } from "../context/AuthContext";
 import apiClient, { 
   getHouseTabsData, 
   invalidateCache, 
-  clearHouseCache
+  clearHouseCache,
+  clearUserCache
 } from "../config/api";
+import FinancialWebSocket from '../services/FinancialWebSocket';
 import { isScreenPrefetched, getPrefetchStatus } from '../services/PrefetchService';
 
 // Existing modals/components
@@ -64,6 +66,9 @@ const HouseTabzScreen = () => {
 
   // Tab navigation state
   const [selectedTab, setSelectedTab] = useState("house"); // "house" or "billTakeover"
+  
+  // WebSocket state
+  const [financialSocket, setFinancialSocket] = useState(null);
 
   const getInviteLink = () => `https://housetabz.com/join/${user?.houseId}`;
 
@@ -91,6 +96,20 @@ const HouseTabzScreen = () => {
   };
 
   // UPDATED: New optimized fetch function using cached API
+  // WebSocket event handlers
+  const handleHouseFinancialUpdate = (data) => {
+    console.log('🏠 My House received financial update:', data);
+    
+    // Clear cache and refresh house data
+    clearUserCache(user.id);
+    clearHouseCache(user.houseId);
+    invalidateCache('dashboard');
+    invalidateCache('house');
+    
+    // Refresh house data
+    fetchHouseData();
+  };
+
   const fetchHouseData = async () => {
     try {
       if (!user?.houseId) {
@@ -199,6 +218,30 @@ const HouseTabzScreen = () => {
   useEffect(() => {
     if (user?.id) fetchHouseData();
   }, [user?.id, user?.houseId]);
+
+  // WebSocket initialization
+  useEffect(() => {
+    if (user?.id && user?.token) {
+      console.log('🚀 My House: Initializing WebSocket for financial updates...');
+      
+      const socket = new FinancialWebSocket(user.token);
+      
+      // Set event handlers
+      socket.setHouseFinancialUpdateHandler(handleHouseFinancialUpdate);
+      socket.setFinancialUpdateHandler(handleHouseFinancialUpdate); // User payments affect house too
+      socket.connect();
+      
+      setFinancialSocket(socket);
+      
+      // Cleanup on unmount
+      return () => {
+        if (socket) {
+          console.log('🧹 My House: Cleaning up WebSocket...');
+          socket.disconnect();
+        }
+      };
+    }
+  }, [user?.id, user?.token]);
 
   const handleHSIInfoPress = () => {
     setIsHSIModalVisible(true);

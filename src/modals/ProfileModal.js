@@ -18,8 +18,9 @@ import { useAuth } from '../context/AuthContext';
 import ModalComponent from '../components/ModalComponent';
 import UserTabModal from '../modals/UserTabModal';
 import UserTransactionsModal from '../modals/UserTransactionsModal';
-import apiClient from '../config/api';
+import apiClient, { clearUserCache, invalidateCache } from '../config/api';
 import { useFonts } from 'expo-font';
+import FinancialWebSocket from '../services/FinancialWebSocket';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +41,9 @@ const ProfileModal = ({ visible = false, onClose }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isUserTabVisible, setIsUserTabVisible] = useState(false);
   const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
+  
+  // WebSocket state
+  const [financialSocket, setFinancialSocket] = useState(null);
 
   // Load the Poppins font family
   const [fontsLoaded] = useFonts({
@@ -49,6 +53,19 @@ const ProfileModal = ({ visible = false, onClose }) => {
     'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
     'Montserrat-Black': require('../../assets/fonts/Montserrat-Black.ttf'),
   });
+
+  // WebSocket event handlers
+  const handleFinancialUpdate = useCallback((data) => {
+    console.log('💰 Profile received financial update:', data);
+    
+    // Clear cache and refresh user data
+    clearUserCache(authUser.id);
+    invalidateCache('dashboard');
+    invalidateCache('user');
+    
+    // Refresh profile data
+    fetchUserData();
+  }, [authUser?.id]);
 
   const fetchUserData = useCallback(async () => {
     if (!authUser?.id) {
@@ -79,6 +96,38 @@ const ProfileModal = ({ visible = false, onClose }) => {
       fetchUserData();
     }
   }, [fetchUserData, visible]);
+
+  // WebSocket initialization
+  useEffect(() => {
+    if (visible && authUser?.id) {
+      console.log('🚀 Profile: Initializing WebSocket for financial updates...');
+      
+      const socket = new FinancialWebSocket(authUser.token);
+      
+      // Set event handlers
+      socket.setFinancialUpdateHandler(handleFinancialUpdate);
+      socket.connect();
+      
+      setFinancialSocket(socket);
+      
+      // Cleanup on unmount or when modal closes
+      return () => {
+        if (socket) {
+          console.log('🧹 Profile: Cleaning up WebSocket...');
+          socket.disconnect();
+        }
+      };
+    }
+  }, [visible, authUser?.id, authUser?.token, handleFinancialUpdate]);
+
+  // Cleanup WebSocket when modal closes
+  useEffect(() => {
+    if (!visible && financialSocket) {
+      console.log('🧹 Profile: Modal closed, cleaning up WebSocket...');
+      financialSocket.disconnect();
+      setFinancialSocket(null);
+    }
+  }, [visible, financialSocket]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
