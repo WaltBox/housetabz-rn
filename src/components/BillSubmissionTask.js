@@ -22,8 +22,8 @@ const BillSubmissionTask = ({ task, onPress }) => {
     return dueDate < today;
   };
 
-  // Get service name from task
-  const serviceName = task.houseService?.name || task.metadata?.serviceName || 'Utility Bill';
+  // Get service name from enhanced backend API fields
+  const serviceName = task.service_name || task.houseService?.name || task.metadata?.serviceName || 'Utility Bill';
   
   return (
     <TouchableOpacity 

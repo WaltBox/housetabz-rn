@@ -18,6 +18,33 @@ const getServiceIcon = (serviceType) => {
 
 const ServiceRequestTask = ({ task, onAccept }) => {
   const { stagedRequest, takeOverRequest } = task.serviceRequestBundle || {};
+  
+  // Get service name from enhanced backend API fields
+  const getServiceName = () => {
+    // Priority order: takeover_service_name, staged_service_name, virtual_card_service_name
+    if (task.takeover_service_name) {
+      return task.takeover_service_name;
+    }
+    
+    if (task.staged_service_name) {
+      return task.staged_service_name;
+    }
+    
+    if (task.virtual_card_service_name) {
+      return task.virtual_card_service_name;
+    }
+    
+    // Fallback to nested bundle data (legacy support)
+    if (takeOverRequest?.serviceName) {
+      return takeOverRequest.serviceName;
+    }
+    
+    if (stagedRequest?.serviceName || stagedRequest?.name) {
+      return stagedRequest.serviceName || stagedRequest.name;
+    }
+    
+    return 'Service Request';
+  };
   if (!task.serviceRequestBundle) return null;
   const request = stagedRequest || takeOverRequest;
   if (!request) return null;
@@ -81,7 +108,7 @@ const ServiceRequestTask = ({ task, onAccept }) => {
         <View style={styles.headerContent}>
           {subtitle !== '' && <Text style={styles.providerName}>{subtitle}</Text>}
           <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-            {request.serviceName}
+            {getServiceName()}
           </Text>
           <Text style={styles.serviceType}>
             {request.serviceType || "Service"}

@@ -518,13 +518,6 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
             </Text>
           </View>
 
-          {/* Bundle Status Overview */}
-          <BundleStatusOverview 
-            tasks={tasks}
-            bundleType={bundleDetails?.type}
-            onPress={() => {}}
-          />
-
           {/* Participants List */}
           <View style={styles.participantsCard}>
             <Text style={styles.participantsTitle}>Individual Status</Text>

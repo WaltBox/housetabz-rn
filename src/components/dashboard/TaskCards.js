@@ -147,67 +147,40 @@ const TaskCard = ({ task, type = "task", isAlternate, onPress, fontsLoaded, isPr
 // Add this enhanced getServiceName function with debugging to your TaskCard component
 
   const getServiceName = () => {
-  // Debug logging to see the actual task structure
-  console.log('=== TaskCard Debug Info ===');
-  console.log('Task ID:', task.id);
-  console.log('Task type:', task.type);
-  console.log('Task object keys:', Object.keys(task));
-  console.log('Full task object:', JSON.stringify(task, null, 2));
-  
-    // For bill submissions
+    // For bill submissions - use enhanced backend data
     if (type === 'billSubmission') {
-    console.log('Processing as bill submission');
-      return task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
+      return task.service_name || task.houseService?.name || task.metadata?.serviceName || 'Bill Submission';
     }
     
-  // For regular tasks - enhanced debugging
-  console.log('ServiceRequestBundle exists:', !!task.serviceRequestBundle);
-  console.log('ServiceRequestBundleId:', task.serviceRequestBundleId);
-  
-    if (!task.serviceRequestBundle) {
-    // Check if we have alternative fields that might contain the service name
-    console.log('No serviceRequestBundle found. Checking alternatives...');
-    console.log('Task.name:', task.name);
-    console.log('Task.type:', task.type);
-    console.log('Task.metadata:', task.metadata);
+    // For service requests - use enhanced backend API fields
+    // Priority order: takeover_service_name, staged_service_name, virtual_card_service_name
+    if (task.takeover_service_name) {
+      return task.takeover_service_name;
+    }
     
-    // Try to get service name from alternative sources
+    if (task.staged_service_name) {
+      return task.staged_service_name;
+    }
+    
+    if (task.virtual_card_service_name) {
+      return task.virtual_card_service_name;
+    }
+    
+    // Fallback to nested bundle data (legacy support)
+    if (task.serviceRequestBundle?.takeOverRequest?.serviceName) {
+      return task.serviceRequestBundle.takeOverRequest.serviceName;
+    }
+    
+    if (task.serviceRequestBundle?.stagedRequest?.serviceName || task.serviceRequestBundle?.stagedRequest?.name) {
+      return task.serviceRequestBundle.stagedRequest.serviceName || task.serviceRequestBundle.stagedRequest.name;
+    }
+    
+    // Final fallbacks
     if (task.name && task.name !== task.type) {
       return task.name;
     }
-
-    if (task.metadata?.serviceName) {
-      return task.metadata.serviceName;
-    }
     
-    // If task.type is descriptive enough, use it
-    if (task.type && task.type !== 'task' && task.type !== 'serviceRequest') {
-      return task.type;
-    }
-    
-    return 'Task';     
-  }
-
-  console.log('ServiceRequestBundle structure:');
-  console.log('- takeOverRequest:', !!task.serviceRequestBundle.takeOverRequest);
-  console.log('- stagedRequest:', !!task.serviceRequestBundle.stagedRequest);
-  
-  if (task.serviceRequestBundle.takeOverRequest) {
-    console.log('TakeOverRequest data:', task.serviceRequestBundle.takeOverRequest);
-    return task.serviceRequestBundle.takeOverRequest.serviceName || 
-           task.serviceRequestBundle.takeOverRequest.name || 
-           'Service Request';
-    }
-
-    if (task.serviceRequestBundle.stagedRequest) {
-    console.log('StagedRequest data:', task.serviceRequestBundle.stagedRequest);
-    return task.serviceRequestBundle.stagedRequest.name || 
-           task.serviceRequestBundle.stagedRequest.serviceName ||
-           'Service Request';
-    }
-
-  console.log('No nested request data found');
-    return 'Task';
+    return 'Service Request';
   };
 
   // Fetch the requester username

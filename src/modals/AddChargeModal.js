@@ -24,6 +24,7 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
   const [dueDateText, setDueDateText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -33,6 +34,7 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
       setDueDate(null);
       setDueDateText('');
       setErrors({});
+      setShowSuccess(false);
     }
   }, [visible]);
 
@@ -116,13 +118,28 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
 
 
 
-  // Handle date text change
+  // Handle date text change with auto-formatting
   const handleDateTextChange = (text) => {
-    setDueDateText(text);
+    // Remove all non-numeric characters
+    const numbersOnly = text.replace(/\D/g, '');
     
-    // Try to parse the date
-    if (text.trim()) {
-      const parsedDate = parseDate(text);
+    // Auto-format with slashes as user types
+    let formattedText = '';
+    if (numbersOnly.length > 0) {
+      if (numbersOnly.length <= 2) {
+        formattedText = numbersOnly;
+      } else if (numbersOnly.length <= 4) {
+        formattedText = `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2)}`;
+      } else {
+        formattedText = `${numbersOnly.slice(0, 2)}/${numbersOnly.slice(2, 4)}/${numbersOnly.slice(4, 8)}`;
+      }
+    }
+    
+    setDueDateText(formattedText);
+    
+    // Try to parse the date only if we have a complete format (MM/DD/YYYY)
+    if (formattedText.length === 10) {
+      const parsedDate = parseDate(formattedText);
       if (parsedDate) {
         setDueDate(parsedDate);
         // Clear any date errors
@@ -133,7 +150,13 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
         setDueDate(null);
         setErrors(prev => ({ ...prev, dueDate: 'Invalid date format. Use MM/DD/YYYY' }));
       }
+    } else if (formattedText.length === 0) {
+      setDueDate(null);
+      if (errors.dueDate) {
+        setErrors(prev => ({ ...prev, dueDate: null }));
+      }
     } else {
+      // Incomplete date, clear any previous errors but don't set new ones
       setDueDate(null);
       if (errors.dueDate) {
         setErrors(prev => ({ ...prev, dueDate: null }));
@@ -186,22 +209,8 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
         payload
       );
       
-      // Success
-      Alert.alert(
-        'Charge Created Successfully!',
-        'All house members have been notified of the new charge.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              onClose();
-              if (onSuccess) {
-                onSuccess(response.data);
-              }
-            }
-          }
-        ]
-      );
+      // Success - Show custom success modal
+      setShowSuccess(true);
       
     } catch (error) {
       console.error('Failed to create manual bill:', error);
@@ -233,12 +242,73 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
 
   const formatDate = (date) => {
     if (!date) return '';
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    
+    // Ensure consistent MM/DD/YYYY format
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${month}/${day}/${year}`;
   };
+
+  // Handle success modal close
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    onClose();
+    if (onSuccess) {
+      onSuccess();
+    }
+  };
+
+  // Success Modal Component
+  const SuccessModal = () => (
+    <Modal
+      visible={showSuccess}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={handleSuccessClose}
+    >
+      <View style={styles.successOverlay}>
+        <View style={styles.successContainer}>
+          <View style={styles.successIconContainer}>
+            <MaterialIcons name="check-circle" size={60} color="#34d399" />
+          </View>
+          
+          <Text style={styles.successTitle}>Charge Created Successfully!</Text>
+          
+          <Text style={styles.successMessage}>
+            All house members have been notified of the new charge and will receive their portion automatically.
+          </Text>
+          
+          <View style={styles.successDetails}>
+            <View style={styles.successDetailRow}>
+              <Text style={styles.successDetailLabel}>Amount:</Text>
+              <Text style={styles.successDetailValue}>${parseFloat(amount || 0).toFixed(2)}</Text>
+            </View>
+            <View style={styles.successDetailRow}>
+              <Text style={styles.successDetailLabel}>Service:</Text>
+              <Text style={styles.successDetailValue}>{service?.name}</Text>
+            </View>
+            {description && (
+              <View style={styles.successDetailRow}>
+                <Text style={styles.successDetailLabel}>Description:</Text>
+                <Text style={styles.successDetailValue}>{description}</Text>
+              </View>
+            )}
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.successButton}
+            onPress={handleSuccessClose}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="check" size={20} color="white" />
+            <Text style={styles.successButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <Modal
@@ -340,22 +410,6 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
                 </Text>
               </View>
 
-              {/* Clear Date Option */}
-              {dueDateText && (
-                <TouchableOpacity
-                  style={styles.clearDateButton}
-                  onPress={() => {
-                    setDueDateText('');
-                    setDueDate(null);
-                    if (errors.dueDate) {
-                      setErrors(prev => ({ ...prev, dueDate: null }));
-                    }
-                  }}
-                >
-                  <MaterialIcons name="clear" size={16} color="#64748b" />
-                  <Text style={styles.clearDateText}>Clear custom date</Text>
-                </TouchableOpacity>
-              )}
 
               {/* Info Card */}
               <View style={styles.infoCard}>
@@ -395,6 +449,9 @@ const AddChargeModal = ({ visible, onClose, service, onSuccess }) => {
             </View>
         </View>
       </SafeAreaView>
+      
+      {/* Success Modal */}
+      <SuccessModal />
     </Modal>
   );
 };
@@ -503,21 +560,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  clearDateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  clearDateText: {
-    fontSize: 12,
-    color: '#64748b',
-    marginLeft: 4,
-  },
   errorText: {
     fontSize: 12,
     color: '#ef4444',
@@ -574,6 +616,114 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginLeft: 8,
+    fontFamily: 'Poppins-Bold',
+  },
+  
+  // Success Modal Styles
+  successOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 32,
+  },
+  successContainer: {
+    backgroundColor: '#dff6f0',
+    borderRadius: 20,
+    paddingTop: 50,
+    paddingBottom: 40,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  successIconContainer: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 50,
+    padding: 20,
+    marginBottom: 40,
+    borderWidth: 3,
+    borderColor: '#34d399',
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 30,
+    fontFamily: 'Poppins-Bold',
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 40,
+    fontFamily: 'Poppins-Regular',
+    paddingHorizontal: 10,
+  },
+  successDetails: {
+    width: '100%',
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+    marginBottom: 50,
+    borderWidth: 1,
+    borderColor: '#34d399',
+  },
+  successDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  successDetailLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontFamily: 'Poppins-Medium',
+    flex: 1,
+  },
+  successDetailValue: {
+    fontSize: 14,
+    color: '#1e293b',
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    flex: 2,
+    textAlign: 'right',
+  },
+  successButton: {
+    backgroundColor: '#34d399',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+    shadowColor: '#34d399',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  successButtonText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     marginLeft: 8,

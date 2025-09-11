@@ -1265,41 +1265,67 @@ const DashboardScreen = () => {
   const handleTaskPress = (task) => {
     console.log('handleTaskPress called with task:', task);
     
-    // Check if it's a bill submission
-    const isBillSubmission = 
-      task.type === 'billSubmission' || // If already tagged as billSubmission
-      task.houseService || // If it has houseService property
-      task.metadata?.type === 'billSubmission' || // If it has metadata type
-      !task.serviceRequestBundle && !task.serviceRequestBundleId; // If it doesn't have service request data
-      
-    console.log('Task analysis:', {
+    // NEW: Use positive identification based on reliable fields from enhanced backend API
+    // Bill submissions will have: status + houseServiceId + service_name
+    // Service requests will have: serviceRequestBundleId + response + type
+    const isBillSubmission = task.status !== undefined && task.houseServiceId !== undefined;
+    const isServiceRequest = task.serviceRequestBundleId !== undefined && task.response !== undefined;
+    
+    console.log('✅ Enhanced Task Classification:', {
       taskId: task.id,
-      taskType: task.type,
-      isBillSubmission,
-      hasServiceRequestBundle: !!task.serviceRequestBundle,
+      classification: isBillSubmission ? 'BILL_SUBMISSION' : isServiceRequest ? 'SERVICE_REQUEST' : 'UNKNOWN',
+      // Bill submission indicators
+      hasStatus: !!task.status,
+      hasHouseServiceId: !!task.houseServiceId,
+      serviceName: task.service_name,
+      serviceType: task.service_type,
+      dueDate: task.dueDate,
+      // Service request indicators  
       hasServiceRequestBundleId: !!task.serviceRequestBundleId,
-      hasHouseService: !!task.houseService
+      hasResponse: !!task.response,
+      taskType: task.type,
+      paymentRequired: task.paymentRequired,
+      paymentAmount: task.paymentAmount,
+      // Bundle details from enhanced API
+      bundleId: task.bundle_id,
+      takeoverServiceName: task.takeover_service_name,
+      stagedServiceName: task.staged_service_name,
+      virtualCardServiceName: task.virtual_card_service_name
     });
       
     if (isBillSubmission) {
-      console.log('Opening bill submission modal for task:', task.id);
+      console.log('🧾 Opening bill submission modal for:', {
+        id: task.id,
+        serviceName: task.service_name,
+        dueDate: task.dueDate,
+        status: task.status
+      });
       setSelectedBillSubmission(task);
       setIsBillSubmissionModalVisible(true);
-    } else {
-      // It's a regular service request task
-      console.log('Opening service payment modal for task:', task.id);
-      
-      // Validate that we have the necessary data for a service request
-      if (!task.serviceRequestBundleId && !task.serviceRequestBundle?.id) {
-        console.error('Service request task missing bundle ID:', task);
-        Alert.alert(
-          'Error', 
-          `Unable to open task: Missing service request data. Task type: ${task.type}`
-        );
-        return;
-      }
-      
+    } else if (isServiceRequest) {
+      console.log('⚡ Opening service payment modal for:', {
+        id: task.id,
+        bundleId: task.serviceRequestBundleId,
+        response: task.response,
+        paymentAmount: task.paymentAmount,
+        serviceType: task.takeover_service_name || task.staged_service_name || task.virtual_card_service_name
+      });
       handleTaskAction(task, 'view');
+    } else {
+      // This should not happen with the enhanced backend API
+      console.error('❌ Unknown task type - missing classification fields:', {
+        taskId: task.id,
+        availableFields: Object.keys(task),
+        hasStatus: !!task.status,
+        hasHouseServiceId: !!task.houseServiceId,
+        hasServiceRequestBundleId: !!task.serviceRequestBundleId,
+        hasResponse: !!task.response
+      });
+      Alert.alert(
+        'Classification Error', 
+        `Unable to determine task type. Task ID: ${task.id}\n\nThis may indicate a backend data issue.`,
+        [{ text: 'OK' }]
+      );
     }
   };
 
