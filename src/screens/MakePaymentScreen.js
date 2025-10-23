@@ -215,15 +215,6 @@ const BillingScreen = () => {
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[
-            styles.headerTitle,
-            fontsLoaded && { fontFamily: 'Montserrat-Black' }
-          ]}>
-            Payments
-          </Text>
-        </View>
         
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
@@ -267,22 +258,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#dff6f0',
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    backgroundColor: "#dff6f0",
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
   tabContainer: {
     position: 'relative',
     paddingHorizontal: 0,
     marginBottom: 16,
     backgroundColor: "#dff6f0",
+    paddingTop: 16,
   },
   tabsWrapper: {
     flexDirection: 'row',

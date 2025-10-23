@@ -10,11 +10,14 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  Animated
+  Animated,
+  Dimensions
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { scrollEmitter } from '../utils/eventEmitter';
 import apiClient, { 
   getAppUserInfo,
   getDashboardInitialData, // DEPRECATED - keeping for fallback
@@ -171,9 +174,15 @@ const AnimatedLoadingScreen = ({ visible, type = 'task' }) => {
   );
 };
 
+const { height } = Dimensions.get('window');
+
 const DashboardScreen = () => {
   const { user, token } = useAuth();
   const navigation = useNavigation();
+  
+  // Scroll animation value
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef(null);
 
   // ✅ NEW: Unified Dashboard Data State (replaces all individual states)
   const [dashboardData, setDashboardData] = useState({
@@ -384,14 +393,42 @@ const DashboardScreen = () => {
   const [recentlyCompletedRentProposals, setRecentlyCompletedRentProposals] = useState(new Set()); // Track recently completed rent proposals
 
   // Add focus effect to refresh data when screen comes into view
+  const lastFocusTime = useRef(0);
   useFocusEffect(
     React.useCallback(() => {
-      // Always refresh when screen comes into focus if we have a user
-      if (!isLoading && user?.id) {
+      const now = Date.now();
+      const timeSinceLastFocus = now - lastFocusTime.current;
+      
+      // Only refresh if it's been more than 2 seconds since last focus
+      // This prevents the infinite loop while still allowing legitimate refreshes
+      if (!isLoading && user?.id && timeSinceLastFocus > 2000) {
         console.log('🔄 Dashboard screen focused - refreshing data');
+        lastFocusTime.current = now;
         fetchDashboardData();
       }
-    }, [user?.id])
+      
+      // Restore scroll position when returning to dashboard
+      const restoreScrollPosition = () => {
+        const currentScrollPosition = scrollEmitter.getDashboardScrollPosition();
+        const scrollThreshold = height * 0.15;
+        const scrollY = currentScrollPosition * scrollThreshold;
+        
+        console.log('📍 Dashboard: Restoring scroll position:', {
+          scrollProgress: currentScrollPosition,
+          scrollY: scrollY,
+          scrollThreshold: scrollThreshold
+        });
+        
+        if (scrollViewRef.current && scrollY > 0) {
+          // Small delay to ensure the ScrollView is ready
+          setTimeout(() => {
+            scrollViewRef.current?.scrollTo({ y: scrollY, animated: false });
+          }, 100);
+        }
+      };
+      
+      restoreScrollPosition();
+    }, [user?.id, isLoading])
   );
 
 
@@ -1405,20 +1442,51 @@ const DashboardScreen = () => {
     return <ErrorScreen error={error} onRetry={loadDashboardData} />;
   }
 
+  // Calculate scroll-based gradient colors
+  const scrollThreshold = height * 0.15; // 15% of screen height
+  
+  const gradientOpacity = scrollY.interpolate({
+    inputRange: [0, scrollThreshold],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
+      {/* Dynamic gradient overlay that fades based on scroll */}
+      <Animated.View style={[styles.gradientOverlay, { opacity: gradientOpacity }]}>
+        <LinearGradient
+          colors={['#34d399', 'rgba(52, 211, 153, 0.7)', 'rgba(52, 211, 153, 0.3)', '#dff6f0']}
+          style={styles.gradient}
+          pointerEvents="none"
+        />
+      </Animated.View>
+      
+      <Animated.ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { 
+            useNativeDriver: false,
+            listener: (event) => {
+              const scrollValue = event.nativeEvent.contentOffset.y;
+              const progress = Math.max(0, Math.min(scrollValue / scrollThreshold, 1));
+              scrollEmitter.emit('dashboardScroll', progress);
+            }
+          }
+        )}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={handleRefresh} 
-            tintColor="#34d399" 
+            tintColor="#ffffff" 
           />
         }
       >
         
-        <View style={styles.sectionContainer}>
+        <View style={styles.topSectionContainer}>
           <DashboardTopSection
             userFinance={userFinance}
             houseFinance={houseFinance}
@@ -1485,7 +1553,7 @@ const DashboardScreen = () => {
             <HowToUseCard />
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Payment Modal */}
       <AcceptServicePayment
@@ -1534,7 +1602,19 @@ const DashboardScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#dff6f0' },
-  scrollContent: { paddingTop: 8, paddingBottom: 12 },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '25%',
+    zIndex: -1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  scrollContent: { paddingTop: 0, paddingBottom: 12 },
+  topSectionContainer: { /* No margin to allow seamless gradient flow */ },
   sectionContainer: { marginBottom: 8 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   errorText: { marginTop: 16, marginBottom: 24, fontSize: 16, color: '#ef4444', textAlign: 'center' },

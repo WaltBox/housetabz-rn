@@ -60,14 +60,48 @@ const PaymentStack = () => (
 const FloatingButton = () => {
   const navigation = useNavigation();
 
-  const currentRouteName = useNavigationState((state) =>
-    state?.routes?.[state.index]?.name || null
-  );
+  const currentRouteName = useNavigationState((state) => {
+    if (!state) return null;
+    
+    // Get the current tab route (this is TabNavigator)
+    const tabRoute = state.routes[state.index];
+    if (!tabRoute) return null;
+    
+    console.log('🔍 FloatingButton - Current tab route:', tabRoute.name);
+    
+    // The actual tab is nested within TabNavigator
+    if (tabRoute.state) {
+      const actualTab = tabRoute.state.routes[tabRoute.state.index];
+      console.log('🔍 FloatingButton - Actual tab:', actualTab?.name);
+      
+      // Check if we're on the Pay Tab
+      if (actualTab?.name === 'Pay Tab') {
+        console.log('✅ FloatingButton - On Pay Tab, should show wink logo');
+        return 'Pay Tab';
+      }
+      
+      // Check for nested screens within the actual tab
+      if (actualTab?.state) {
+        const nestedRoute = actualTab.state.routes[actualTab.state.index];
+        console.log('🔍 FloatingButton - Nested route within tab:', nestedRoute?.name);
+        if (nestedRoute?.name === 'MakePaymentScreen') {
+          console.log('✅ FloatingButton - On MakePaymentScreen, should show wink logo');
+          return 'Pay Tab';
+        }
+      }
+      
+      console.log('📱 FloatingButton - On other screen, should show regular logo');
+      return actualTab?.name;
+    }
+    
+    return tabRoute.name;
+  });
 
-  const isMakePaymentScreen = currentRouteName === 'Pay Tab';
+  const isPaymentScreen = currentRouteName === 'Pay Tab';
+  console.log('🎯 FloatingButton - isPaymentScreen:', isPaymentScreen, 'currentRouteName:', currentRouteName);
 
-  const logo = isMakePaymentScreen
-    ? require('../../assets/housetabzwinklogo.png')
+  const logo = isPaymentScreen
+    ? require('../../assets/housetbzwinklogo.png')
     : require('../../assets/housetabzlogo.png');
 
   return (
@@ -100,7 +134,7 @@ const TabNavigator = () => (
         },
         headerShown: false,
         tabBarActiveTintColor: '#34d399',
-        tabBarInactiveTintColor: 'gray',
+        tabBarInactiveTintColor: '#1e293b',
         tabBarStyle: { 
           backgroundColor: '#dff6f0',
          

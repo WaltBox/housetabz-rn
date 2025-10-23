@@ -25,10 +25,9 @@ const { width, height } = Dimensions.get('window');
 
 const PaymentMethodOnboardingScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
-  const [setupIntentClientSecret, setSetupIntentClientSecret] = useState(null);
-  const [setupIntentId, setSetupIntentId] = useState(null); // ADD THIS LINE
+  const [processing, setProcessing] = useState(false);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const { user, setUser, token, refreshPaymentMethods } = useAuth();
+  const { user, setUser, refreshPaymentMethods } = useAuth();
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -39,193 +38,83 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
     'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
   });
 
-  // Create setup intent when component mounts
-  useEffect(() => {
-    if (user && token) {
-      console.log('User and token available, creating setup intent');
-      createSetupIntent();
-    } else {
-      console.log('Waiting for user and token...', { user: !!user, token: !!token });
-      const timeout = setTimeout(() => {
-        if (!user || !token) {
-          console.error('No user or token available after timeout');
-          Alert.alert('Error', 'Authentication issue. Please try logging in again.');
-        }
-      }, 3000);
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [user, token]);
-
-  const createSetupIntent = async () => {
-    if (!token || !user) {
-      console.error('Cannot create setup intent - missing token or user');
-      return;
-    }
-    
+  const handleAddPaymentMethod = async (type = 'card') => {
     try {
-      console.log('Creating setup intent with token:', token ? 'Token exists' : 'No token');
-      console.log('User:', user ? user.id : 'No user');
-      
-      const response = await apiClient.post('/api/payment-methods/setup-intent', {});
-      console.log('Setup intent created successfully');
-      setSetupIntentClientSecret(response.data.clientSecret);
-      setSetupIntentId(response.data.setupIntentId); // ADD THIS LINE
-    } catch (error) {
-      console.error('Error creating setup intent:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      
-      if (error.response?.status === 401) {
-        Alert.alert(
-          'Authentication Error', 
-          'Please try logging out and logging back in.'
-        );
-      } else {
-        Alert.alert('Error', 'Failed to initialize payment setup. Please try again.');
+      if (!user) {
+        Alert.alert('Error', 'Please log in to add a payment method');
+        return;
       }
-    }
-  };
-
-  // ADD THIS NEW FUNCTION
-  const completeSetupIntent = async () => {
-    if (!setupIntentId) {
-      console.error('No setupIntentId available for completion');
-      return false;
-    }
-
-    try {
-      console.log('Completing setup intent:', setupIntentId);
-      const response = await apiClient.post('/api/payment-methods/complete', {
-        setupIntentId: setupIntentId
-      });
-      console.log('Setup intent completed successfully:', response.data);
-      return true;
-    } catch (error) {
-      console.error('Error completing setup intent:', error);
-      console.error('Error response:', error.response?.data);
-      Alert.alert(
-        'Error', 
-        error.response?.data?.message || 'Failed to save payment method. Please try again.'
-      );
-      return false;
-    }
-  };
-
-  const handleGetStarted = async () => {
-    if (!setupIntentClientSecret) {
-      Alert.alert('Error', 'Payment setup not ready. Please try again.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log('Initializing PaymentSheet with custom styling...');
+      setProcessing(true);
       
-      // Initialize PaymentSheet with extensive customization
-      const { error: initError } = await initPaymentSheet({
-        setupIntentClientSecret: setupIntentClientSecret,
+      // Determine which endpoint to use based on payment method type
+      const endpoint = type === 'ach' 
+        ? '/api/payment-methods/setup-intent/ach'
+        : '/api/payment-methods/setup-intent';
+
+      const setupResponse = await apiClient.post(endpoint, {});
+      
+      const { clientSecret, setupIntentId } = setupResponse.data;
+      if (!clientSecret || !setupIntentId) {
+        throw new Error('No client secret or setupIntentId received');
+      }
+      
+      // Configure Stripe PaymentSheet based on payment method type
+      const paymentSheetConfig = {
         merchantDisplayName: 'HouseTabz',
+        setupIntentClientSecret: clientSecret,
         allowsDelayedPaymentMethods: true,
-        returnURL: 'housetabz://payment-return',
-        appearance: {
-          colors: {
-            primary: '#34d399',
-            background: '#ffffff',
-            componentBackground: '#f8fafc',
-            componentBorder: '#34d399',
-            componentDivider: '#e2e8f0',
-            primaryText: '#1e293b',
-            secondaryText: '#64748b',
-            componentText: '#374151',
-            placeholderText: '#9ca3af',
-            icon: '#34d399',
-            error: '#ef4444',
-            danger: '#ef4444'
-          },
-          shapes: {
-            borderRadius: 16,
-            borderWidth: 2,
-            shadow: {
-              color: '#000000',
-              opacity: 0.1,
-              offset: { width: 0, height: 4 },
-              blurRadius: 8
-            }
-          },
-          primaryButton: {
-            colors: {
-              background: '#34d399',
-              text: '#ffffff',
-              border: '#34d399'
-            },
-            shapes: {
-              borderRadius: 12,
-              borderWidth: 0
-            },
-            typography: {
-              fontWeight: '600'
-            }
-          }
-        },
-        defaultBillingDetails: {
-          name: user?.username || '',
-          email: user?.email || ''
-        }
-      });
+        appearance: { colors: { primary: '#34d399' } },
+      };
 
-      if (initError) {
-        console.error('PaymentSheet init error:', initError);
-        Alert.alert('Error', initError.message);
+      // For ACH, we need to specify payment method types
+      if (type === 'ach') {
+        paymentSheetConfig.paymentMethodTypes = ['us_bank_account'];
+      }
+
+      const initResponse = await initPaymentSheet(paymentSheetConfig);
+      
+      if (initResponse.error) {
+        Alert.alert('Error', initResponse.error.message);
         return;
       }
-
-      console.log('Presenting PaymentSheet immediately...');
       
-      // Present PaymentSheet immediately
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (presentError.code === 'Canceled') {
-          console.log('User canceled payment sheet');
-          return;
-        }
-        console.error('PaymentSheet present error:', presentError);
-        Alert.alert('Error', presentError.message);
+      const presentResponse = await presentPaymentSheet();
+      if (presentResponse.error) {
+        if (presentResponse.error.code === 'Canceled') return;
+        Alert.alert('Error', presentResponse.error.message);
         return;
       }
-
-      console.log('PaymentSheet completed successfully');
-
-      // REPLACE THE EXISTING COMPLETION LOGIC WITH THIS:
-      // Complete the setup intent on the backend to save the payment method
-      const completionSuccess = await completeSetupIntent();
       
-      if (completionSuccess) {
-        // Refresh payment methods to update the UI state
-        await refreshPaymentMethods();
-        
-        // Mark user as fully onboarded after successful payment setup
-        const onboardedUser = { ...user, onboarded: true };
-        await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(onboardedUser));
-        setUser(onboardedUser);
-        
-        console.log('✅ User marked as onboarded after payment method setup');
-        
-        // Success message - AppNavigator will handle navigation automatically
-        Alert.alert('Success!', 'Payment method added successfully');
+      await apiClient.post('/api/payment-methods/complete', { setupIntentId });
+      
+      // Refresh payment methods
+      await refreshPaymentMethods();
+      
+      // Mark user as fully onboarded after successful payment setup
+      const onboardedUser = { ...user, onboarded: true };
+      await keychainHelpers.setSecureData(KEYCHAIN_SERVICES.USER_DATA, JSON.stringify(onboardedUser));
+      setUser(onboardedUser);
+      
+      console.log('✅ User marked as onboarded after payment method setup');
+      
+      // Show different success messages based on payment method type
+      if (type === 'ach') {
+        Alert.alert('Welcome to HouseTabz!', 'Your bank account has been linked successfully. ACH payments take 3-5 business days to process but are free of charge.');
+      } else {
+        Alert.alert('Welcome to HouseTabz!', 'Your credit card has been added successfully.');
       }
-
+      
     } catch (error) {
       console.error('Error adding payment method:', error);
       Alert.alert(
-        'Error', 
+        'Error',
         error.response?.data?.message || 'Failed to add payment method. Please try again.'
       );
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   };
+
 
   return (
     <View style={styles.container}>
@@ -320,37 +209,67 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
 
         {/* Bottom Section */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity
-            style={[styles.continueButton, (loading || !setupIntentClientSecret) && styles.buttonDisabled]}
-            onPress={handleGetStarted}
-            disabled={loading || !setupIntentClientSecret}
-          >
-            <LinearGradient
-              colors={setupIntentClientSecret ? ['#34d399', '#10b981'] : ['#9ca3af', '#6b7280']}
-              style={styles.buttonGradient}
+          <View style={styles.paymentButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.paymentButton, (processing || loading) && styles.buttonDisabled]}
+              onPress={() => handleAddPaymentMethod('card')}
+              disabled={processing || loading}
             >
-              {loading ? (
-                <View style={styles.loadingContent}>
+              <LinearGradient
+                colors={['#34d399', '#10b981']}
+                style={styles.buttonGradient}
+              >
+                {processing ? (
                   <ActivityIndicator size="small" color="white" />
-                  <Text style={[
-                    styles.buttonText,
-                    fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                  ]}>Setting up...</Text>
-                </View>
-              ) : (
-                <Text style={[
-                  styles.buttonText,
-                  fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                ]}>Continue</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+                ) : (
+                  <>
+                    <Icon name="credit-card" size={20} color="white" />
+                    <Text style={[
+                      styles.paymentButtonText,
+                      fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                    ]}>Add Card</Text>
+                    <Text style={[
+                      styles.paymentButtonFee,
+                      fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                    ]}>3% fee</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.paymentButton, (processing || loading) && styles.buttonDisabled]}
+              onPress={() => handleAddPaymentMethod('ach')}
+              disabled={processing || loading}
+            >
+              <LinearGradient
+                colors={['#34d399', '#10b981']}
+                style={styles.buttonGradient}
+              >
+                {processing ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Icon name="bank" size={20} color="white" />
+                    <Text style={[
+                      styles.paymentButtonText,
+                      fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                    ]}>Add Bank</Text>
+                    <Text style={[
+                      styles.paymentButtonFee,
+                      fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                    ]}>Free</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
           
           <Text style={[
             styles.disclaimer,
             fontsLoaded && { fontFamily: 'Poppins-Regular' }
           ]}>
-           This card will not be charged unless you make authorized payments.
+           Your payment method will not be charged unless you make authorized payments.
           </Text>
         </View>
       </View>
@@ -502,30 +421,48 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: 'center',
   },
-  continueButton: {
+  paymentButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
     width: '100%',
+    marginBottom: 20,
+  },
+  paymentButton: {
+    flex: 1,
     height: 56,
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
     backgroundColor: '#34d399',
   },
   buttonGradient: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  buttonText: {
-    fontSize: 18,
+  paymentButtonText: {
+    fontSize: 16,
     fontWeight: '700',
     color: 'white',
+  },
+  paymentButtonFee: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  loadingContent: {
+  processingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  processingText: {
+    fontSize: 14,
+    color: '#64748b',
   },
   disclaimer: {
     fontSize: 12,

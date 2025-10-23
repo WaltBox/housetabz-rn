@@ -5,8 +5,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
-const CARD_HEIGHT = 120;
+const CARD_WIDTH = width * 0.9;
+const CARD_HEIGHT = 60;
 
 const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
   // Load the Poppins font family
@@ -65,27 +65,22 @@ const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
             onPress={() => onMessagePress && onMessagePress(message)}
             activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={['#FF5F6D', '#FFC371']} /* Keep original gradient colors */
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradient}
-            >
+            <View style={styles.cardBackground}>
               <View style={styles.cardContent}>
                 <View style={styles.iconContainer}>
                   <MaterialIcons
                     name={getMessageIcon(message.type)}
-                    size={28}
-                    color="#fff"
+                    size={20}
+                    color="#ffffff"
                   />
                 </View>
                 <View style={styles.textWrapper}>
-                  <Text style={[styles.title, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                  <Text style={[styles.title, fontsLoaded && { fontFamily: 'Poppins-Medium' }]} numberOfLines={1}>
                     {message.title || 'Urgent Notice'}
                   </Text>
                   <Text 
-                    style={[styles.message, fontsLoaded && { fontFamily: 'Poppins-Medium' }]} 
-                    numberOfLines={3}
+                    style={[styles.message, fontsLoaded && { fontFamily: 'Poppins-Light' }]} 
+                    numberOfLines={1}
                   >
                     {message.body || message.message || 'No message content'}
                   </Text>
@@ -93,12 +88,12 @@ const UrgentMessageCards = ({ messages = [], onMessagePress }) => {
                 <View style={styles.chevronContainer}>
                   <MaterialIcons
                     name="chevron-right"
-                    size={24}
-                    color="#fff"
+                    size={20}
+                    color="#dc2626"
                   />
                 </View>
               </View>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -124,52 +119,48 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: CARD_WIDTH,
-    marginRight: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginRight: 12,
   },
-  gradient: {
+  cardBackground: {
     width: '100%',
     height: CARD_HEIGHT,
+    backgroundColor: '#fef2f2', // Light red background for urgency
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 12,
     justifyContent: 'center',
   },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 32,
+    height: 32,
+    borderRadius: 8, // Square with rounded edges
+    backgroundColor: '#ef4444', // Red background for urgent icon
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   textWrapper: {
     flex: 1,
-    marginLeft: 16,
-    position: 'relative',
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: '#dc2626', // Red title for urgency
+    marginBottom: 2,
   },
   message: {
-    fontSize: 14,
-    color: '#F3F4F6',
-    lineHeight: 20,
+    fontSize: 12,
+    color: '#991b1b', // Darker red for message text
+    lineHeight: 16,
   },
   chevronContainer: {
     marginLeft: 8,
-    opacity: 0.7,
+    opacity: 0.8,
   }
 });
 

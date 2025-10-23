@@ -9,25 +9,14 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 
-const HouseHeader = ({ houseName, onInvitePress }) => {
+const HouseHeader = ({ onInvitePress }) => {
   // Load the Poppins font family
   const [fontsLoaded] = useFonts({
-    'Poppins-Bold': require('../../../assets/fonts/Poppins/Poppins-Bold.ttf'),
-    'Poppins-SemiBold': require('../../../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
     'Poppins-Medium': require('../../../assets/fonts/Poppins/Poppins-Medium.ttf'),
-    'Montserrat-Black': require('../../../assets/fonts/Montserrat-Black.ttf'), // Keep Montserrat
   });
 
   return (
     <View style={styles.header}>
-      {/* House name */}
-      <Text style={[
-        styles.headerTitle,
-        fontsLoaded && { fontFamily: 'Montserrat-Black' } // Keep Montserrat for header
-      ]}>
-        {houseName || 'My House'}
-      </Text>
-
       {/* Invite button with plus and label beneath */}
       <View style={styles.inviteContainer}>
         <TouchableOpacity
@@ -57,13 +46,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     backgroundColor: '#dff6f0',
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1e293b',
   },
   inviteContainer: {
     alignItems: 'center',

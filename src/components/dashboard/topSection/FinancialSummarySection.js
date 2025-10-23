@@ -30,6 +30,7 @@ const FinancialSummarySection = ({
             balance={userFinance.balance || 0}
             iconName="account-balance-wallet"
             onPress={onPressUser}
+            statusText=""
           />
         </View>
         
@@ -39,6 +40,7 @@ const FinancialSummarySection = ({
             balance={houseFinance.balance || 0}
             iconName="home"
             onPress={onPressHouse}
+            statusText=""
           />
         </View>
       </ScrollView>

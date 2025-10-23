@@ -66,7 +66,9 @@ const PaymentConfirmationModal = ({
 
   const getDisplayText = (method) => {
     if (!method) return '';
-    return `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
+    return method.type === 'us_bank_account'
+      ? `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
+      : `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
   };
 
   // Get the payment method that will be used for this payment

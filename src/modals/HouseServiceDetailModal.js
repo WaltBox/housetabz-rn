@@ -14,7 +14,7 @@ import {
   Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import apiClient from '../config/api';
+import apiClient, { invalidateCache, clearUserCache, clearHouseCache } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import OverviewTab from '../components/houseServices/OverviewTab';
 import DetailsTab from '../components/houseServices/DetailsTab';
@@ -114,7 +114,7 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
             try {
               const response = await apiClient.patch(`/api/houseServices/${service.id}/deactivate`);
               
-              // Update local state
+              // Update local state with response data
               const updatedService = {
                 ...detailedService,
                 status: 'inactive',
@@ -123,15 +123,22 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
               };
               setDetailedService(updatedService);
               
-              // Notify parent component
-              if (onServiceUpdated) {
-                onServiceUpdated(updatedService);
-              }
+              console.log('🔄 Service deactivated successfully:', service.name);
               
+              // Show success message and close modal
               Alert.alert(
                 'Service Deactivated',
-                response.data.message || `${response.data.serviceName} has been deactivated successfully.`,
-                [{ text: 'OK' }]
+                response.data.message || `${service.name} has been deactivated successfully.`,
+                [{ 
+                  text: 'OK',
+                  onPress: () => {
+                    // Notify parent and close modal
+                    if (onServiceUpdated) {
+                      onServiceUpdated(updatedService);
+                    }
+                    onClose();
+                  }
+                }]
               );
             } catch (error) {
               console.error('Deactivation failed:', error);
@@ -169,7 +176,7 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
             try {
               const response = await apiClient.patch(`/api/houseServices/${service.id}/reactivate`);
               
-              // Update local state
+              // Update local state with response data
               const updatedService = {
                 ...detailedService,
                 status: 'active',
@@ -178,15 +185,22 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
               };
               setDetailedService(updatedService);
               
-              // Notify parent component
-              if (onServiceUpdated) {
-                onServiceUpdated(updatedService);
-              }
+              console.log('🔄 Service reactivated successfully:', service.name);
               
+              // Show success message and close modal
               Alert.alert(
                 'Service Reactivated',
-                response.data.message || `${response.data.serviceName} has been reactivated successfully.`,
-                [{ text: 'OK' }]
+                response.data.message || `${service.name} has been reactivated successfully.`,
+                [{ 
+                  text: 'OK',
+                  onPress: () => {
+                    // Notify parent and close modal
+                    if (onServiceUpdated) {
+                      onServiceUpdated(updatedService);
+                    }
+                    onClose();
+                  }
+                }]
               );
             } catch (error) {
               console.error('Reactivation failed:', error);
@@ -290,6 +304,9 @@ const HouseServiceDetailModal = ({ service, activeLedger: initialLedger, onClose
       funded: detailedService.ledgers[0].funded
     })
   };
+  
+  // Debug logging to track status changes
+  console.log('🔍 Modal displayService status:', displayService.status, 'Service name:', displayService.name);
   const tasks = displayService.serviceRequestBundle?.tasks || [];
 
 

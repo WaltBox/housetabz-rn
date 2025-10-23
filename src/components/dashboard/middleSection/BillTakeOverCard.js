@@ -52,7 +52,7 @@ const BillTakeoverCard = ({ onPress }) => {
               styles.description,
               fontsLoaded && { fontFamily: 'Poppins-Bold' }
             ]}>
-              Submit a recurring{`\n`}expense to Bill{`\n`}Takeover.
+              Link a recurring{`\n`}expense to {`\n`}HouseTabz
             </Text>
           </View>
           

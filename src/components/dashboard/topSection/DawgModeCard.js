@@ -1,57 +1,38 @@
+// DawgModeCard.js - Simple clean design
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  Dimensions
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
-const CARD_HEIGHT = height * 0.2; // Same height as FinancialSummaryCard
-const CARD_WIDTH = width * 0.38; // About half the width of FinancialSummaryCard
-
-// Custom DrippyText component for badass dripping effect
-const DrippyText = ({ text, style }) => {
-  // Create text with multiple shadow layers to simulate drip effect
-  return (
-    <View style={styles.drippyTextContainer}>
-      {/* Drip shadow layers */}
-      <Text style={[styles.drippyShadow1, style]}>{text}</Text>
-      <Text style={[styles.drippyShadow2, style]}>{text}</Text>
-      <Text style={[styles.drippyShadow3, style]}>{text}</Text>
-      
-      {/* Main text on top */}
-      <Text style={[styles.drippyTextMain, style]}>{text}</Text>
-    </View>
-  );
-};
+const { width } = Dimensions.get('window');
 
 const DawgModeCard = ({ onPress }) => {
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <TouchableOpacity 
+      style={styles.container} 
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={styles.purpleBackground}>
-        {/* Centered drippy title at the top */}
-        <View style={styles.titleContainer}>
-          <DrippyText text="DAWG MODE" style={styles.title} />
-        </View>
+        {/* Dark polka dots pattern */}
+        <View style={[styles.polkaDot, styles.dot1]} />
+        <View style={[styles.polkaDot, styles.dot2]} />
+        <View style={[styles.polkaDot, styles.dot3]} />
+        <View style={[styles.polkaDot, styles.dot4]} />
+        <View style={[styles.polkaDot, styles.dot5]} />
         
-        {/* Extra large image positioned near the bottom */}
+        {/* Title at top */}
+        <Text style={styles.title}>DAWG MODE</Text>
+        
+        {/* Massive hero image - takes almost entire card */}
         <Image
           source={require('../../../../assets/dawg-mode.png')}
-          style={styles.image}
+          style={styles.dawgImage}
           resizeMode="contain"
         />
         
-        {/* Question mark icon at bottom right */}
+        {/* Question mark icon */}
         <View style={styles.questionContainer}>
-          <MaterialIcons name="help" size={24} color="white" />
+          <MaterialIcons name="help" size={16} color="white" />
         </View>
       </View>
     </TouchableOpacity>
@@ -60,82 +41,92 @@ const DawgModeCard = ({ onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 16,
+    flex: 1,
+    width: '100%',
+    borderRadius: 20,
+    minHeight: 140,
+    position: 'relative',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-
+    elevation: 4,
   },
   purpleBackground: {
     flex: 1,
-    backgroundColor: '#7e22ce', // Solid purple background
-    padding: 16,
-    justifyContent: 'flex-start', // Align content to the top
-  },
-  titleContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 12,
-    zIndex: 2,
-  },
-  drippyTextContainer: {
+    backgroundColor: '#7e22ce',
+    padding: 12,
     position: 'relative',
+    overflow: 'hidden',
   },
   title: {
-    fontSize: 22, // Slightly smaller to fit better when centered
+    fontSize: 28,
     fontWeight: '900',
     color: 'white',
     letterSpacing: 1,
     textAlign: 'center',
+    marginBottom: 4,
+    zIndex: 2,
   },
-  // Drip shadow effects
-  drippyShadow1: {
+  dawgImage: {
     position: 'absolute',
-    textShadowColor: '#9333ea', // Lighter purple
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 2,
-  },
-  drippyShadow2: {
-    position: 'absolute',
-    textShadowColor: '#6b21a8', // Darker purple
-    textShadowOffset: { width: 0, height: 6 },
-    textShadowRadius: 3,
-  },
-  drippyShadow3: {
-    position: 'absolute',
-    textShadowColor: '#4c1d95', // Even darker purple
-    textShadowOffset: { width: 0, height: 8 },
-    textShadowRadius: 4,
-  },
-  drippyTextMain: {
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  image: {
-    position: 'absolute',
-    bottom: -20, // Move even lower to make it appear larger
-    left: -10, // Shift slightly left to center visually
-    width: '150%', // Make image much larger
-    height: '100%', // Make image taller
-    zIndex: 1, // Behind the question mark
+    top: 25,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    width: '110%',
+    height: '130%',
+    zIndex: 1,
   },
   questionContainer: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 2, // Ensure it's on top of image
-  }
+    zIndex: 3,
+  },
+  polkaDot: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: 50,
+    zIndex: 0,
+  },
+  dot1: {
+    width: 25,
+    height: 25,
+    top: 15,
+    left: 20,
+  },
+  dot2: {
+    width: 18,
+    height: 18,
+    top: 45,
+    right: 25,
+  },
+  dot3: {
+    width: 22,
+    height: 22,
+    bottom: 25,
+    left: 15,
+  },
+  dot4: {
+    width: 15,
+    height: 15,
+    top: 25,
+    right: 45,
+  },
+  dot5: {
+    width: 20,
+    height: 20,
+    bottom: 45,
+    right: 15,
+  },
 });
 
 export default DawgModeCard;

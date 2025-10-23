@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../config/api';
+import apiClient, { invalidateCache, clearUserCache, clearHouseCache } from '../../config/api';
 
 import TakeoverSuccess from './TakeoverSuccess';
 
@@ -133,6 +133,11 @@ export default function BillTakeoverForm({ onBack }) {
         bundleType: formData.isFixedService ? 'fixed_recurring' : 'variable_recurring',
       };
       const { data } = await apiClient.post('/api/take-over-requests', payload);
+      
+      console.log('🎉 House service created successfully:', data);
+      
+      // Note: HouseServicesScreen will refresh when user navigates back via focus listener
+      
       setSubmittedData(data);
       setShowSuccess(true);
     } catch (err) {

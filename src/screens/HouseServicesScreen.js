@@ -19,6 +19,7 @@ import apiClient, {
   getAppUserInfo,
   getHouseServicesData, // DEPRECATED - keeping for fallback
   invalidateCache, 
+  clearUserCache,
   clearHouseCache
 } from '../config/api';
 import { useAuth } from '../context/AuthContext';
@@ -46,7 +47,7 @@ const HouseServicesScreen = ({ navigation }) => {
   const [selectedService, setSelectedService] = useState(null);
 
   // ✅ NEW: Use unified endpoint for house services data
-  const fetchHouseServices = useCallback(async () => {
+  const fetchHouseServices = useCallback(async (forceRefresh = false) => {
     try {
       if (!user?.id) {
         setError('User not authenticated');
@@ -54,13 +55,15 @@ const HouseServicesScreen = ({ navigation }) => {
         return;
       }
 
+
       setError(null);
       if (!refreshing) setIsLoading(true);
 
       console.log('🚀 UNIFIED: Fetching house services from unified endpoint for user:', user.id);
       
-      // ✅ NEW: Get house services data from unified endpoint
-      const response = await getAppUserInfo(user.id);
+      // ✅ Get house services data from unified endpoint
+      const options = forceRefresh ? { _t: Date.now() } : {};
+      const response = await getAppUserInfo(user.id, options);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to load house services data');
@@ -75,8 +78,13 @@ const HouseServicesScreen = ({ navigation }) => {
         dataSource: 'unified_endpoint'
       });
 
-      // Set the services data
-      setServices(houseServices);
+      // Set the services data with proper displayService field
+      const servicesWithDisplayService = houseServices.map(service => ({
+        ...service,
+        displayService: service.status === 'active' ? 'active' : 
+                       service.status === 'pending' ? 'pending' : 'inactive'
+      }));
+      setServices(servicesWithDisplayService);
 
       console.log('✅ House services loaded successfully');
 
@@ -110,7 +118,12 @@ const HouseServicesScreen = ({ navigation }) => {
 
     const unsubscribe = navigation.addListener('focus', () => {
       if (isMounted) {
-        loadData();
+        console.log('🔄 HouseServicesScreen focused - force refreshing data...');
+        // Clear cache and force reload when screen comes into focus
+        clearUserCache(user?.id);
+        clearHouseCache(user?.houseId);
+        // Force refresh to ensure we get latest data
+        fetchHouseServices(true);
       }
     });
 
@@ -123,9 +136,12 @@ const HouseServicesScreen = ({ navigation }) => {
   // Enhanced refresh function that clears cache first
   const handleRefresh = () => {
     setRefreshing(true);
-    // Clear cache to force fresh data
-    clearHouseCache(user.houseId);
-    fetchHouseServices();
+    console.log('🔄 Manual refresh - clearing all caches');
+    // Clear all caches to force fresh data
+    clearUserCache(user?.id);
+    clearHouseCache(user?.houseId);
+    // Force refresh with cache busting
+    fetchHouseServices(true);
   };
 
   const filteredServices = services.filter(service => {
@@ -134,6 +150,8 @@ const HouseServicesScreen = ({ navigation }) => {
     if (activeTab === 'deactivated') return service.status === 'inactive' || service.status === 'deactivated';
     return true;
   });
+
+
 
   // FIXED: Clean helper functions using new data structure
   const getPercentFunded = (service) => {
@@ -194,6 +212,7 @@ const HouseServicesScreen = ({ navigation }) => {
     const percentFunded = getPercentFunded(item);
     const contributorCount = getContributorCount(item);
     const serviceDetails = getServiceDetails(item);
+    
     
     return (
       <TouchableOpacity 
@@ -275,14 +294,6 @@ const HouseServicesScreen = ({ navigation }) => {
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#dff6f0" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={[
-            styles.headerTitle,
-            fontsLoaded && { fontFamily: 'Montserrat-Black' }
-          ]}>
-            House Services
-          </Text>
-        </View>
 
         <View style={styles.tabContainer}>
           <View style={styles.tabsWrapper}>
@@ -413,16 +424,22 @@ const HouseServicesScreen = ({ navigation }) => {
             service={selectedService}
             activeLedger={selectedService.ledgers?.[0]}
             onClose={() => setSelectedService(null)}
-            onServiceUpdated={(updatedService) => {
-              // Update the service in the local state
-              setServices(prevServices => 
-                prevServices.map(service => 
-                  service.id === updatedService.id ? updatedService : service
-                )
-              );
-              // Close the modal after update
-              setSelectedService(null);
-            }}
+          onServiceUpdated={(updatedService) => {
+            console.log('📱 Service updated:', updatedService.name, 'Status:', updatedService.status);
+            
+            // Update local state immediately
+            setServices(prevServices => 
+              prevServices.map(service => 
+                service.id === updatedService.id ? updatedService : service
+              )
+            );
+            
+            // Refresh data to ensure service moves to correct tab
+            setTimeout(() => {
+              console.log('🔄 Refreshing after service update');
+              fetchHouseServices(true);
+            }, 500);
+          }}
           />
         )}
       </SafeAreaView>
@@ -435,22 +452,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#dff6f0",
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: "#dff6f0",
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
   tabContainer: {
     position: 'relative',
     marginBottom: 16,
     backgroundColor: "#dff6f0",
     paddingHorizontal: 20,
+    paddingTop: 16,
   },
   tabsWrapper: {
     flexDirection: 'row',

@@ -200,39 +200,40 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
           bounces={false}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Image Section */}
-          <View style={styles.heroSection}>
-            <Image
-              source={{
-                uri: displayPartner.company_cover || displayPartner.marketplace_cover || 'https://via.placeholder.com/400',
-                headers: { Pragma: 'no-cache' }
-              }}
-              style={styles.coverImage}
-              onLoadStart={() => setImageLoading(true)}
-              onLoadEnd={() => setImageLoading(false)}
-            />
-            {imageLoading && (
-              <View style={styles.imageLoadingContainer}>
-                <ActivityIndicator size="large" color="#22c55e" />
-              </View>
-            )}
-            <LinearGradient
-              colors={['transparent', '#dff6f0']}
-              style={styles.imageGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-            />
-          </View>
-
-          {/* Company Info Card */}
-          <View style={styles.infoCard}>
-            <Text style={styles.companyName}>{displayPartner.name}</Text>
+          {/* Logo Header Section */}
+          <View style={styles.logoHeaderSection}>
+            <View style={styles.logoContainer}>
+              {displayPartner.logo ? (
+                <Image
+                  source={{
+                    uri: displayPartner.logo,
+                    headers: { Pragma: 'no-cache' }
+                  }}
+                  style={styles.logoImage}
+                  onLoadStart={() => setImageLoading(true)}
+                  onLoadEnd={() => setImageLoading(false)}
+                />
+              ) : (
+                <View style={styles.placeholderLogo}>
+                  <Text style={styles.placeholderLogoText}>
+                    {displayPartner.name.substring(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              {imageLoading && (
+                <View style={styles.logoLoadingContainer}>
+                  <ActivityIndicator size="small" color="#34d399" />
+                </View>
+              )}
+            </View>
+            
+            <Text style={styles.payWithText}>Pay with HouseTabz{'\n'}at {displayPartner.name}</Text>
+            
             <View style={styles.ratingRow}>
               <MaterialIcons name="star" size={16} color="#f59e0b" />
               <Text style={styles.ratingText}>4.8</Text>
               <Text style={styles.reviewCount}>(243 reviews)</Text>
             </View>
-        
           </View>
 
           {/* Content Sections */}
@@ -243,33 +244,37 @@ const ViewCompanyCard = ({ visible, onClose, partner, userId, jwtToken }) => {
             </Text>
           </View>
 
-          <View style={styles.contentSection}>
-            <Text style={styles.sectionTitle}>How to Use</Text>
-            <Text style={styles.sectionText}>
-              {displayPartner.how_to || "No instructions available at the moment."}
-            </Text>
+          <View style={styles.howToSection}>
+            <Text style={styles.howToTitle}>How to pay with HouseTabz</Text>
+            <Text style={styles.checkoutText}>At checkout, select <Text style={styles.highlightText}>HouseTabz</Text></Text>
+            
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>1</Text>
+              <Text style={styles.stepText}>Shop the site</Text>
+            </View>
+            
+            <View style={styles.stepContainer}>
+              <Text style={styles.stepNumber}>2</Text>
+              <Text style={styles.stepText}>Link to HouseTabz at checkout</Text>
+            </View>
           </View>
 
-          <View style={styles.contentSection}>
-            <Text style={styles.sectionTitle}>Important Information</Text>
-            <Text style={styles.sectionText}>
-              {displayPartner.important_information || "No additional information available."}
-            </Text>
-          </View>
         </ScrollView>
 
-        {/* Action Button */}
+        {/* Shop Online Divider and Button */}
         <View style={styles.actionContainer}>
+          <View style={styles.shopOnlineDivider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.shopOnlineText}>Shop Online</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.shopButton}
             onPress={() => setShowBrowser(true)}
           >
-            <MaterialIcons name="shopping-cart" size={20} color="white" />
-            <Text style={styles.actionButtonText}>
-              Shop {displayPartner.name}
-            </Text>
+            <Text style={styles.shopButtonText}>Shop</Text>
           </TouchableOpacity>
-        
         </View>
       </>
     );
@@ -533,52 +538,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 8,
   },
-  heroSection: {
-    height: 200,
-    backgroundColor: '#f1f5f9',
-    position: 'relative',
+  logoHeaderSection: {
+    paddingTop: 40,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    backgroundColor: '#dff6f0',
   },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  imageLoadingContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(241, 245, 249, 0.7)',
-  },
-  imageGradient: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    height: 80,
-  },
-  infoCard: {
-    margin: 24,
-    padding: 24,
-    backgroundColor: 'white',
-    borderRadius: 16,
-    alignItems: 'center',
-  
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.1)',
   },
-  companyName: {
+  logoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  placeholderLogo: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#34d399',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderLogoText: {
     fontSize: 24,
     fontWeight: '700',
+    color: '#ffffff',
+  },
+  logoLoadingContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 30,
+  },
+  payWithText: {
+    fontSize: 24,
+    fontFamily: 'Montserrat-Black',
     color: '#1e293b',
-    marginBottom: 12,
     textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+    lineHeight: 30,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -607,39 +626,121 @@ const styles = StyleSheet.create({
     color: '#34d399',
   },
   contentSection: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 24,
+    backgroundColor: 'rgba(52, 211, 153, 0.03)',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontFamily: 'Montserrat-Bold',
+    fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 12,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   sectionText: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
+    color: '#374151',
+    fontWeight: '400',
+    letterSpacing: -0.1,
+  },
+  howToSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 0,
+  },
+  howToTitle: {
+    fontSize: 20,
+    fontFamily: 'Montserrat-Bold',
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  checkoutText: {
+    fontSize: 16,
     color: '#64748b',
+    marginBottom: 16,
   },
-  actionContainer: {
-    padding: 24,
-    backgroundColor: '#dff6f0',
-    borderTopWidth: 1,
-    borderTopColor: '#34d399',
+  highlightText: {
+    fontWeight: '600',
+    color: '#34d399',
   },
-  actionButton: {
-    backgroundColor: '#34d399',
-    borderRadius: 12,
-    padding: 16,
+  stepContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    marginBottom: 8,
   },
-  actionButtonText: {
-    color: 'white',
+  stepNumber: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#34d399',
+    marginRight: 12,
+    width: 20,
+  },
+  stepText: {
+    fontSize: 16,
+    color: '#64748b',
+    flex: 1,
+  },
+  actionContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#dff6f0',
+    alignItems: 'center',
+  },
+  shopOnlineDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '80%',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#cbd5e1',
+  },
+  shopOnlineText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748b',
+    marginHorizontal: 16,
+    backgroundColor: '#dff6f0',
+    paddingHorizontal: 8,
+  },
+  shopButton: {
+    backgroundColor: '#34d399',
+    borderRadius: 30,
+    paddingHorizontal: 60,
+    paddingVertical: 16,
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    minWidth: 180,
+    width: '60%',
+  },
+  shopButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   actionNote: {
     textAlign: 'center',

@@ -12,8 +12,9 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-const CARD_SIZE = width * 0.38; // Square cards
-const LOGO_SIZE = CARD_SIZE * 0.25; // Small circular logo
+const CARD_WIDTH = width * 0.42; // Slightly wider for better proportions
+const CARD_HEIGHT = CARD_WIDTH * 0.75; // More rectangular, less square
+const LOGO_SIZE = CARD_WIDTH * 0.22; // Proportional logo size
 
 const PartnerDisplay = ({ partners = [], onPartnerPress, limit = 6, isLoading = false, error = null }) => {
   if (isLoading) {
@@ -54,56 +55,58 @@ const PartnerDisplay = ({ partners = [], onPartnerPress, limit = 6, isLoading = 
         contentContainerStyle={styles.scrollContent}
       >
         {displayPartners.map((partner, index) => (
+          <View key={partner.id} style={styles.cardContainer}>
             <TouchableOpacity
-              key={partner.id}
               style={styles.card}
               onPress={() => onPartnerPress(partner)}
-              activeOpacity={0.9}
+              activeOpacity={0.95}
             >
-            {/* Cover image as background */}
-            <View style={styles.coverContainer}>
-              {partner.marketplace_cover ? (
-                <Image 
-                  source={{ uri: partner.marketplace_cover }} 
-                  style={styles.coverImage} 
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.placeholderCover}>
-                  <MaterialIcons name="image" size={40} color="#999" />
-                </View>
-              )}
-              
-              {/* Logo circle in bottom left with white border */}
-              <View style={styles.logoOuterBorder}>
-                <View style={styles.logoContainer}>
-                  {partner.logo ? (
-                    <Image 
-                      source={{ uri: partner.logo }} 
-                      style={styles.logo} 
-                      resizeMode="cover" // Changed to cover for perfect fill
-                    />
-                  ) : (
-                    <View style={styles.placeholderLogo}>
-                      <Text style={styles.placeholderText}>
-                        {partner.name.substring(0, 1).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
+              {/* Cover image container */}
+              <View style={styles.coverContainer}>
+                {partner.marketplace_cover ? (
+                  <Image 
+                    source={{ uri: partner.marketplace_cover }} 
+                    style={styles.coverImage} 
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.placeholderCover}>
+                    <MaterialIcons name="store" size={32} color="#94a3b8" />
+                  </View>
+                )}
+                
+                {/* Logo with enhanced styling */}
+                <View style={styles.logoWrapper}>
+                  <View style={styles.logoContainer}>
+                    {partner.logo ? (
+                      <Image 
+                        source={{ uri: partner.logo }} 
+                        style={styles.logo} 
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.placeholderLogo}>
+                        <Text style={styles.placeholderText}>
+                          {partner.name.substring(0, 1).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
             
-            {/* Name section - white sliver at bottom */}
-            <View style={styles.nameContainer}>
+            {/* Clean white bubble for name */}
+            <View style={styles.nameBubble}>
               <Text 
                 style={styles.partnerName}
                 numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {partner.name}
               </Text>
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -112,63 +115,73 @@ const PartnerDisplay = ({ partners = [], onPartnerPress, limit = 6, isLoading = 
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 12,
   },
   scrollContent: {
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: 20,
+    paddingRight: 12,
+  },
+  cardContainer: {
+    marginRight: 16,
+    alignItems: 'center',
   },
   card: {
-    width: CARD_SIZE,
-    height: CARD_SIZE + 36, // Square plus the name section
-    borderRadius: 12,
-    marginRight: 12,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    marginBottom: 8,
   },
   coverContainer: {
-    width: CARD_SIZE,
-    height: CARD_SIZE,
-    backgroundColor: '#f5f5f5',
-    position: 'relative', // For logo positioning
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    backgroundColor: '#f8fafc',
+    position: 'relative',
+    overflow: 'hidden',
   },
   coverImage: {
-    width: CARD_SIZE,
-    height: CARD_SIZE,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
   },
   placeholderCover: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoOuterBorder: {
+  logoWrapper: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
-    width: LOGO_SIZE + 4, // Slightly larger to create border
-    height: LOGO_SIZE + 4,
-    borderRadius: (LOGO_SIZE + 4) / 2,
-    backgroundColor: 'white', // White border
+    bottom: 12,
+    left: 12,
+    width: LOGO_SIZE + 6,
+    height: LOGO_SIZE + 6,
+    borderRadius: (LOGO_SIZE + 6) / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
-
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   logoContainer: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
     borderRadius: LOGO_SIZE / 2,
-    overflow: 'hidden', // Ensure logo stays within circle
-    backgroundColor: 'white',
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
   },
   logo: {
     width: '100%',
@@ -183,72 +196,100 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: 'white',
-    fontSize: LOGO_SIZE * 0.5,
+    fontSize: LOGO_SIZE * 0.45,
     fontWeight: '700',
+    fontFamily: 'System',
   },
-  nameContainer: {
-    height: 36,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 8,
+  nameBubble: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    width: CARD_WIDTH,
   },
   partnerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1e293b',
     textAlign: 'center',
+    letterSpacing: -0.2,
   },
   loadingContainer: {
-    height: CARD_SIZE,
+    height: CARD_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: 20,
   },
   errorContainer: {
-    height: CARD_SIZE,
+    height: CARD_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.1)',
   },
   errorText: {
     color: '#dc2626',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    fontWeight: '500',
   },
   retryButton: {
     backgroundColor: '#34d399',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   retryText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 13,
   },
   emptyContainer: {
-    height: CARD_SIZE,
+    height: CARD_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 12,
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
     color: '#64748b',
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    marginBottom: 4,
   },
   emptySubtext: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#94a3b8',
     textAlign: 'center',
     marginTop: 4,

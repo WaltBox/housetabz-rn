@@ -10,6 +10,8 @@ PODS:
   - EXJSONUtils (0.12.3)
   - EXManifests (0.13.2):
     - ExpoModulesCore
+  - EXNotifications (0.27.8):
+    - ExpoModulesCore
   - Expo (50.0.21):
     - ExpoModulesCore
   - expo-dev-client (3.3.12):
@@ -79,6 +81,8 @@ PODS:
     - glog
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
+  - ExpoDevice (5.9.4):
+    - ExpoModulesCore
   - ExpoFileSystem (16.0.9):
     - ExpoModulesCore
   - ExpoKeepAwake (12.8.2):
@@ -1126,6 +1130,8 @@ PODS:
     - React-Core
   - RNCPushNotificationIOS (1.11.0):
     - React-Core
+  - RNDateTimePicker (7.7.0):
+    - React-Core
   - RNGestureHandler (2.14.1):
     - glog
     - RCT-Folly (= 2022.05.16.00)
@@ -1146,42 +1152,42 @@ PODS:
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
   - SocketRocket (0.6.1)
-  - Stripe (24.2.0):
-    - StripeApplePay (= 24.2.0)
-    - StripeCore (= 24.2.0)
-    - StripePayments (= 24.2.0)
-    - StripePaymentsUI (= 24.2.0)
-    - StripeUICore (= 24.2.0)
-  - stripe-react-native (0.41.0):
+  - Stripe (23.18.3):
+    - StripeApplePay (= 23.18.3)
+    - StripeCore (= 23.18.3)
+    - StripePayments (= 23.18.3)
+    - StripePaymentsUI (= 23.18.3)
+    - StripeUICore (= 23.18.3)
+  - stripe-react-native (0.35.1):
     - React-Core
-    - Stripe (~> 24.2.0)
-    - StripeApplePay (~> 24.2.0)
-    - StripeFinancialConnections (~> 24.2.0)
-    - StripePayments (~> 24.2.0)
-    - StripePaymentSheet (~> 24.2.0)
-    - StripePaymentsUI (~> 24.2.0)
-  - StripeApplePay (24.2.0):
-    - StripeCore (= 24.2.0)
-  - StripeCore (24.2.0)
-  - StripeFinancialConnections (24.2.0):
-    - StripeCore (= 24.2.0)
-    - StripeUICore (= 24.2.0)
-  - StripePayments (24.2.0):
-    - StripeCore (= 24.2.0)
-    - StripePayments/Stripe3DS2 (= 24.2.0)
-  - StripePayments/Stripe3DS2 (24.2.0):
-    - StripeCore (= 24.2.0)
-  - StripePaymentSheet (24.2.0):
-    - StripeApplePay (= 24.2.0)
-    - StripeCore (= 24.2.0)
-    - StripePayments (= 24.2.0)
-    - StripePaymentsUI (= 24.2.0)
-  - StripePaymentsUI (24.2.0):
-    - StripeCore (= 24.2.0)
-    - StripePayments (= 24.2.0)
-    - StripeUICore (= 24.2.0)
-  - StripeUICore (24.2.0):
-    - StripeCore (= 24.2.0)
+    - Stripe (~> 23.18.0)
+    - StripeApplePay (~> 23.18.0)
+    - StripeFinancialConnections (~> 23.18.0)
+    - StripePayments (~> 23.18.0)
+    - StripePaymentSheet (~> 23.18.0)
+    - StripePaymentsUI (~> 23.18.0)
+  - StripeApplePay (23.18.3):
+    - StripeCore (= 23.18.3)
+  - StripeCore (23.18.3)
+  - StripeFinancialConnections (23.18.3):
+    - StripeCore (= 23.18.3)
+    - StripeUICore (= 23.18.3)
+  - StripePayments (23.18.3):
+    - StripeCore (= 23.18.3)
+    - StripePayments/Stripe3DS2 (= 23.18.3)
+  - StripePayments/Stripe3DS2 (23.18.3):
+    - StripeCore (= 23.18.3)
+  - StripePaymentSheet (23.18.3):
+    - StripeApplePay (= 23.18.3)
+    - StripeCore (= 23.18.3)
+    - StripePayments (= 23.18.3)
+    - StripePaymentsUI (= 23.18.3)
+  - StripePaymentsUI (23.18.3):
+    - StripeCore (= 23.18.3)
+    - StripePayments (= 23.18.3)
+    - StripeUICore (= 23.18.3)
+  - StripeUICore (23.18.3):
+    - StripeCore (= 23.18.3)
   - Yoga (1.14.0)
 
 DEPENDENCIES:
@@ -1192,11 +1198,13 @@ DEPENDENCIES:
   - EXFont (from `../node_modules/expo-font/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
   - EXManifests (from `../node_modules/expo-manifests/ios`)
+  - EXNotifications (from `../node_modules/expo-notifications/ios`)
   - Expo (from `../node_modules/expo`)
   - expo-dev-client (from `../node_modules/expo-dev-client/ios`)
   - expo-dev-launcher (from `../node_modules/expo-dev-launcher`)
   - expo-dev-menu (from `../node_modules/expo-dev-menu`)
   - expo-dev-menu-interface (from `../node_modules/expo-dev-menu-interface/ios`)
+  - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
@@ -1256,6 +1264,7 @@ DEPENDENCIES:
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
   - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
   - "RNCPushNotificationIOS (from `../node_modules/@react-native-community/push-notification-ios`)"
+  - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -1292,6 +1301,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-json-utils/ios"
   EXManifests:
     :path: "../node_modules/expo-manifests/ios"
+  EXNotifications:
+    :path: "../node_modules/expo-notifications/ios"
   Expo:
     :path: "../node_modules/expo"
   expo-dev-client:
@@ -1302,6 +1313,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-dev-menu"
   expo-dev-menu-interface:
     :path: "../node_modules/expo-dev-menu-interface/ios"
+  ExpoDevice:
+    :path: "../node_modules/expo-device/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoKeepAwake:
@@ -1416,6 +1429,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-picker/picker"
   RNCPushNotificationIOS:
     :path: "../node_modules/@react-native-community/push-notification-ios"
+  RNDateTimePicker:
+    :path: "../node_modules/@react-native-community/datetimepicker"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNReanimated:
@@ -1439,11 +1454,13 @@ SPEC CHECKSUMS:
   EXFont: 64e653a110eee050ad80dfcd676c4bada0a1ff92
   EXJSONUtils: 5c42959e87be238b045ef37cc5268b16a6c0ad4a
   EXManifests: 429136cffa3ae82d1ba3b60b7243fb186615562e
+  EXNotifications: 9fd42ca3c5998ae93a2ac869ed9a47467c433219
   Expo: 1b33cb8ab60cff9abf805ed6020af3d1846e457c
   expo-dev-client: 775a683302570193a7ba71032d0b1b82f6ad1454
   expo-dev-launcher: 4b9190f0879290b57ed89cc5c24592d4ce981f85
   expo-dev-menu: efe7323e7f918e437a02f20063eb2b55c13dfe99
   expo-dev-menu-interface: 44e69ddff62bbc6c5418c200e657635720b5a480
+  ExpoDevice: fc21b9193d704f3759c1ede1b383fcdb0370b46a
   ExpoFileSystem: df58e1eb2a4d6f1006a1ca70bddfbbf63e52fa4f
   ExpoKeepAwake: 3b8cf8533b9212500565a1e41fb080fc5af29918
   ExpoLinearGradient: 501f9bbd83f3ec1d0e0425862b9ef4693605fc1c
@@ -1502,21 +1519,22 @@ SPEC CHECKSUMS:
   RNCMaskedView: 4c5ee1c8667d56077246cc6d1977f77393923560
   RNCPicker: 7ea4c112b43a2033ddb1e5e2ecb2e826f222b897
   RNCPushNotificationIOS: 6c4ca3388c7434e4a662b92e4dfeeee858e6f440
+  RNDateTimePicker: 590f2000e4272050b98689cee6c8abc66c25bb22
   RNGestureHandler: dd5543af5c344cb2bdd8de81a8ec85adb5ec4b4b
   RNReanimated: 8adb252a83153bb04b99abf93a09b47d4cac8f92
   RNScreens: 59f615aa0782077560c8eea46c2daec3a716dba9
   RNSVG: 6d5ed33b6635ed6d6ecb50744dcf127580c39ed5
   RNVectorIcons: 76364622e6f8e55bb456705582cde20f55ef889c
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
-  Stripe: be805dc0e80a7299de7b10ecbe01ce81412654c8
-  stripe-react-native: ea35620843771fae59248c88f16c2ffcf0a3dc70
-  StripeApplePay: 5233ecff535bb0772785d2d18d02b39ec24ecb71
-  StripeCore: e2f70fcaa82e5a9d44d18fe4534358384cdf4821
-  StripeFinancialConnections: 8c8e2273552d4567ec381ee2b0ff1745b8e11ab6
-  StripePayments: beb97f8061066532744ceaa03e59009c9716332e
-  StripePaymentSheet: 0d8ed5270037b1da3eb107c9876cec67b8b1fe43
-  StripePaymentsUI: 6486d8b86bf49b8932506807a8692ce16e9f109d
-  StripeUICore: b59aa9c9e202b6a03a556c3519eff578274f7598
+  Stripe: e046335ab6e3f25d39f1a55bd98620a85269cffa
+  stripe-react-native: b826a7a621596be9a3971d66ad63a24c48b391f0
+  StripeApplePay: 1aa77f8ec7a6d9463fa8f49ae0672fe59dbf4c73
+  StripeCore: fe10c34fb3c9ae18b986913f7e4460e7c653ce93
+  StripeFinancialConnections: 6022426894046f26fe21d348da02d83d8a637fb0
+  StripePayments: 7084fed30c5f03f15ae23c5dce63715ba0b53e15
+  StripePaymentSheet: c8d25d4133476c6238d3cc932fb8219bb5ea49c0
+  StripePaymentsUI: c12de264eda974d91e43a769f53a6c6afc9a1715
+  StripeUICore: 090c4fe916d039616ce8f8de30392f4aeb33dd16
   Yoga: 805bf71192903b20fc14babe48080582fee65a80
 
 PODFILE CHECKSUM: 9c506efc8db104597637786886965de4a48be08b

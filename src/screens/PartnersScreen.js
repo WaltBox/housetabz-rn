@@ -180,7 +180,7 @@ export default PartnersScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#dff6f0" },
-  scroll: { paddingBottom: 40 },
+  scroll: { paddingTop: 16, paddingBottom: 40 },
   
   announcementSection: {
     paddingVertical: 24,

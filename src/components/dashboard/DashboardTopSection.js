@@ -1,6 +1,7 @@
 // Updated DashboardTopSection.js
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import FinancialSummaryCard from './topSection/FinancialSummaryCard';
 import DawgModeCard from './topSection/DawgModeCard';
 import DawgModeModal from '../../modals/DawgModeModal';
@@ -12,7 +13,7 @@ import { getHouseTabsData } from '../../config/api';
 import apiClient from '../../config/api';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.75;
+const CARD_WIDTH = width * 0.6;
 
 // UPDATED: Add unpaidBills prop
 const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, unpaidBills = [] }) => {
@@ -145,36 +146,39 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-      >
-        <View style={styles.cardWrapper}>
-          <FinancialSummaryCard
-            title="YourTab"
-            balance={userFinance?.balance || 0}
-            iconName="account-balance-wallet"
-            onPress={handleUserFinancePress}
-          />
-        </View>
-
-        <View style={styles.cardWrapper}>
-          <FinancialSummaryCard
-            title="HouseTab"
-            // FIXED: Use the correct balance field - house.balance (127.85) not house.houseBalance (0)
-            balance={house?.balance || house?.houseBalance || houseFinance?.balance || 0}
-            iconName="home"
-            onPress={handleHouseFinancePress}
-          />
-        </View>
-
-        <View style={styles.cardWrapperSmall}>
-          <DawgModeCard onPress={handleDawgModePress} />
-        </View>
-      </ScrollView>
+    <View>
+      <View style={styles.container}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          decelerationRate="fast"
+          snapToInterval={CARD_WIDTH + 8}
+          snapToAlignment="start"
+        >
+          <View style={styles.cardWrapper}>
+            <FinancialSummaryCard
+              title="YourTab"
+              balance={userFinance?.balance || 0}
+              iconName="account-balance-wallet"
+              onPress={handleUserFinancePress}
+              statusText=""
+            />
+          </View>
+          <View style={styles.cardWrapper}>
+            <FinancialSummaryCard
+              title="HouseTab"
+              balance={house?.balance || house?.houseBalance || houseFinance?.balance || 0}
+              iconName="home"
+              onPress={handleHouseFinancePress}
+              statusText=""
+            />
+          </View>
+          <View style={styles.cardWrapper}>
+            <DawgModeCard onPress={handleDawgModePress} />
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Dawg Mode Modal */}
       <ModalComponent
@@ -224,10 +228,19 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
 };
 
 const styles = StyleSheet.create({
-  container: { marginVertical: 16 },
-  scrollContent: { paddingLeft: 15, paddingRight: 16 },
-  cardWrapper: { width: CARD_WIDTH, marginRight: 12 },
-  cardWrapperSmall: { marginRight: 12, width: CARD_WIDTH * 0.5 },
+  container: {
+    marginVertical: 16,
+    paddingVertical: 20,
+    paddingTop: 30,
+  },
+  scrollContent: { 
+    paddingLeft: 16, 
+    paddingRight: 16,
+  },
+  cardWrapper: { 
+    width: CARD_WIDTH, 
+    marginRight: 20,
+  },
 });
 
 export default DashboardTopSection;

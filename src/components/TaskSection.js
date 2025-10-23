@@ -30,7 +30,7 @@ const TaskSection = ({ tasks = [], billSubmissions = [], activeTaskIndex, taskCo
   
   // ✅ CRITICAL FIX: Filter bill submissions to only show ones assigned to current user
   const userBillSubmissions = billSubmissions.filter(submission => 
-    submission.submittedBy === user.id
+    submission.userId === user.id
   );
   
   console.log('🔍 TaskSection DETAILED ANALYSIS:', {

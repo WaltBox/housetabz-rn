@@ -25,7 +25,7 @@ const BillTakeoverIntro = ({ onSubmit }) => {
       {/* Header */}
       <View style={styles.headerCard}>
         <Text style={styles.headerTitle}>
-          Submit a recurring expense for Bill Takeover
+          Link a recurring expense to HouseTabz
         </Text>
         <Text style={styles.headerSubtitle}>
           Enter details about your expense to request roommates to claim ownership and spread financial responsibility.

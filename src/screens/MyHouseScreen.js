@@ -285,7 +285,6 @@ const HouseTabzScreen = () => {
             {/* Header */}
             <View style={styles.headerContainer}>
               <HouseHeader
-                houseName={house?.name}
                 onInvitePress={() => setShowInviteModal(true)}
               />
             </View>

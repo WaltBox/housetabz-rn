@@ -23,7 +23,7 @@ const HouseTabzLoadingScreen = ({ message }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#dff6f0', // Your light HouseTabz color
+    backgroundColor: '#34d399', // Your light HouseTabz color
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#34d399', // Your main HouseTabz color
+    color: 'white', // Your main HouseTabz color
     fontFamily: 'Montserrat-Black',
   },
 });

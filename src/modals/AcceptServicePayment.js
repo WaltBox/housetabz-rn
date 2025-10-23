@@ -229,13 +229,13 @@ const AcceptServicePayment = ({ visible, onClose, taskData, onSuccess, onAddPaym
 
   const getPaymentMethodDisplay = (method) => {
     if (!method) return 'Select payment method';
-    return method.type === 'card'
-      ? `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
-      : `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
+    return method.type === 'us_bank_account'
+      ? `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
+      : `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
   };
 
   const getMethodIcon = (type) => {
-    return type === 'card' ? 'credit-card' : 'account-balance';
+    return type === 'us_bank_account' ? 'account-balance' : 'credit-card';
   };
 
   // Get the payment method that will be used for this payment

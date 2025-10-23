@@ -751,4 +751,4 @@ export const API_ENDPOINTS = {
 
 // Export the pre-configured axios instance as default
 export default apiClient;
-
+// npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios

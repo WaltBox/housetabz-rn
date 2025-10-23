@@ -11,7 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import apiClient from '../config/api';
+import apiClient, { invalidateCache } from '../config/api';
 import HouseServiceDetailModal from './HouseServiceDetailModal';
 
 const HouseServicesModal = ({ house, onClose }) => {
@@ -245,6 +245,11 @@ const HouseServicesModal = ({ house, onClose }) => {
                   service.id === updatedService.id ? updatedService : service
                 )
               );
+              // Clear cache and refetch to ensure fresh data
+              setTimeout(() => {
+                invalidateCache('houseService');
+                fetchHouseServices();
+              }, 100);
               // Optionally close the modal after update
               setSelectedService(null);
             }}

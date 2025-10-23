@@ -25,6 +25,8 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [processingMethodId, setProcessingMethodId] = useState(null);
+  const [activePaymentType, setActivePaymentType] = useState(null);
   const [localVisible, setLocalVisible] = useState(visible);
 
   // Handle hardware back button
@@ -80,31 +82,41 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
     }, 50);
   };
 
-  const handleAddPaymentMethod = async () => {
+  const handleAddPaymentMethod = async (type = 'card') => {
     try {
       if (!user) {
         Alert.alert('Error', 'Please log in to add a payment method');
         return;
       }
-      setProcessing(true);
-      setLoading(true);
       
-      const setupResponse = await apiClient.post(
-        '/api/payment-methods/setup-intent',
-        {}
-      );
+      setActivePaymentType(type);
+      
+      // Determine which endpoint to use based on payment method type
+      const endpoint = type === 'ach' 
+        ? '/api/payment-methods/setup-intent/ach'
+        : '/api/payment-methods/setup-intent';
+
+      const setupResponse = await apiClient.post(endpoint, {});
       
       const { clientSecret, setupIntentId } = setupResponse.data;
       if (!clientSecret || !setupIntentId) {
         throw new Error('No client secret or setupIntentId received');
       }
       
-      const initResponse = await initPaymentSheet({
+      // Configure Stripe PaymentSheet based on payment method type
+      const paymentSheetConfig = {
         merchantDisplayName: 'HouseTabz',
         setupIntentClientSecret: clientSecret,
         allowsDelayedPaymentMethods: true,
         appearance: { colors: { primary: '#34d399' } },
-      });
+      };
+
+      // For ACH, we need to specify payment method types
+      if (type === 'ach') {
+        paymentSheetConfig.paymentMethodTypes = ['us_bank_account'];
+      }
+
+      const initResponse = await initPaymentSheet(paymentSheetConfig);
       
       if (initResponse.error) {
         Alert.alert('Error', initResponse.error.message);
@@ -119,7 +131,16 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
       }
       
       await apiClient.post('/api/payment-methods/complete', { setupIntentId });
-      Alert.alert('Success', 'Payment method added successfully');
+      
+      // Show different success messages based on payment method type
+      if (type === 'ach') {
+        Alert.alert(
+          'Bank Account Added!', 
+          'Your bank account has been linked successfully. ACH payments take 3-5 business days to process but are free of charge.'
+        );
+      } else {
+        Alert.alert('Success', 'Credit card added successfully');
+      }
       
       // Refresh payment methods and notify parent components
       await fetchPaymentMethods();
@@ -136,15 +157,14 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
         error.response?.data?.message || 'Failed to add payment method. Please try again.'
       );
     } finally {
-      setProcessing(false);
-      setLoading(false);
+      setActivePaymentType(null);
     }
   };
 
   const handleSetDefault = async (methodId) => {
     try {
       if (!user) return;
-      setProcessing(true);
+      setProcessingMethodId(methodId);
       
       console.log('🔄 Setting payment method as default:', methodId);
       
@@ -152,19 +172,15 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
       await apiClient.put(`/api/payment-methods/${methodId}/default`);
       console.log('✅ Backend API call successful');
       
-      // Update local state immediately to reflect the change
-      // Only the selected method should have isDefault: true, all others should be false
-      setPaymentMethods(prev => {
-        const updated = prev.map(method => ({
-          ...method,
-          isDefault: method.id === methodId
-        }));
-        console.log('🔄 Updated local state:', updated.map(m => ({ id: m.id, isDefault: m.isDefault })));
-        return updated;
-      });
-      
-      // Refresh from server to ensure consistency
-      await fetchPaymentMethods();
+      // Force a fresh fetch without loading state interference
+      try {
+        const response = await apiClient.get('/api/payment-methods');
+        const methods = response.data.paymentMethods || [];
+        setPaymentMethods(methods);
+        console.log('✅ Refreshed payment methods after default change:', methods.map(m => ({ id: m.id, isDefault: m.isDefault, last4: m.last4 })));
+      } catch (fetchError) {
+        console.error('Error refreshing payment methods:', fetchError);
+      }
       
       // Update the auth context payment methods status
       if (refreshPaymentMethods) {
@@ -183,10 +199,10 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
       console.error('Error setting default payment method:', error);
       Alert.alert('Error', 'Failed to set default payment method');
       
-      // Revert local state on error
+      // Refresh on error to ensure consistency
       await fetchPaymentMethods();
     } finally {
-      setProcessing(false);
+      setProcessingMethodId(null);
     }
   };
 
@@ -230,14 +246,14 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
       <View style={styles.methodLeft}>
         <View style={styles.iconContainer}>
           <MaterialIcons 
-            name={method.type === 'bank' ? 'account-balance' : 'credit-card'} 
+            name={method.type === 'us_bank_account' || method.name?.includes('BANK') || method.name?.includes('Bank') ? 'account-balance' : 'credit-card'} 
             size={20} 
             color="#34d399" 
           />
         </View>
         <Text style={styles.methodTitle}>
-          {method.type === 'bank'
-            ? method.name
+          {method.type === 'us_bank_account'
+            ? `Bank •••• ${method.last4}`
             : `${method.brand?.toUpperCase()} •••• ${method.last4}`}
         </Text>
       </View>
@@ -252,13 +268,17 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
           <TouchableOpacity 
             style={[
               styles.setDefaultButton,
-              processing && styles.setDefaultButtonDisabled
+              processingMethodId === method.id && styles.setDefaultButtonDisabled
             ]}
             onPress={() => handleSetDefault(method.id)}
-            disabled={processing}
+            disabled={processingMethodId === method.id}
             activeOpacity={0.7}
           >
-            <Text style={styles.setDefaultButtonText}>Set as Default</Text>
+            {processingMethodId === method.id ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.setDefaultButtonText}>Set as Default</Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -307,16 +327,56 @@ const PaymentMethodsSettings = ({ visible = false, onClose, onPaymentMethodsUpda
             </View>
           )}
           
-          {/* Add Payment Method Button below the list */}
-          <TouchableOpacity 
-            style={[styles.addButton, (processing) && styles.addButtonDisabled]}
-            onPress={handleAddPaymentMethod}
-            disabled={processing}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="add" size={20} color="#34d399" />
-            <Text style={styles.addButtonText}>Add Payment Method</Text>
-          </TouchableOpacity>
+          {/* Add Payment Method Buttons */}
+          <View style={styles.addButtonsContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.addButton, 
+                activePaymentType === 'card' && styles.addButtonActive
+              ]}
+              onPress={() => handleAddPaymentMethod('card')}
+              disabled={activePaymentType !== null}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons 
+                name="credit-card" 
+                size={20} 
+                color={activePaymentType === 'card' ? "#fff" : "#34d399"} 
+              />
+              <Text style={[
+                styles.addButtonText,
+                activePaymentType === 'card' && styles.addButtonTextActive
+              ]}>Add Card</Text>
+              <Text style={[
+                styles.feeText,
+                activePaymentType === 'card' && styles.feeTextActive
+              ]}>3% fee</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.addButton, 
+                activePaymentType === 'ach' && styles.addButtonActive
+              ]}
+              onPress={() => handleAddPaymentMethod('ach')}
+              disabled={activePaymentType !== null}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons 
+                name="account-balance" 
+                size={20} 
+                color={activePaymentType === 'ach' ? "#fff" : "#34d399"} 
+              />
+              <Text style={[
+                styles.addButtonText,
+                activePaymentType === 'ach' && styles.addButtonTextActive
+              ]}>Add Bank</Text>
+              <Text style={[
+                styles.feeText,
+                activePaymentType === 'ach' && styles.feeTextActive
+              ]}>Free</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       )}
     </View>
@@ -433,27 +493,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  addButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
   addButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#fff',
     borderRadius: 50,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-
-    marginLeft: 16,
-    marginTop: 10,
-    alignSelf: 'flex-start',
+  },
+  addButtonActive: {
+    backgroundColor: '#34d399',
   },
   addButtonText: {
     color: '#34d399',
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
+    marginRight: 4,
+  },
+  addButtonTextActive: {
+    color: '#fff',
+  },
+  feeText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  feeTextActive: {
+    color: '#fff',
+    opacity: 0.9,
   },
   addButtonDisabled: {
     opacity: 0.7,
