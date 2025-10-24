@@ -375,33 +375,42 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
 
   const getAllUsers = () => {
     const users = [];
+    const messageType = message?.type;
     
-    if (metadata.roommates) {
+    // ✅ Extract users based on message type and metadata structure
+    
+    // For bill_multi_funding and house_multi_roommate_funding: use metadata.roommates array
+    if ((messageType === 'bill_multi_funding' || messageType === 'house_multi_roommate_funding') && metadata.roommates) {
       metadata.roommates.forEach(roommate => {
         users.push({
           id: roommate.id,
-          name: roommate.name,
-          amount: roommate.amount
+          name: roommate.name || roommate.username,
+          amount: roommate.amount || 0,
+          billCount: roommate.billCount || null
         });
       });
     }
     
-    if (metadata.unpaidUser) {
+    // For single_funding and roommate_multi_funding: use metadata.unpaidUser object
+    if ((messageType === 'single_funding' || messageType === 'roommate_multi_funding') && metadata.unpaidUser) {
       users.push({
         id: metadata.unpaidUser.id,
-        name: metadata.unpaidUser.name,
-        amount: metadata.unpaidUser.amount
+        name: metadata.unpaidUser.name || metadata.unpaidUser.username,
+        amount: metadata.unpaidUser.amount || metadata.totalAmount || 0,
+        billCount: metadata.unpaidUser.billCount || null
       });
     }
     
-    if (metadata.roommateName && metadata.roommateId) {
+    // ✅ FALLBACK: Old metadata formats for backward compatibility
+    if (users.length === 0 && metadata.roommateName && metadata.roommateId) {
       users.push({
         id: metadata.roommateId,
         name: metadata.roommateName,
-        amount: metadata.totalAmount
+        amount: metadata.totalAmount || 0
       });
     }
     
+    console.log('👥 Extracted users for', messageType, ':', users);
     return users;
   };
 
@@ -419,12 +428,106 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
   };
 
   const getTotalAmount = () => {
-    if (metadata.totalAmount) return metadata.totalAmount;
-    if (metadata.totalUnpaid) return metadata.totalUnpaid;
+    // ✅ NEW: Use totalAmount from enhanced metadata (backend calculates this)
+    if (metadata.totalAmount !== undefined && metadata.totalAmount !== null) {
+      console.log('✅ Using metadata.totalAmount:', metadata.totalAmount);
+      return parseFloat(metadata.totalAmount);
+    }
     
-    return getAllUsers().reduce((sum, user) => sum + parseFloat(user.amount || 0), 0);
+    // ✅ Check message.bill.amount
+    if (message?.bill?.amount) {
+      console.log('✅ Using message.bill.amount:', message.bill.amount);
+      return parseFloat(message.bill.amount);
+    }
+    
+    // ✅ Check message.charge.amount
+    if (message?.charge?.amount) {
+      console.log('✅ Using message.charge.amount:', message.charge.amount);
+      return parseFloat(message.charge.amount);
+    }
+    
+    // Fallback to old metadata fields
+    if (metadata.totalUnpaid) return parseFloat(metadata.totalUnpaid);
+    
+    // Last resort: sum user amounts
+    const sum = getAllUsers().reduce((sum, user) => sum + parseFloat(user.amount || 0), 0);
+    console.log('⚠️ Calculating total from user amounts:', sum);
+    return sum;
   };
 
+  // ============================================
+  // COMPONENT: User Multi Funding (Type 1)
+  // ============================================
+  const renderUserMultiFunding = (bills) => {
+    return (
+      <View style={styles.userPaymentContainer}>
+        <Text style={[styles.paymentSectionTitle, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+          Your Unpaid Services
+        </Text>
+        <View style={styles.paymentCardsGrid}>
+          {bills.map((bill, index) => (
+            <View key={index} style={styles.paymentCard}>
+              <View style={styles.paymentCardLeft}>
+                <View style={styles.paymentIconCircle}>
+                  <MaterialIcons name="receipt-long" size={20} color="#34d399" />
+                </View>
+                <View>
+                  <Text style={[styles.paymentServiceName, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                    {bill.name || `Service ${index + 1}`}
+                  </Text>
+                  {bill.dueDate && (
+                    <Text style={[styles.paymentDueDate, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                      Due {new Date(bill.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Text style={[styles.paymentAmount, fontsLoaded && { fontFamily: 'Poppins-ExtraBold' }]}>
+                ${parseFloat(bill.amount || 0).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // ============================================
+  // COMPONENT: Charge Funding (Type 2)
+  // ============================================
+  const renderChargeFunding = (metadata, totalAmount) => {
+    return (
+      <View style={styles.userPaymentContainer}>
+        <Text style={[styles.paymentSectionTitle, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+          Unpaid Service
+        </Text>
+        <View style={styles.paymentCard}>
+          <View style={styles.paymentCardLeft}>
+            <View style={styles.paymentIconCircle}>
+              <MaterialIcons name="receipt-long" size={20} color="#34d399" />
+            </View>
+            <View>
+              <Text style={[styles.paymentServiceName, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                {metadata?.billName || 'Service Payment'}
+              </Text>
+              {metadata?.dueDate && (
+                <Text style={[styles.paymentDueDate, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                  Due {new Date(metadata.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Text>
+              )}
+            </View>
+          </View>
+          <Text style={[styles.paymentAmount, fontsLoaded && { fontFamily: 'Poppins-ExtraBold' }]}>
+            ${parseFloat(metadata?.amount || totalAmount || 0).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ============================================
+  // COMPONENT: Roommate Message Card
+  // ============================================
   const renderUserCard = (user) => {
     const cooldownInfo = userCooldowns[user.id];
     const inCooldown = cooldownInfo?.inCooldown || false;
@@ -432,94 +535,78 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
     console.log(`🎨 Rendering user card for ${user.name} (${user.id}):`, {
       cooldownInfo,
       inCooldown,
-      hasExpandedState: expandedUsers[user.id],
       sendButtonDisabled: inCooldown,
       cooldownEnds: cooldownInfo?.cooldownEnds
     });
     
     return (
-      <View key={user.id} style={styles.userCard}>
-        <TouchableOpacity
-          style={styles.userHeader}
-          onPress={() => toggleUserExpansion(user.id)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.userInfo}>
-            <View style={styles.userIcon}>
-              <MaterialIcons name="person" size={18} color="#64748b" />
-            </View>
-            <View style={styles.userTextInfo}>
-              <Text style={[styles.userName, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                {user.name}
-              </Text>
-              <Text style={[styles.userStatus, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
-                {inCooldown ? "Reminder sent today" : "Unpaid"}
-              </Text>
-            </View>
-            <View style={styles.amountContainer}>
-              <Text style={[styles.userAmount, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
-                ${parseFloat(user.amount).toFixed(2)}
-              </Text>
-            </View>
+      <View key={user.id} style={styles.messageThread}>
+        {/* Chat-style header */}
+        <View style={styles.threadHeader}>
+          <View style={styles.avatarCircle}>
+            <Text style={[styles.avatarLetter, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+              {user.name?.charAt(0).toUpperCase()}
+            </Text>
           </View>
-          <MaterialIcons 
-            name={expandedUsers[user.id] ? "expand-less" : "expand-more"} 
-            size={20} 
-            color="#64748b" 
-          />
-        </TouchableOpacity>
-        
-        {expandedUsers[user.id] && (
-          <View style={styles.reminderSection}>
-            <View style={styles.reminderHeader}>
-              <MaterialIcons name="edit" size={16} color="#34d399" />
-              <Text style={[styles.reminderLabel, fontsLoaded && { fontFamily: 'Poppins-Medium' }]}>
-                Message to {user.name}
+          <View style={styles.threadInfo}>
+            <Text style={[styles.threadName, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+              {user.name}
+            </Text>
+            <Text style={[styles.threadSubtext, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+              {user.billCount 
+                ? `${user.billCount} ${user.billCount === 1 ? 'service' : 'services'} • `
+                : ""
+              }
+              ${parseFloat(user.amount).toFixed(2)} owed
+            </Text>
+          </View>
+          {inCooldown && (
+            <View style={styles.sentBadge}>
+              <MaterialIcons name="check" size={14} color="#10b981" />
+              <Text style={[styles.sentBadgeText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                Sent
               </Text>
             </View>
-                    <TextInput
-              style={[styles.reminderInput, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}
-                    multiline
-                    maxLength={MAX_MESSAGE_LENGTH}
+          )}
+        </View>
+
+        {/* Message input area */}
+        <View style={styles.messageComposer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={[styles.messageInput, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}
+              multiline
+              maxLength={MAX_MESSAGE_LENGTH}
               value={reminderMessages[user.id] || ''}
               onChangeText={(text) => updateReminderMessage(user.id, text)}
-              placeholder="Write your message..."
-              placeholderTextColor="#9ca3af"
-                    />
-            <View style={styles.reminderFooter}>
-              <Text style={[styles.characterCount, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
-                {(reminderMessages[user.id] || '').length}/{MAX_MESSAGE_LENGTH}
-                    </Text>
-                    <TouchableOpacity 
-                      style={[
-                        styles.sendButton,
-                        (!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown) && styles.sendButtonDisabled
-                      ]}
-                  onPress={() => handleSendReminder(user.id)}
-                  disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown}
-                  activeOpacity={0.8}
-                    >
-                  {sendingReminders[user.id] ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : inCooldown ? (
-                    <>
-                      <MaterialIcons name="schedule" size={14} color="#ffffff" />
-                      <Text style={[styles.sendButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                        Sent Today
-                      </Text>
-                    </>
-                  ) : (
-                    <>
-                      <MaterialIcons name="send" size={14} color="#ffffff" />
-                      <Text style={[styles.sendButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                        Send
-                      </Text>
-                    </>
-                  )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-        )}
+              placeholder={`Message ${user.name}...`}
+              placeholderTextColor="#94a3b8"
+              editable={!inCooldown}
+            />
+            <Text style={[styles.charCounter, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+              {(reminderMessages[user.id] || '').length}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={[
+              styles.sendIconButton,
+              (!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown) && styles.sendIconButtonDisabled
+            ]}
+            onPress={() => handleSendReminder(user.id)}
+            disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown}
+            activeOpacity={0.7}
+          >
+            {sendingReminders[user.id] ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <MaterialIcons 
+                name="send" 
+                size={22} 
+                color="#ffffff" 
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -542,8 +629,36 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
     );
   }
   
-  const users = getAllUsers();
+  // ✅ Determine message type and what data to show
+  const messageType = message?.type;
+  
+  // User-focused: user_multi_funding, charge_funding
+  const isUserFocusedMessage = messageType === 'user_multi_funding' || messageType === 'charge_funding';
+  
+  // Roommate-focused: single_funding, bill_multi_funding, roommate_multi_funding, house_multi_roommate_funding
+  const isRoommateFocusedMessage = [
+    'single_funding',
+    'bill_multi_funding', 
+    'roommate_multi_funding',
+    'house_multi_roommate_funding'
+  ].includes(messageType);
+  
+  const users = isRoommateFocusedMessage ? getAllUsers() : [];
   const totalAmount = getTotalAmount();
+  const bills = metadata?.bills || [];
+  
+  // ✅ DEBUG: Log modal data structure
+  console.log('🔍 URGENT MESSAGE MODAL RENDER:', {
+    'messageType': messageType,
+    'isUserFocusedMessage': isUserFocusedMessage,
+    'isRoommateFocusedMessage': isRoommateFocusedMessage,
+    'metadata': metadata,
+    'metadataTotalAmount': metadata?.totalAmount,
+    'billsCount': bills.length,
+    'bills': bills,
+    'usersCount': users.length,
+    'calculatedTotalAmount': totalAmount
+  });
   
   return (
     <ModalComponent
@@ -575,21 +690,179 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
             </Text>
           </View>
 
-          {/* User cards */}
-          <View style={styles.usersSection}>
-            {users.map(user => renderUserCard(user))}
+          {/* Content Section - Different for each message type */}
+          <View style={styles.contentSection}>
+            {messageType === 'user_multi_funding' && bills.length > 0 && renderUserMultiFunding(bills)}
+            
+            {messageType === 'charge_funding' && renderChargeFunding(metadata, totalAmount)}
+            
+            {messageType === 'single_funding' && (
+              /* ✅ TYPE 3: One roommate owes on one service */
+              <View>
+                <Text style={[styles.sectionTitle, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                  Send Reminder
+                </Text>
+                <View style={styles.usersSection}>
+                  {users.length > 0 ? (
+                    users.map(user => renderUserCard(user))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={[styles.emptyStateText, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                        {message?.body || 'No roommate information available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {metadata?.billName && (
+                  <View>
+                    <Text style={[styles.affectedServicesLabel, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                      Affected Service
+                    </Text>
+                    <View style={styles.servicesChipRow}>
+                      <View style={styles.serviceChip}>
+                        <Text style={[styles.serviceChipText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                          {metadata.billName}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {messageType === 'bill_multi_funding' && (
+              /* ✅ TYPE 4: Multiple roommates owe on same bill */
+              <View>
+                <Text style={[styles.sectionTitle, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                  Send Reminders
+                </Text>
+                <View style={styles.usersSection}>
+                  {users.length > 0 ? (
+                    users.map(user => renderUserCard(user))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={[styles.emptyStateText, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                        {message?.body || 'No roommate information available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {metadata?.billName && (
+                  <View>
+                    <Text style={[styles.affectedServicesLabel, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                      Affected Service
+                    </Text>
+                    <View style={styles.servicesChipRow}>
+                      <View style={styles.serviceChip}>
+                        <Text style={[styles.serviceChipText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                          {metadata.billName}
+                        </Text>
+                        {users.length > 0 && (
+                          <View style={styles.chipCountDot}>
+                            <Text style={[styles.chipCountText, fontsLoaded && { fontFamily: 'Poppins-ExtraBold' }]}>
+                              {users.length}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {messageType === 'roommate_multi_funding' && (
+              /* ✅ TYPE 5: One roommate owes on multiple services */
+              <View>
+                <Text style={[styles.sectionTitle, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                  Send Reminder
+                </Text>
+                <View style={styles.usersSection}>
+                  {users.length > 0 ? (
+                    users.map(user => renderUserCard(user))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={[styles.emptyStateText, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                        {message?.body || 'No roommate information available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {bills.length > 0 && (
+                  <View>
+                    <Text style={[styles.affectedServicesLabel, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                      Affected Services
+                    </Text>
+                    <View style={styles.servicesChipRow}>
+                      {bills.map((bill, index) => (
+                        <View key={index} style={styles.serviceChip}>
+                          <Text style={[styles.serviceChipText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                            {bill.name || `Service ${index + 1}`}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {messageType === 'house_multi_roommate_funding' && (
+              /* ✅ TYPE 6: Multiple roommates owe on multiple services */
+              <View>
+                <Text style={[styles.sectionTitle, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                  Send Reminders
+                </Text>
+                <View style={styles.usersSection}>
+                  {users.length > 0 ? (
+                    users.map(user => renderUserCard(user))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <Text style={[styles.emptyStateText, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
+                        {message?.body || 'No roommate information available'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                {bills.length > 0 && (
+                  <View>
+                    <Text style={[styles.affectedServicesLabel, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                      Affected Services
+                    </Text>
+                    <View style={styles.servicesChipRow}>
+                      {bills.map((bill, index) => (
+                        <View key={index} style={styles.serviceChip}>
+                          <Text style={[styles.serviceChipText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
+                            {bill.name || `Service ${index + 1}`}
+                          </Text>
+                          {bill.roommateCount && (
+                            <View style={styles.chipCountDot}>
+                              <Text style={[styles.chipCountText, fontsLoaded && { fontFamily: 'Poppins-ExtraBold' }]}>
+                                {bill.roommateCount}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
-
-          {/* Pay button for current user */}
-          {(message.type === 'user_multi_funding' || message.type === 'charge_funding') && (
-            <TouchableOpacity style={styles.payButton} onPress={handleGoToPayments} activeOpacity={0.8}>
-              <MaterialIcons name="payment" size={18} color="#ffffff" />
-              <Text style={[styles.payButtonText, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
-                Pay Your Bills
-              </Text>
-            </TouchableOpacity>
-          )}
       </ScrollView>
+      
+      {/* Fixed Pay button for current user */}
+      {(message.type === 'user_multi_funding' || message.type === 'charge_funding') && (
+        <View style={styles.stickyButtonContainer}>
+          <TouchableOpacity style={styles.payButton} onPress={handleGoToPayments} activeOpacity={0.8}>
+            <MaterialIcons name="payment" size={20} color="#ffffff" />
+            <Text style={[styles.payButtonText, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
+              Pay Your Bills
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
       </KeyboardAvoidingView>
     </ModalComponent>
   );
@@ -605,6 +878,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 100, // Extra padding for fixed button
   },
   
   // Amount row
@@ -631,142 +905,151 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   
-  // User card
-  userCard: {
+  // Message Thread - Modern Chat Style
+  messageThread: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 3,
+    elevation: 2,
     overflow: 'hidden',
   },
-  userHeader: {
+  
+  // Thread Header
+  threadHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  userInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f1f5f9',
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#34d399',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  userTextInfo: {
+  avatarLetter: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  threadInfo: {
     flex: 1,
   },
-  userName: {
+  threadName: {
     fontSize: 16,
-    color: '#1e293b',
+    color: '#0f172a',
     fontWeight: '600',
     marginBottom: 2,
   },
-  userStatus: {
-    fontSize: 12,
+  threadSubtext: {
+    fontSize: 13,
     color: '#64748b',
   },
-  amountContainer: {
-    backgroundColor: '#f0fdf4',
+  sentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d1fae5',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    marginRight: 8,
   },
-  userAmount: {
-    fontSize: 14,
-    color: '#34d399',
-    fontWeight: '700',
+  sentBadgeText: {
+    fontSize: 11,
+    color: '#10b981',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   
-  // Reminder section
-  reminderSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    padding: 16,
-    backgroundColor: '#f8fafc',
-  },
-  reminderHeader: {
+  // Message Composer (iMessage style)
+  messageComposer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-end',
+    padding: 12,
+    gap: 10,
   },
-  reminderLabel: {
-    fontSize: 14,
-    color: '#1e293b',
-    marginLeft: 6,
-  },
-  reminderInput: {
-    backgroundColor: '#ffffff',
+  inputWrapper: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+    minHeight: 40,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    color: '#1e293b',
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginBottom: 12,
   },
-  reminderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  messageInput: {
+    fontSize: 15,
+    color: '#0f172a',
+    maxHeight: 100,
+    lineHeight: 20,
   },
-  characterCount: {
-    fontSize: 11,
-    color: '#9ca3af',
+  charCounter: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    alignSelf: 'flex-end',
+    marginTop: 2,
   },
-  sendButton: {
+  sendIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#34d399',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#34d399',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  sendButtonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowColor: '#9ca3af',
+  sendIconButtonDisabled: {
+    backgroundColor: '#cbd5e1',
+    shadowOpacity: 0,
   },
-  sendButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    marginLeft: 4,
+  
+  // Sticky button container
+  stickyButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#dff6f0',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(52, 211, 153, 0.2)',
   },
   
   // Pay button
   payButton: {
     backgroundColor: '#34d399',
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
     shadowColor: '#34d399',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   payButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    marginLeft: 8,
+    fontSize: 17,
+    marginLeft: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   
   // Loading
@@ -775,6 +1058,317 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+  },
+  
+  // Empty state
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    marginVertical: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    color: '#1e293b',
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Content section
+  contentSection: {
+    marginBottom: 20,
+  },
+  
+  // Bills section (for user-focused messages)
+  billsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    color: '#0f172a',
+    fontWeight: '700',
+    marginBottom: 16,
+    marginLeft: 2,
+    marginTop: 8,
+    letterSpacing: 0.3,
+  },
+  
+  // Service Chips - Creative floating tags
+  servicesChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  serviceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34d399',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  serviceChipText: {
+    fontSize: 13,
+    color: '#ffffff',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  chipCountDot: {
+    backgroundColor: '#ffffff',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 6,
+  },
+  chipCountText: {
+    fontSize: 11,
+    color: '#34d399',
+    fontWeight: '900',
+  },
+  
+  // Affected services label
+  affectedServicesLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 20,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  
+  // User Payment Components (Type 1 & 2)
+  userPaymentContainer: {
+    marginBottom: 20,
+  },
+  paymentSectionTitle: {
+    fontSize: 20,
+    color: '#0f172a',
+    fontWeight: '800',
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  paymentCardsGrid: {
+    gap: 12,
+  },
+  paymentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  paymentCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#d1fae5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  paymentServiceName: {
+    fontSize: 16,
+    color: '#0f172a',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  paymentDueDate: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  paymentAmount: {
+    fontSize: 22,
+    color: '#ef4444',
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  
+  billCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  billHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f0fdf4',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  billName: {
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '600',
+    marginLeft: 10,
+    flex: 1,
+  },
+  billDetails: {
+    padding: 16,
+  },
+  billRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  billLabel: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  billAmount: {
+    fontSize: 16,
+    color: '#34d399',
+    fontWeight: '700',
+  },
+  billDueDate: {
+    fontSize: 14,
+    color: '#1e293b',
+  },
+  emptyBills: {
+    padding: 20,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Service info card (for single bill context)
+  serviceInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  serviceInfoText: {
+    fontSize: 15,
+    color: '#0f172a',
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  
+  // Affected services card
+  affectedServicesCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  affectedServicesTitle: {
+    fontSize: 15,
+    color: '#64748b',
+    fontWeight: '600',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  servicesGrid: {
+    gap: 8,
+  },
+  serviceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 8,
+  },
+  serviceBadgeText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
+  },
+  serviceBadgeWithCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 8,
+  },
+  serviceBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  roommateCountBadge: {
+    backgroundColor: '#f0fdf4',
+    minWidth: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  roommateCountText: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '700',
   },
 });
 

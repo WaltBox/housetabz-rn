@@ -194,6 +194,7 @@ const DashboardScreen = () => {
     tasks: [],
     billSubmissions: [],
     urgentMessages: [],
+    houseUsers: [], // ✅ NEW: House users for urgent message modal
     rentAllocationRequest: null,
     rentProposals: [],
     partners: [],
@@ -216,6 +217,7 @@ const DashboardScreen = () => {
   const [partners, setPartners] = useState([]);
   const [house, setHouse] = useState(null);
   const [houseServicesCount, setHouseServicesCount] = useState(0);
+  const [houseUsers, setHouseUsers] = useState([]); // ✅ NEW: Store house users for urgent messages
   
   // ✅ NEW: Simplified UI States (unified endpoint approach)
   const [isLoading, setIsLoading] = useState(true); // Single loading state for unified endpoint
@@ -347,7 +349,25 @@ const DashboardScreen = () => {
       setUnpaidBills(data.unpaidBills || []);
       setTasks(data.tasks || []);
       setBillSubmissions(data.billSubmissions || []);
-      setUrgentMessages(data.urgentMessages || []);
+      const urgentMsgs = data.urgentMessages || [];
+      console.log('📨 LOADING URGENT MESSAGES:', {
+        count: urgentMsgs.length,
+        messages: urgentMsgs.map(m => ({
+          id: m.id,
+          type: m.type,
+          title: m.title,
+          hasMetadata: !!m.metadata,
+          metadataType: typeof m.metadata,
+          metadataTotalAmount: m.metadata?.totalAmount,
+          billId: m.billId,
+          hasBill: !!m.bill,
+          hasCharge: !!m.charge,
+          metadataKeys: Object.keys(m.metadata || {}),
+          keys: Object.keys(m)
+        })),
+        fullMessages: JSON.stringify(urgentMsgs, null, 2)
+      });
+      setUrgentMessages(urgentMsgs);
       setRentAllocationRequest(data.rentAllocationRequest || null);
       setRentProposals(data.rentProposals || []);
       setPartners(data.partners || []);
@@ -823,6 +843,19 @@ const DashboardScreen = () => {
   // Handle message press
   const handleMessagePress = async (message) => {
     try {
+      console.log('🔍 URGENT MESSAGE CLICKED:', {
+        messageId: message?.id,
+        messageType: message?.type,
+        title: message?.title,
+        body: message?.body,
+        hasMetadata: !!message?.metadata,
+        metadataType: typeof message?.metadata,
+        metadata: message?.metadata,
+        billId: message?.billId,
+        allKeys: Object.keys(message || {}),
+        fullMessage: JSON.stringify(message, null, 2)
+      });
+      
       // Show message details immediately (don't wait for API call)
       setSelectedMessage(message);
       setIsMessageModalVisible(true);

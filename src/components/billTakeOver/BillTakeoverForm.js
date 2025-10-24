@@ -136,7 +136,13 @@ export default function BillTakeoverForm({ onBack }) {
       
       console.log('🎉 House service created successfully:', data);
       
-      // Note: HouseServicesScreen will refresh when user navigates back via focus listener
+      // ✅ Invalidate cache so new pending service appears immediately
+      invalidateCache('houseService');
+      invalidateCache('dashboard'); // Dashboard might show house services too
+      if (user?.houseId) {
+        clearHouseCache(user.houseId);
+      }
+      console.log('✅ Cache invalidated - new pending service will appear');
       
       setSubmittedData(data);
       setShowSuccess(true);
@@ -232,7 +238,59 @@ export default function BillTakeoverForm({ onBack }) {
     return (
       <View style={styles.stepContainer}>
         <Text style={styles.stepTitle}>Review Your Request</Text>
-        {/* ... (rest of your summary layout stays the same) ... */}
+        <Text style={styles.stepDescription}>Please review the details before submitting</Text>
+        
+        {/* Service Details */}
+        <View style={styles.reviewCard}>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewLabel}>Provider</Text>
+            <Text style={styles.reviewValue}>{formData.serviceName || 'N/A'}</Text>
+          </View>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewLabel}>Account Number</Text>
+            <Text style={styles.reviewValue}>{formData.accountNumber || 'N/A'}</Text>
+          </View>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewLabel}>Service Type</Text>
+            <Text style={styles.reviewValue}>{formData.isFixedService ? 'Fixed' : 'Variable'}</Text>
+          </View>
+          {formData.isFixedService && (
+            <View style={styles.reviewRow}>
+              <Text style={styles.reviewLabel}>Monthly Amount</Text>
+              <Text style={styles.reviewValue}>${formData.monthlyAmount || '0.00'}</Text>
+            </View>
+          )}
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewLabel}>Due Date</Text>
+            <Text style={styles.reviewValue}>Day {formData.dueDate} of each month</Text>
+          </View>
+          {parseFloat(formData.requiredUpfrontPayment) > 0 && (
+            <View style={styles.reviewRow}>
+              <Text style={styles.reviewLabel}>Upfront Payment</Text>
+              <Text style={styles.reviewValue}>${formData.requiredUpfrontPayment}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Split Details */}
+        {formData.isFixedService && (
+          <View style={styles.splitCard}>
+            <Text style={styles.splitTitle}>Split Between {count} Roommates</Text>
+            <View style={styles.splitRow}>
+              <Text style={styles.splitLabel}>Your Share</Text>
+              <Text style={styles.splitAmount}>${base}</Text>
+            </View>
+            <View style={styles.splitRow}>
+              <Text style={styles.splitLabel}>HouseTabz Fee</Text>
+              <Text style={styles.splitAmount}>$2.00</Text>
+            </View>
+            <View style={[styles.splitRow, styles.splitTotal]}>
+              <Text style={styles.splitTotalLabel}>Total Per Person</Text>
+              <Text style={styles.splitTotalAmount}>${total}</Text>
+            </View>
+          </View>
+        )}
+        
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.disabledButton]}
           onPress={handleSubmit}
@@ -334,4 +392,20 @@ const styles = StyleSheet.create({
   totalValue: { fontSize: 17, fontWeight: '700', color: '#34d399', fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System' },
   upfrontNote: { fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 8 },
   upfrontAmount: { fontSize: 24, fontWeight: '700', color: '#34d399', textAlign: 'center', fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System' },
+  
+  // Review screen styles
+  reviewCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
+  reviewRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  reviewLabel: { fontSize: 15, color: '#64748b', fontWeight: '500' },
+  reviewValue: { fontSize: 15, color: '#1e293b', fontWeight: '600', textAlign: 'right', maxWidth: '60%' },
+  
+  // Split details styles
+  splitCard: { backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#34d399' },
+  splitTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginBottom: 12, textAlign: 'center' },
+  splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+  splitLabel: { fontSize: 15, color: '#64748b' },
+  splitAmount: { fontSize: 15, color: '#1e293b', fontWeight: '600' },
+  splitTotal: { borderTopWidth: 2, borderTopColor: '#34d399', marginTop: 8, paddingTop: 12 },
+  splitTotalLabel: { fontSize: 17, fontWeight: '700', color: '#1e293b' },
+  splitTotalAmount: { fontSize: 20, fontWeight: '700', color: '#34d399' },
 });
