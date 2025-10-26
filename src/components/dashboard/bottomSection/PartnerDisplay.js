@@ -34,12 +34,12 @@ const PartnerDisplay = ({ partners = [], onPartnerPress, limit = 6, isLoading = 
   }
 
   if (partners.length === 0) {
+    // ✅ Clean, minimal empty state - no big box
     return (
       <View style={styles.emptyContainer}>
-        <MaterialIcons name="store" size={48} color="#94a3b8" />
-        <Text style={styles.emptyTitle}>Services Coming Soon</Text>
-        <Text style={styles.emptyText}>We're working on bringing you amazing service providers.</Text>
-        <Text style={styles.emptySubtext}>Check back soon for updates!</Text>
+        <Text style={styles.emptyText}>
+          <MaterialIcons name="store" size={14} color="#94a3b8" /> More services coming soon
+        </Text>
       </View>
     );
   }
@@ -263,37 +263,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   emptyContainer: {
-    height: CARD_HEIGHT,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginTop: 16,
-    marginBottom: 8,
-    textAlign: 'center',
   },
   emptyText: {
-    color: '#64748b',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  emptySubtext: {
-    fontSize: 12,
     color: '#94a3b8',
+    fontSize: 13,
     textAlign: 'center',
-    marginTop: 4,
-    fontStyle: 'italic',
+    fontWeight: '500',
   },
 });
 
