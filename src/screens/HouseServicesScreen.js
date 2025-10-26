@@ -77,6 +77,34 @@ const HouseServicesScreen = ({ navigation }) => {
         pendingCount: houseServices.filter(s => s.status === 'pending').length,
         dataSource: 'unified_endpoint'
       });
+      
+      // 🔍 DEBUG: Log the structure of the first service to see if ledgers are included
+      if (houseServices.length > 0) {
+        const firstService = houseServices[0];
+        console.log('🔍 FUNDING DEBUG - First service structure:', {
+          name: firstService.name,
+          hasLedgers: !!firstService.ledgers,
+          ledgersCount: firstService.ledgers?.length || 0,
+          hasCalculatedData: !!firstService.calculatedData,
+          totalRequired: firstService.totalRequired,
+          fundedAmount: firstService.fundedAmount,
+          firstLedgerData: firstService.ledgers?.[0] ? {
+            totalRequired: firstService.ledgers[0].totalRequired,
+            fundingRequired: firstService.ledgers[0].fundingRequired,
+            funded: firstService.ledgers[0].funded,
+            fundedAmount: firstService.ledgers[0].fundedAmount,
+            percentFunded: firstService.ledgers[0].percentFunded
+          } : 'NO LEDGERS',
+          // ✅ Show what's actually in calculatedData
+          calculatedDataContents: firstService.calculatedData ? {
+            fundingRequired: firstService.calculatedData.fundingRequired,
+            funded: firstService.calculatedData.funded,
+            fundedAmount: firstService.calculatedData.fundedAmount,
+            percentFunded: firstService.calculatedData.percentFunded,
+            contributorCount: firstService.calculatedData.contributorCount
+          } : 'NO CALCULATED DATA'
+        });
+      }
 
       // Set the services data with proper displayService field
       const servicesWithDisplayService = houseServices.map(service => ({
@@ -153,13 +181,26 @@ const HouseServicesScreen = ({ navigation }) => {
 
 
 
-  // FIXED: Clean helper functions using new data structure
+  // ✅ FIXED: Use CURRENT billing cycle only (not cumulative)
   const getPercentFunded = (service) => {
+    // Try to get current cycle data from ledgers (most accurate)
+    const currentLedger = service.ledgers?.[0]; // First ledger is the most recent/current
+    
+    if (currentLedger) {
+      // Use current billing cycle data
+      const total = Number(currentLedger.totalRequired) || Number(currentLedger.fundingRequired) || 0;
+      const funded = Number(currentLedger.funded) || Number(currentLedger.fundedAmount) || 0;
+      
+      if (total === 0) return 0;
+      return Math.round((funded / total) * 100);
+    }
+    
+    // Fallback to calculatedData if available
     if (service.calculatedData?.percentFunded !== undefined) {
       return service.calculatedData.percentFunded;
     }
     
-    // Use totalRequired from backend (already includes service fee)
+    // Last resort fallback (should rarely be used now)
     const total = Number(service.totalRequired) || Number(service.amount) || 0;
     const funded = Number(service.fundedAmount) || 0;
     
@@ -172,26 +213,37 @@ const HouseServicesScreen = ({ navigation }) => {
   };
 
   const getServiceDetails = (service) => {
-    // Enhanced unified endpoint now provides calculatedData for all services
-    if (service.calculatedData) {
-      return service.calculatedData;
-    }
+    // ✅ Backend now returns current cycle data in calculatedData!
+    // Priority order: ledgers[0] → calculatedData → fallback
     
-    // Check if we have the enhanced data from individual service fetch (detail modal)
+    // PRIORITY 1: Use current billing cycle from ledgers (if available)
     if (service.ledgers && service.ledgers.length > 0) {
-      const ledger = service.ledgers[0];
+      const currentLedger = service.ledgers[0];
       return {
-        fundingRequired: Number(ledger.totalRequired) || Number(ledger.fundingRequired) || 0,
-        funded: Number(ledger.funded) || Number(ledger.fundedAmount) || 0,
-        fundedAmount: Number(ledger.fundedAmount) || Number(ledger.funded) || 0,
-        remainingAmount: Number(ledger.remainingAmount) || 0,
-        percentFunded: ledger.percentFunded || 0,
-        contributorCount: ledger.contributorCount || 0,
-        userContributions: ledger.userContributions || []
+        fundingRequired: Number(currentLedger.totalRequired) || Number(currentLedger.fundingRequired) || 0,
+        funded: Number(currentLedger.funded) || Number(currentLedger.fundedAmount) || 0,
+        fundedAmount: Number(currentLedger.fundedAmount) || Number(currentLedger.funded) || 0,
+        remainingAmount: Number(currentLedger.remainingAmount) || 0,
+        percentFunded: currentLedger.percentFunded || getPercentFunded(service),
+        contributorCount: currentLedger.contributorCount || 0,
+        userContributions: currentLedger.userContributions || [],
+        currentDueDate: currentLedger.currentDueDate,
+        cycleStart: currentLedger.cycleStart,
+        cycleEnd: currentLedger.cycleEnd
       };
     }
     
-    // Fallback for services without calculatedData (should be rare now)
+    // PRIORITY 2: Use calculatedData (now contains current cycle data!)
+    if (service.calculatedData) {
+      return {
+        ...service.calculatedData,
+        currentDueDate: service.calculatedData.currentDueDate,
+        cycleStart: service.calculatedData.cycleStart,
+        cycleEnd: service.calculatedData.cycleEnd
+      };
+    }
+    
+    // FALLBACK: Basic data (rare)
     const fundingRequired = Number(service.totalRequired) || Number(service.amount) || 0;
     const funded = Number(service.fundedAmount) || 0;
     
@@ -207,11 +259,34 @@ const HouseServicesScreen = ({ navigation }) => {
   };
 
   const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
+  
+  // ✅ NEW: Format billing period context
+  const getBillingPeriodLabel = (serviceDetails) => {
+    if (serviceDetails.currentDueDate) {
+      const dueDate = new Date(serviceDetails.currentDueDate);
+      const now = new Date();
+      const daysUntilDue = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+      
+      const monthYear = dueDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      
+      if (daysUntilDue < 0) {
+        return `${monthYear} • Overdue`;
+      } else if (daysUntilDue === 0) {
+        return `${monthYear} • Due today`;
+      } else if (daysUntilDue <= 7) {
+        return `${monthYear} • Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`;
+      } else {
+        return `${monthYear}`;
+      }
+    }
+    return null;
+  };
 
   const renderServiceItem = ({ item }) => {
     const percentFunded = getPercentFunded(item);
     const contributorCount = getContributorCount(item);
     const serviceDetails = getServiceDetails(item);
+    const billingPeriod = getBillingPeriodLabel(serviceDetails);
     
     
     return (
@@ -236,6 +311,15 @@ const HouseServicesScreen = ({ navigation }) => {
               ]}>
                 {percentFunded}% funded
               </Text>
+              
+              {billingPeriod && (
+                <Text style={[
+                  styles.billingPeriodText,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}>
+                  • {billingPeriod}
+                </Text>
+              )}
               
               {contributorCount > 0 && (
                 <Text style={[
@@ -523,6 +607,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#34d399',
     fontWeight: '600',
+  },
+  billingPeriodText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginLeft: 8,
+    fontWeight: '500',
   },
   contributorText: {
     fontSize: 12,

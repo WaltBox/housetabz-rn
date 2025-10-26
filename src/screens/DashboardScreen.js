@@ -372,7 +372,11 @@ const DashboardScreen = () => {
       setRentProposals(data.rentProposals || []);
       setPartners(data.partners || []);
       setHasLandlord(data.meta?.hasLandlord || false);
-      setHouseServicesCount(data.meta?.houseServicesCount || 0);
+      
+      // ✅ FIX: Calculate houseServicesCount from array length (backend returns array, not count)
+      const servicesCount = data.houseServices?.length || data.meta?.houseServicesCount || 0;
+      setHouseServicesCount(servicesCount);
+      console.log('🏠 UNIFIED: House services count:', servicesCount, 'from', data.houseServices?.length || 0, 'services');
       
       console.log('✅ UNIFIED: Dashboard data loaded successfully:', {
         userBalance: data.userFinance?.balance,
@@ -382,7 +386,7 @@ const DashboardScreen = () => {
         userChargesCount: data.userCharges?.length || 0,
         unpaidBillsCount: data.unpaidBills?.length || 0,
         hasLandlord: data.meta?.hasLandlord,
-        houseServicesCount: data.meta?.houseServicesCount
+        houseServicesCount: servicesCount
       });
       
       setIsLoading(false);
@@ -646,14 +650,10 @@ const DashboardScreen = () => {
         }
       }
 
-      // ✅ PHASE 1: Mark initial data as loaded and start Phase 2
+      // ✅ PHASE 1: Mark initial data as loaded (Phase 2 will trigger via useEffect)
       setInitialDataLoaded(true);
       console.log('✅ Phase 1 Complete: Initial dashboard data loaded');
-      
-      
-      // ✅ PHASE 2: Start background prefetch immediately
-      setPrefetchRetryCount(0); // Reset retry count for new prefetch
-      fetchPrefetchData();
+      console.log('⏳ Phase 2 will start after Phase 1 state updates are applied to UI');
 
     } catch (error) {
       console.log('❌ Phase 1 Dashboard data fetch failed:', error.message);
@@ -699,61 +699,25 @@ const DashboardScreen = () => {
         notificationsCount: Array.isArray(responseData.unreadNotifications) ? responseData.unreadNotifications.length : 0,
       });
 
-      // ✅ PHASE 2: Set detailed data from prefetch
-      // Fix: Backend may not include meta.status, so check if we have actual data
-      const hasValidData = responseData && (
-        Array.isArray(responseData.pendingTasks) || 
-        Array.isArray(responseData.billSubmissions) || 
-        Array.isArray(responseData.urgentMessages) ||
-        responseData.meta?.status === 'cached' || 
-        responseData.meta?.status === 'ready'
-      );
+      // ✅ FIX: Phase 2 should NOT overwrite Phase 1 data!
+      // Phase 1 already loaded all the essential data (tasks, messages, bills, etc.)
+      // Phase 2 was meant for background prefetch of ADDITIONAL data (transactions, notifications)
+      // But it was duplicating Phase 1 and causing race conditions
       
-      if (hasValidData) {
-        // Set tasks with filtering
-        const pendingTasks = Array.isArray(responseData.pendingTasks) ? 
-          responseData.pendingTasks.filter(task => {
-            const isPending = task.response === 'pending';
-            const isRecentlyCompleted = recentlyCompletedTasks.has(task.id);
-            return isPending && !isRecentlyCompleted;
-          }) : [];
-
-        // Set bill submissions with filtering
-        const pendingBillSubmissions = Array.isArray(responseData.billSubmissions) ? 
-          responseData.billSubmissions.filter(submission => {
-            const isPending = submission.status === 'pending';
-            const isRecentlyCompleted = recentlyCompletedBillSubmissions.has(submission.id);
-            return isPending && !isRecentlyCompleted;
-          }) : [];
-
-        // Set rent proposals with filtering
-        const pendingRentProposals = Array.isArray(responseData.rentProposals) ? 
-          responseData.rentProposals.filter(proposal => {
-            const isPending = proposal.status === 'pending';
-            const isRecentlyCompleted = recentlyCompletedRentProposals.has(proposal.id);
-            return isPending && !isRecentlyCompleted;
-          }) : [];
-
-        // Update state with prefetch data
-        setTasks(pendingTasks);
-        setBillSubmissions(pendingBillSubmissions);
-        setRentProposals(pendingRentProposals);
-        setUrgentMessages(Array.isArray(responseData.urgentMessages) ? responseData.urgentMessages : []);
-        setUnpaidBills(Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills : []);
-
-        console.log('✅ Phase 2 Complete: Prefetch data loaded and applied');
-        setPrefetchDataLoaded(true);
-        setPrefetchRetryCount(0); // Reset retry count on success
-      } else if (prefetchRetryCount < 3) {
-        console.log(`🔄 Phase 2: Data still prefetching, will retry... (${prefetchRetryCount + 1}/3)`);
-        setPrefetchRetryCount(prev => prev + 1);
-        // Retry after a short delay if data is still being prefetched
-        setTimeout(() => fetchPrefetchData(), 2000);
-      } else {
-        console.log('⚠️ Phase 2: Max retries reached, stopping prefetch attempts');
-        setPrefetchDataLoaded(true); // Mark as loaded to stop skeleton screens
-        setPrefetchRetryCount(0); // Reset for next time
-      }
+      console.log('✅ Phase 2: Received prefetch response, but NOT updating Phase 1 data');
+      console.log('📊 Phase 2 Data Summary:', {
+        hasTransactions: Array.isArray(responseData.recentTransactions),
+        hasNotifications: Array.isArray(responseData.unreadNotifications),
+        note: 'Phase 1 already loaded tasks, messages, bills - Phase 2 skipped to prevent race condition'
+      });
+      
+      // Only store additional data that Phase 1 doesn't provide
+      // (Currently Phase 2 doesn't provide any unique data, so this is a no-op)
+      // In the future, if Phase 2 provides recentTransactions or notifications, add them here
+      
+      console.log('✅ Phase 2 Complete: Prefetch acknowledged (no state updates)');
+      setPrefetchDataLoaded(true);
+      setPrefetchRetryCount(0);
 
     } catch (error) {
       console.error('❌ Phase 2 Prefetch failed:', error.message);
@@ -764,8 +728,8 @@ const DashboardScreen = () => {
     }
   };
 
-  // ✅ LEGACY: Keep old function name for compatibility
-  const fetchDashboardData = fetchInitialDashboardData;
+  // ✅ FIX: Point to UNIFIED endpoint instead of legacy Phase 1/2
+  const fetchDashboardData = loadDashboardData;
 
   // ✅ NEW: Simplified Refresh Handler for Unified Endpoint
   const handleRefresh = async () => {
@@ -795,6 +759,15 @@ const DashboardScreen = () => {
       loadDashboardData(); 
     }
   }, [user?.id]);
+
+  // ✅ FIX: Trigger Phase 2 AFTER Phase 1 state has been applied to UI
+  useEffect(() => {
+    if (initialDataLoaded && !prefetchDataLoaded && !refreshing) {
+      console.log('🔄 PHASE 2: Starting now that Phase 1 state is applied to UI');
+      setPrefetchRetryCount(0); // Reset retry count for new prefetch
+      fetchPrefetchData();
+    }
+  }, [initialDataLoaded]);
 
   // ✅ NEW: WebSocket Initialization for Real-time Updates
   useEffect(() => {
