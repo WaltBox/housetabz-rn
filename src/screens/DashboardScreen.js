@@ -188,7 +188,7 @@ const DashboardScreen = () => {
   const [dashboardData, setDashboardData] = useState({
     userFinance: { balance: '0.00', credit: '0.00' },
     houseFinance: { balance: '0.00' },
-    house: { id: null, name: '', city: '', state: '' },
+    house: { id: null, name: '', city: '', state: '', dawgMode: false },
     userCharges: [],
     unpaidBills: [],
     tasks: [],
@@ -345,6 +345,17 @@ const DashboardScreen = () => {
       setUserFinance(data.userFinance || { balance: '0.00', credit: '0.00' });
       setHouseFinance(data.houseFinance || { balance: '0.00' });
       setHouse(data.house || null);
+      
+      // DEBUG: Log the house object to verify dawgMode is included
+      console.log('🏠 DEBUG: House object received:', {
+        hasHouse: !!data.house,
+        houseKeys: data.house ? Object.keys(data.house) : 'no house',
+        houseId: data.house?.id,
+        houseName: data.house?.name,
+        hasDawgMode: !!data.house?.dawgMode,
+        dawgModeValue: data.house?.dawgMode,
+        fullHouse: JSON.stringify(data.house)
+      });
       setUserCharges(data.userCharges || []);
       setUnpaidBills(data.unpaidBills || []);
       setTasks(data.tasks || []);

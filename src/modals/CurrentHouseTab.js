@@ -116,7 +116,7 @@ const BillCard = ({ bill, onPress, isExpanded, animationValue }) => {
                     // Only use red text if bill is actually overdue
                     isOverdue && styles.unpaidUserAmountOverdue
                   ]}>
-                    ${Number(charge.amount).toFixed(2)}
+                    ${Number(charge.useNewFeeStructure ? charge.baseAmount : charge.amount).toFixed(2)}
                   </Text>
                 </View>
               );

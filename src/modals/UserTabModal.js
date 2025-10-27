@@ -37,13 +37,16 @@ const getDueDateStatus = (charge) => {
 
 const ChargeItem = ({ charge }) => {
   const status = getDueDateStatus(charge);
+  // Use baseAmount for new fee structure, amount for legacy charges
+  const displayAmount = charge.useNewFeeStructure ? charge.baseAmount : charge.amount;
+  
   return (
     <View style={styles.chargeItem}>
       <View style={styles.chargeRow}>
         <View style={styles.chargeContent}>
           <View style={styles.chargeHeader}>
             <Text style={styles.chargeName}>{charge.name || 'Unnamed Charge'}</Text>
-            <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+            <Text style={styles.chargeAmount}>${Number(displayAmount).toFixed(2)}</Text>
           </View>
           <View style={styles.chargeFooter}>
             <View style={[styles.statusDot, { backgroundColor: status.color }]} />

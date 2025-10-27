@@ -17,6 +17,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.housetabz.mobile",
+      buildNumber: "36",
       merchantId: "merchant.com.housetabz" // Add this for Apple Pay
     },
     android: {

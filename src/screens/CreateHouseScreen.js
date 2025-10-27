@@ -25,6 +25,7 @@ const CreateHouseScreen = ({ navigation }) => {
     city: '',
     state: '',
     zip_code: '',
+    dawgModeCode: '',
   });
   const [loading, setLoading] = useState(false);
   const { user, setUser, updateUserHouse } = useAuth();
@@ -38,12 +39,24 @@ const CreateHouseScreen = ({ navigation }) => {
     'Poppins-Regular': require('../../assets/fonts/Poppins/Poppins-Regular.ttf'),
   });
 
+  // Validate Dawg Mode code (5 chars, letters and numbers only)
+  const validateDawgModeCode = (code) => {
+    if (!code) return true; // Optional field
+    return /^[a-zA-Z0-9]{5}$/.test(code);
+  };
+
   const handleCreateHouse = async () => {
     // Dismiss keyboard before validation
     Keyboard.dismiss();
     
     if (!houseData.name || !houseData.city || !houseData.state || !houseData.zip_code) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
+      return;
+    }
+
+    // Validate Dawg Mode code if provided
+    if (houseData.dawgModeCode && !validateDawgModeCode(houseData.dawgModeCode)) {
+      Alert.alert('Invalid Dawg Mode Code', 'Dawg Mode code must be exactly 5 characters (letters and numbers only)');
       return;
     }
 
@@ -56,7 +69,8 @@ const CreateHouseScreen = ({ navigation }) => {
       console.log('✅ Create house response:', {
         hasHouse: !!createdHouse,
         houseId: createdHouse?.id,
-        houseName: createdHouse?.name
+        houseName: createdHouse?.name,
+        hasDawgMode: !!createdHouse?.dawgMode
       });
       
       await updateUserHouse(createdHouse.id);
@@ -71,15 +85,26 @@ const CreateHouseScreen = ({ navigation }) => {
         houseId: userWithPaymentStep.houseId
       });
       
-      Alert.alert('Success', 'House created successfully! 🎉');
+      // Show appropriate success message
+      if (createdHouse?.dawgMode) {
+        Alert.alert('🐕 Dawg Mode Activated!', 'Your house now has zero service fees!');
+      } else {
+        Alert.alert('Success', 'House created successfully! 🎉');
+      }
       
       // AppNavigator will now show PaymentMethodOnboardingScreen since onboarding_step is 'payment'
     } catch (error) {
       console.error('Error creating house:', error);
-      Alert.alert(
-        'Creation Error',
-        error.response?.data?.message || 'Something went wrong. Please try again.'
-      );
+      
+      // Handle specific Dawg Mode error messages
+      const errorMessage = error.response?.data?.message || 'Something went wrong. Please try again.';
+      if (errorMessage.includes('already been used')) {
+        Alert.alert('Code Already Used', 'This Dawg Mode code has already been used.');
+      } else if (errorMessage.includes('Invalid') || errorMessage.includes('invalid')) {
+        Alert.alert('Invalid Dawg Mode Code', 'Invalid Dawg Mode code. Please check and try again.');
+      } else {
+        Alert.alert('Creation Error', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -192,6 +217,22 @@ const CreateHouseScreen = ({ navigation }) => {
                 value={houseData.zip_code}
                 onChangeText={(text) => setHouseData({ ...houseData, zip_code: text })}
                 keyboardType="number-pad"
+                returnKeyType="next"
+                blurOnSubmit={false}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Icon name="paw" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={[
+                  styles.input,
+                  fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                ]}
+                placeholder="Dawg Mode Code (optional)"
+                placeholderTextColor="#9ca3af"
+                value={houseData.dawgModeCode}
+                onChangeText={(text) => setHouseData({ ...houseData, dawgModeCode: text })}
                 returnKeyType="done"
                 onSubmitEditing={Keyboard.dismiss}
               />

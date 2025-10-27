@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  ScrollView
 } from 'react-native';
 
 // Components
@@ -21,6 +20,12 @@ const BillTakeoverModal = ({ visible, onClose }) => {
     setShowForm(false);
   };
 
+  const handleSuccess = () => {
+    // Close the entire modal after successful submission
+    setShowForm(false);
+    onClose();
+  };
+
   return (
     <ModalComponent
       visible={visible}
@@ -28,27 +33,22 @@ const BillTakeoverModal = ({ visible, onClose }) => {
       onClose={onClose}
       backgroundColor="#dff6f0"
       fullScreen={true}
-      hideCloseButton={false} // Changed to false to show the back arrow
-      useBackArrow={true} // Explicitly set to use back arrow
+      hideCloseButton={false}
+      useBackArrow={true}
     >
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.content}>
         {!showForm ? (
           <BillTakeoverIntro onSubmit={handleStartSubmission} />
         ) : (
-          <BillTakeoverForm onBack={handleGoBack} />
+          <BillTakeoverForm onBack={handleGoBack} onSuccess={handleSuccess} />
         )}
-      </ScrollView>
+      </View>
     </ModalComponent>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { flex: 1 },
-  contentContainer: { padding: 0 }
+  content: { flex: 1 }
 });
 
 export default BillTakeoverModal;

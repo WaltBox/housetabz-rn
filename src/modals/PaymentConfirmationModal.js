@@ -8,10 +8,13 @@ import {
   ActivityIndicator,
   ScrollView,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-// Import apiClient instead of axios
-import apiClient from '../config/api';
+import { useStripe } from '@stripe/stripe-react-native';
+// Import apiClient and getFeePreview
+import apiClient, { getFeePreview } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const PaymentConfirmationModal = ({
   visible,
@@ -20,16 +23,26 @@ const PaymentConfirmationModal = ({
   totalAmount,
   onConfirmPayment,
   isProcessing,
+  house, // NEW: Add house prop to check for Dawg Mode
 }) => {
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const { user, refreshPaymentMethods } = useAuth();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [feePreview, setFeePreview] = useState(null);
+  const [loadingFees, setLoadingFees] = useState(false);
+  const [addingPaymentMethod, setAddingPaymentMethod] = useState(false);
+
+  // NEW: Check if Dawg Mode is active
+  const isDawgModeActive = house?.dawgMode || user?.house?.dawgMode;
 
   useEffect(() => {
     if (visible) {
       fetchPaymentMethods();
+      fetchFees();
     }
   }, [visible]);
 
@@ -64,11 +77,107 @@ const PaymentConfirmationModal = ({
     }
   };
 
+  const fetchFees = async () => {
+    try {
+      setLoadingFees(true);
+      console.log('🔄 Fetching fee preview');
+      const preview = await getFeePreview();
+      if (preview) {
+        console.log('✅ Fee preview:', preview);
+        setFeePreview(preview);
+      } else {
+        console.log('⚠️ No fee preview available - will show generic message');
+      }
+    } catch (error) {
+      console.error('Error fetching fee preview:', error);
+      // Graceful degradation - fees will be calculated on backend
+    } finally {
+      setLoadingFees(false);
+    }
+  };
+
+  const handleAddPaymentMethod = async (type = 'card') => {
+    try {
+      setAddingPaymentMethod(true);
+      
+      // Determine which endpoint to use based on payment method type
+      const endpoint = type === 'ach' 
+        ? '/api/payment-methods/setup-intent/ach'
+        : '/api/payment-methods/setup-intent';
+
+      const setupResponse = await apiClient.post(endpoint, {});
+      
+      const { clientSecret, setupIntentId } = setupResponse.data;
+      if (!clientSecret || !setupIntentId) {
+        throw new Error('No client secret or setupIntentId received');
+      }
+      
+      // Configure Stripe PaymentSheet based on payment method type
+      const paymentSheetConfig = {
+        merchantDisplayName: 'HouseTabz',
+        setupIntentClientSecret: clientSecret,
+        allowsDelayedPaymentMethods: true,
+        appearance: { colors: { primary: '#34d399' } },
+      };
+
+      // For ACH, we need to specify payment method types
+      if (type === 'ach') {
+        paymentSheetConfig.paymentMethodTypes = ['us_bank_account'];
+      }
+
+      const initResponse = await initPaymentSheet(paymentSheetConfig);
+      
+      if (initResponse.error) {
+        Alert.alert('Error', initResponse.error.message);
+        return;
+      }
+      
+      const presentResponse = await presentPaymentSheet();
+      if (presentResponse.error) {
+        if (presentResponse.error.code === 'Canceled') return;
+        Alert.alert('Error', presentResponse.error.message);
+        return;
+      }
+      
+      await apiClient.post('/api/payment-methods/complete', { setupIntentId });
+      
+      // Refresh payment methods
+      await refreshPaymentMethods();
+      await fetchPaymentMethods();
+      
+      // Auto-select the newly added method and close dropdown
+      setShowPaymentOptions(false);
+      
+      Alert.alert('Success', `${type === 'ach' ? 'Bank account' : 'Card'} added successfully! It's now your default payment method.`);
+    } catch (error) {
+      console.error('Error adding payment method:', error);
+      Alert.alert('Error', 'Failed to add payment method. Please try again.');
+    } finally {
+      setAddingPaymentMethod(false);
+    }
+  };
+
   const getDisplayText = (method) => {
     if (!method) return '';
     return method.type === 'us_bank_account'
       ? `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
       : `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
+  };
+
+  const getFeeText = (method) => {
+    // NEW: If Dawg Mode is active, show zero fees message
+    if (isDawgModeActive) {
+      return '🐕 Zero Fees - Dawg Mode Active';
+    }
+    
+    if (!feePreview || !method) return null;
+    
+    // Get the appropriate fee text based on payment method type
+    if (method.type === 'us_bank_account') {
+      return feePreview.paymentMethods?.ach?.displayText || 'Processing fee applies';
+    } else {
+      return feePreview.paymentMethods?.card?.displayText || 'Processing fee applies';
+    }
   };
 
   // Get the payment method that will be used for this payment
@@ -98,9 +207,10 @@ const PaymentConfirmationModal = ({
     >
       <View style={styles.modalOverlay}>
         <SafeAreaView style={styles.modalContainer}>
+          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Confirm Payment</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <MaterialIcons name="close" size={24} color="#64748b" />
             </TouchableOpacity>
           </View>
@@ -111,7 +221,7 @@ const PaymentConfirmationModal = ({
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
-              <MaterialIcons name="error-outline" size={40} color="#ef4444" />
+              <MaterialIcons name="error-outline" size={48} color="#ef4444" />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity style={styles.retryButton} onPress={fetchPaymentMethods}>
                 <Text style={styles.retryText}>Retry</Text>
@@ -119,147 +229,177 @@ const PaymentConfirmationModal = ({
             </View>
           ) : (
             <>
-              <ScrollView style={styles.content}>
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Selected Charges</Text>
-                  {selectedCharges.map(charge => (
-                    <View key={charge.id} style={styles.chargeItem}>
-                      <View style={styles.chargeHeader}>
-                        <MaterialIcons name="receipt" size={20} color="#64748b" />
-                        <View style={styles.chargeInfo}>
-                          <Text style={styles.chargeName}>{charge.name}</Text>
-                          <Text style={styles.chargeDate}>
-                            Due {new Date(charge.dueDate).toLocaleDateString()}
-                          </Text>
-                        </View>
-                        <Text style={styles.chargeAmount}>
-                          ${Number(charge.amount).toFixed(2)}
+              <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                {/* Amount Display - Hero Section */}
+                <View style={styles.amountSection}>
+                  <Text style={styles.amountLabel}>You're paying</Text>
+                  <Text style={styles.amountValue}>${totalAmount.toFixed(2)}</Text>
+                </View>
+
+                {/* Services List - Minimal */}
+                <View style={styles.servicesSection}>
+                  {selectedCharges.map((charge, index) => (
+                    <View key={charge.id} style={[
+                      styles.serviceRow,
+                      index !== selectedCharges.length - 1 && styles.serviceRowDivider
+                    ]}>
+                      <View style={styles.serviceInfo}>
+                        <Text style={styles.serviceName}>{charge.name}</Text>
+                        <Text style={styles.serviceDate}>
+                          Due {new Date(charge.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </Text>
                       </View>
+                      <Text style={styles.serviceAmount}>
+                        ${Number(charge.useNewFeeStructure ? (charge.baseAmount || charge.amount) : charge.amount).toFixed(2)}
+                      </Text>
                     </View>
                   ))}
                 </View>
 
-                <View style={styles.section}>
+                {/* Payment Method Selection */}
+                <View style={styles.paymentSection}>
                   <Text style={styles.sectionTitle}>Payment Method</Text>
                   
-                  {/* Enhanced payment method display */}
                   {effectivePaymentMethod ? (
-                    <View style={styles.paymentMethodContainer}>
-                      <View style={[
-                        styles.paymentMethodDisplay,
-                        effectivePaymentMethod.isDefault && styles.defaultPaymentMethodDisplay
-                      ]}>
-                        <View style={styles.paymentMethodLeft}>
-                          <MaterialIcons 
-                            name="credit-card" 
-                            size={24} 
-                            color={effectivePaymentMethod.isDefault ? "#34d399" : "#64748b"} 
-                          />
-                          <View style={styles.paymentMethodInfo}>
-                            <Text style={styles.paymentMethodText}>
-                              {getDisplayText(effectivePaymentMethod)}
-                            </Text>
-                            {effectivePaymentMethod.isDefault && (
-                              <Text style={styles.defaultMethodNote}>
-                                Your default payment method will be used
-                              </Text>
+                    <>
+                      {/* Display Selected Method */}
+                      <View style={styles.selectedMethodDisplay}>
+                        <View style={styles.methodLeft}>
+                          <View style={styles.methodIcon}>
+                            <MaterialIcons 
+                              name={effectivePaymentMethod.type === 'us_bank_account' ? 'account-balance' : 'credit-card'}
+                              size={24}
+                              color="#34d399"
+                            />
+                          </View>
+                          <View style={styles.methodDetails}>
+                            <Text style={styles.methodName}>{getDisplayText(effectivePaymentMethod)}</Text>
+                            {getFeeText(effectivePaymentMethod) && (
+                              <Text style={styles.methodFee}>{getFeeText(effectivePaymentMethod)}</Text>
                             )}
                           </View>
                         </View>
-                        {effectivePaymentMethod.isDefault && (
-                          <MaterialIcons name="check-circle" size={20} color="#34d399" />
-                        )}
+                        <MaterialIcons name="check-circle" size={24} color="#34d399" />
                       </View>
-                      
-                      {/* Payment method options */}
-                      {paymentMethods.length > 1 && (
-                        <TouchableOpacity
-                          style={styles.changePaymentMethod}
-                          onPress={() => setShowPaymentOptions(!showPaymentOptions)}
-                        >
-                          <Text style={styles.changePaymentMethodText}>
-                            Change payment method
-                          </Text>
-                          <MaterialIcons
-                            name={showPaymentOptions ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                            size={20}
-                            color="#34d399"
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ) : (
-                    <View style={styles.noPaymentMethodContainer}>
-                      <MaterialIcons name="credit-card-off" size={24} color="#ef4444" />
-                      <Text style={styles.noPaymentMethodText}>
-                        No payment method available
-                      </Text>
-                    </View>
-                  )}
 
-                  {showPaymentOptions && paymentMethods.length > 1 && (
-                    <View style={styles.paymentOptions}>
-                      {paymentMethods.map(method => (
-                        <TouchableOpacity
-                          key={method.id}
-                          style={[
-                            styles.paymentOption,
-                            selectedMethod === method.id && styles.selectedPaymentOption
-                          ]}
-                          onPress={() => {
-                            setSelectedMethod(method.id);
-                            setShowPaymentOptions(false);
-                          }}
-                        >
-                          <MaterialIcons
-                            name="credit-card"
-                            size={20}
-                            color={selectedMethod === method.id ? "#34d399" : "#64748b"}
-                          />
-                          <Text style={[
-                            styles.paymentOptionText,
-                            method.isDefault && styles.defaultPaymentOptionText
-                          ]}>
-                            {getDisplayText(method)}
-                          </Text>
-                          {selectedMethod === method.id && (
-                            <MaterialIcons name="check" size={20} color="#34d399" />
+                      {/* Change Payment Method Button */}
+                      <TouchableOpacity 
+                        style={styles.changeMethodButton}
+                        onPress={() => setShowPaymentOptions(!showPaymentOptions)}
+                      >
+                        <MaterialIcons name="add" size={20} color="#34d399" />
+                        <Text style={styles.changeMethodButtonText}>Change payment method</Text>
+                      </TouchableOpacity>
+
+                      {/* Options Dropdown */}
+                      {showPaymentOptions && (
+                        <View style={styles.dropdownContainer}>
+                          {paymentMethods.length > 0 && (
+                            <>
+                              <Text style={styles.dropdownTitle}>Select a payment method</Text>
+                              {paymentMethods.map(method => (
+                                <TouchableOpacity
+                                  key={method.id}
+                                  style={[
+                                    styles.dropdownItem,
+                                    selectedMethod === method.id && styles.dropdownItemSelected
+                                  ]}
+                                  onPress={() => {
+                                    setSelectedMethod(method.id);
+                                    setShowPaymentOptions(false);
+                                  }}
+                                >
+                                  <View style={styles.dropdownItemLeft}>
+                                    <MaterialIcons
+                                      name={method.type === 'us_bank_account' ? 'account-balance' : 'credit-card'}
+                                      size={20}
+                                      color="#34d399"
+                                    />
+                                    <View style={styles.dropdownItemInfo}>
+                                      <Text style={styles.dropdownItemName}>{getDisplayText(method)}</Text>
+                                      {getFeeText(method) && (
+                                        <Text style={styles.dropdownItemFee}>{getFeeText(method)}</Text>
+                                      )}
+                                    </View>
+                                  </View>
+                                  {selectedMethod === method.id && (
+                                    <MaterialIcons name="check-circle" size={22} color="#34d399" />
+                                  )}
+                                </TouchableOpacity>
+                              ))}
+                            </>
                           )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+
+                          {/* Add New Payment Method */}
+                          <View style={styles.addMethodDivider} />
+                          <Text style={styles.dropdownTitle}>Add new</Text>
+                          <TouchableOpacity
+                            style={styles.addMethodRow}
+                            onPress={() => handleAddPaymentMethod('card')}
+                            disabled={addingPaymentMethod}
+                          >
+                            <MaterialIcons name="credit-card" size={20} color="#34d399" />
+                            <View style={styles.addMethodTextContainer}>
+                              <Text style={styles.addMethodName}>Add Card</Text>
+                              <Text style={styles.addMethodFee}>3% processing fee</Text>
+                            </View>
+                            {!addingPaymentMethod && <MaterialIcons name="add" size={24} color="#cbd5e1" />}
+                            {addingPaymentMethod && <ActivityIndicator size="small" color="#34d399" />}
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.addMethodRow}
+                            onPress={() => handleAddPaymentMethod('ach')}
+                            disabled={addingPaymentMethod}
+                          >
+                            <MaterialIcons name="account-balance" size={20} color="#34d399" />
+                            <View style={styles.addMethodTextContainer}>
+                              <Text style={styles.addMethodName}>Add Bank</Text>
+                              <Text style={styles.addMethodFee}>1% processing fee</Text>
+                            </View>
+                            {!addingPaymentMethod && <MaterialIcons name="add" size={24} color="#cbd5e1" />}
+                            {addingPaymentMethod && <ActivityIndicator size="small" color="#34d399" />}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.emptyMethodCard}
+                      onPress={() => setShowPaymentOptions(true)}
+                    >
+                      <MaterialIcons name="add-circle-outline" size={28} color="#34d399" />
+                      <Text style={styles.emptyMethodText}>Add a payment method</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
+
+                {/* Bottom padding to allow scrolling past footer */}
+                <View style={styles.scrollBottomPadding} />
               </ScrollView>
 
+              {/* Action Buttons - Sticky Footer */}
               <View style={styles.footer}>
-                <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total Amount</Text>
-                  <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
-                </View>
-                <View style={styles.actions}>
-                  <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmButton,
-                      !effectivePaymentMethod && styles.disabledConfirmButton
-                    ]}
-                    onPress={handleConfirm}
-                    disabled={isProcessing || !effectivePaymentMethod}
-                  >
-                    {isProcessing ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <MaterialIcons name="lock" size={20} color="#fff" />
-                        <Text style={styles.confirmButtonText}>Confirm Payment</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmButton,
+                    (!effectivePaymentMethod || isProcessing) && styles.confirmButtonDisabled
+                  ]}
+                  onPress={handleConfirm}
+                  disabled={isProcessing || !effectivePaymentMethod}
+                >
+                  {isProcessing ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="lock" size={18} color="#FFFFFF" />
+                      <Text style={styles.confirmButtonText}>Complete Payment</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             </>
           )}
@@ -295,12 +435,70 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
   },
+  closeButton: {
+    padding: 5,
+  },
   content: {
     padding: 20,
     backgroundColor: '#dff6f0',
   },
-  section: {
-    marginBottom: 24,
+  amountSection: {
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  amountLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  amountValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  servicesSection: {
+    marginBottom: 20,
+  },
+  serviceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  serviceRowDivider: {
+    borderBottomWidth: 0,
+  },
+  serviceInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  serviceName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  serviceDate: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  serviceAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  paymentSection: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
   },
   sectionTitle: {
     fontSize: 16,
@@ -308,121 +506,172 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 12,
   },
-  chargeItem: {
-    backgroundColor: '#ffffff',
+  selectedMethodDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
   },
-  chargeHeader: {
+  changeMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  changeMethodButtonText: {
+    color: '#34d399',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  methodLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  chargeInfo: {
-    flex: 1,
+  methodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  methodDetails: {
     marginLeft: 12,
   },
-  chargeName: {
+  methodName: {
     fontSize: 15,
     fontWeight: '500',
     color: '#1e293b',
   },
-  chargeDate: {
-    fontSize: 13,
-    color: '#64748b',
+  methodFee: {
+    fontSize: 12,
+    color: '#34d399',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  dropdownContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(52, 211, 153, 0.15)',
+  },
+  dropdownTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#34d399',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(52, 211, 153, 0.12)',
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+  },
+  dropdownItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownItemInfo: {
+    marginLeft: 12,
+  },
+  dropdownItemName: {
+    fontSize: 15,
+    color: '#1e293b',
+    fontWeight: '500',
+  },
+  dropdownItemFee: {
+    fontSize: 12,
+    color: '#34d399',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  addMethodDivider: {
+    height: 16,
+  },
+  addMethodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+    marginBottom: 12,
+  },
+  addMethodTextContainer: {
+    marginLeft: 14,
+    flex: 1,
+  },
+  addMethodName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  addMethodFee: {
+    fontSize: 12,
+    color: '#34d399',
+    fontWeight: '600',
     marginTop: 2,
   },
-  chargeAmount: {
+  emptyMethodCard: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyMethodText: {
+    marginTop: 12,
+    color: '#ef4444',
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  paymentSelector: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  paymentMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  paymentMethodText: {
-    marginLeft: 12,
-    fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  paymentOptions: {
-    marginTop: 8,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  selectedPaymentOption: {
-    backgroundColor: '#f0fdf4',
-  },
-  paymentOptionText: {
-    fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  defaultPaymentOptionText: {
-    fontWeight: '600',
   },
   footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     backgroundColor: '#dff6f0',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  totalLabel: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  totalAmount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  actions: {
-    flexDirection: 'row',
     gap: 12,
   },
   cancelButton: {
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(52, 211, 153, 0.3)',
   },
   cancelButtonText: {
     color: '#64748b',
@@ -444,9 +693,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  confirmButtonDisabled: {
+    opacity: 0.7,
+  },
   loadingContainer: {
     padding: 40,
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#64748b',
+    fontSize: 16,
   },
   errorContainer: {
     padding: 40,
@@ -467,67 +724,8 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontWeight: '500',
   },
-  paymentMethodContainer: {
-    marginTop: 12,
-  },
-  paymentMethodDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  paymentMethodLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  paymentMethodInfo: {
-    marginLeft: 12,
-  },
-  paymentMethodText: {
-    fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '500',
-  },
-  defaultPaymentMethodDisplay: {
-    borderWidth: 2,
-    borderColor: '#34d399',
-  },
-  defaultMethodNote: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  changePaymentMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  changePaymentMethodText: {
-    color: '#34d399',
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  noPaymentMethodContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  noPaymentMethodText: {
-    marginTop: 12,
-    color: '#ef4444',
-    fontSize: 16,
-  },
-  disabledConfirmButton: {
-    opacity: 0.7,
+  scrollBottomPadding: {
+    height: 80, // Reduced from 100 by 20%
   },
 });
 

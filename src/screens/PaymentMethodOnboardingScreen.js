@@ -223,11 +223,13 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <>
-                    <Icon name="credit-card" size={20} color="white" />
-                    <Text style={[
-                      styles.paymentButtonText,
-                      fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                    ]}>Add Card</Text>
+                    <View style={styles.buttonMainContent}>
+                      <Icon name="credit-card" size={20} color="white" />
+                      <Text style={[
+                        styles.paymentButtonText,
+                        fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                      ]}>Add Card</Text>
+                    </View>
                     <Text style={[
                       styles.paymentButtonFee,
                       fontsLoaded && { fontFamily: 'Poppins-Regular' }
@@ -250,11 +252,13 @@ const PaymentMethodOnboardingScreen = ({ navigation }) => {
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <>
-                    <Icon name="bank" size={20} color="white" />
-                    <Text style={[
-                      styles.paymentButtonText,
-                      fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
-                    ]}>Add Bank</Text>
+                    <View style={styles.buttonMainContent}>
+                      <Icon name="bank" size={20} color="white" />
+                      <Text style={[
+                        styles.paymentButtonText,
+                        fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                      ]}>Add Bank</Text>
+                    </View>
                     <Text style={[
                       styles.paymentButtonFee,
                       fontsLoaded && { fontFamily: 'Poppins-Regular' }
@@ -429,16 +433,22 @@ const styles = StyleSheet.create({
   },
   paymentButton: {
     flex: 1,
-    height: 56,
+    height: 68,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#34d399',
   },
   buttonGradient: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+  },
+  buttonMainContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   paymentButtonText: {
@@ -447,8 +457,8 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   paymentButtonFee: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.75)',
     fontWeight: '500',
   },
   buttonDisabled: {

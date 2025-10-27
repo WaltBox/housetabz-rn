@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const DawgModeCard = ({ onPress }) => {
+const DawgModeCard = ({ onPress, isActive = false }) => {
   return (
     <TouchableOpacity 
       style={styles.container} 
@@ -13,6 +13,14 @@ const DawgModeCard = ({ onPress }) => {
       activeOpacity={0.8}
     >
       <View style={styles.purpleBackground}>
+        {/* Active badge */}
+        {isActive && (
+          <View style={styles.activeBadge}>
+            <MaterialIcons name="verified" size={14} color="white" />
+            <Text style={styles.activeBadgeText}>ACTIVE</Text>
+          </View>
+        )}
+        
         {/* Dark polka dots pattern */}
         <View style={[styles.polkaDot, styles.dot1]} />
         <View style={[styles.polkaDot, styles.dot2]} />
@@ -55,10 +63,29 @@ const styles = StyleSheet.create({
   },
   purpleBackground: {
     flex: 1,
-    backgroundColor: '#7e22ce',
+    backgroundColor: '#ff7a3d',
     padding: 12,
     position: 'relative',
     overflow: 'hidden',
+  },
+  activeBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    zIndex: 4,
+  },
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'white',
+    letterSpacing: 0.5,
   },
   title: {
     fontSize: 28,

@@ -6,7 +6,9 @@ import {
   Animated,
   Easing,
   Platform,
-  Dimensions
+  Dimensions,
+  TouchableOpacity,
+  SafeAreaView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -42,9 +44,9 @@ const PulsingText = ({ text, style }) => {
         style, 
         { 
           transform: [{ scale: scaleAnim }],
-          textShadowColor: 'rgba(255, 255, 255, 0.5)',
-          textShadowOffset: { width: 0, height: 0 },
-          textShadowRadius: 10
+          textShadowColor: 'rgba(0, 0, 0, 0.4)',
+          textShadowOffset: { width: 0, height: 2 },
+          textShadowRadius: 4
         }
       ]}
     >
@@ -154,7 +156,7 @@ const AnimatedDogIcon = () => {
 };
 
 // Main Component - NOT a modal itself, just the content
-const DawgModeModal = ({ house }) => {
+const DawgModeModal = ({ house, onClose }) => {
   const isActive = (house?.statusIndex?.score || house?.hsi || 0) >= 42;
   
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -177,13 +179,24 @@ const DawgModeModal = ({ house }) => {
   }, []);
 
   return (
-    <View style={styles.wrapper}>
+    <SafeAreaView style={styles.wrapper}>
       <LinearGradient
-        colors={['#8b5cf6', '#6d28d9']}
+        colors={['#ff8c42', '#ff7a3d']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1.1 }} // Extend gradient beyond bottom edge
         style={styles.container}
       >
+        {/* Close/Back Button */}
+        {onClose && (
+          <TouchableOpacity 
+            onPress={onClose}
+            style={styles.closeButton}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="arrow-back" size={28} color="#ffffff" />
+          </TouchableOpacity>
+        )}
+        
         <FloatingParticles />
         
         <View style={styles.contentContainer}>
@@ -230,7 +243,7 @@ const DawgModeModal = ({ house }) => {
           </Animated.View>
         </View>
       </LinearGradient>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -315,9 +328,12 @@ const styles = StyleSheet.create({
   },
   body: {
     fontSize: 16,
-    color: '#e0d7ff',
+    color: '#ffffff',
     lineHeight: 22,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   highlight: {
     color: '#ffffff',
@@ -340,12 +356,18 @@ const styles = StyleSheet.create({
   tipText: {
     flex: 1,
     fontSize: 14,
-    color: '#e0d7ff',
+    color: '#ffffff',
     lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   tipBold: {
     color: '#ffcd1f',
     fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   messageContainer: {
     marginTop: 10,
@@ -363,6 +385,15 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 20,
   },
 });
 

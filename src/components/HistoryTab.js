@@ -164,12 +164,37 @@ const HistoryTab = () => {
                   ]}>
                     {charge.name || 'Charge'}
                   </Text>
-                  <Text style={[
-                    styles.chargeAmount,
-                    fontsLoaded && { fontFamily: 'Poppins-Medium' }
-                  ]}>
-                    ${Number(charge.amount).toFixed(2)}
-                  </Text>
+                  <View style={styles.chargeAmountContainer}>
+                    {charge.useNewFeeStructure && charge.paymentFee ? (
+                      <>
+                        <Text style={[
+                          styles.chargeAmount,
+                          fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                        ]}>
+                          ${Number(charge.baseAmount || charge.amount).toFixed(2)}
+                        </Text>
+                        <Text style={[
+                          styles.chargeFee,
+                          fontsLoaded && { fontFamily: 'Poppins-Regular' }
+                        ]}>
+                          + ${Number(charge.paymentFee).toFixed(2)} fee
+                        </Text>
+                        <Text style={[
+                          styles.chargeTotalAmount,
+                          fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
+                        ]}>
+                          = ${Number(charge.totalAmount || charge.amount).toFixed(2)}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={[
+                        styles.chargeAmount,
+                        fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                      ]}>
+                        ${Number(charge.amount).toFixed(2)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ))
             ) : (
@@ -314,10 +339,24 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  chargeAmountContainer: {
+    alignItems: 'flex-end',
+  },
   chargeAmount: {
     fontSize: 14,
     color: "#1e293b",
     fontWeight: "500",
+  },
+  chargeFee: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  chargeTotalAmount: {
+    fontSize: 14,
+    color: "#34d399",
+    fontWeight: "600",
+    marginTop: 2,
   },
   noChargesItem: {
     padding: 16,

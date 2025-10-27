@@ -158,22 +158,40 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
       setLocalUnpaidCharges(prev => prev.filter(charge => !paidChargeIds.includes(charge.id)));
       setSelectedCharges([]);
       
-      if (onChargesUpdated) {
-        onChargesUpdated(paidChargeIds);
-      }
-      
       // Invalidate both React Query cache and custom cache system
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       
       // Clear custom cache to ensure fresh data on next load
       if (user?.id) {
+        console.log('🧹 Clearing caches for user:', user.id);
         clearUserCache(user.id);
         // Also manually clear charges cache since it's not in clearUserCache yet
         invalidateCache('user', user.id);
+        invalidateCache('charges', user.id);
       }
       invalidateCache('dashboard');
       invalidateCache('house');
+      invalidateCache('payments');
+      console.log('✅ All caches cleared successfully');
       
+      // Close the modal immediately so UI updates
+      setShowConfirmation(false);
+      
+      // Call onChargesUpdated to remove from parent state and trigger refetch
+      if (onChargesUpdated) {
+        console.log('🔔 Calling onChargesUpdated with paid charge IDs:', paidChargeIds);
+        onChargesUpdated(paidChargeIds);
+      }
+      
+      // CRITICAL: Force a full refetch after a short delay to ensure backend has processed payment
+      setTimeout(() => {
+        console.log('⏰ Forcing full data refetch after payment...');
+        if (onChargesUpdated) {
+          onChargesUpdated([]); // Empty array triggers full refetch in parent
+        }
+      }, 2000);
+      
+      // Show success alert
       Alert.alert(
         "Payment Successful",
         `Successfully paid ${paidChargeIds.length} charges totaling $${selectedTotal.toFixed(2)}.`,
@@ -271,7 +289,7 @@ const PayTab = ({ charges: allCharges, onChargesUpdated }) => {
                   isSelected && styles.selectedChargeText,
                   fontsLoaded && { fontFamily: 'Poppins-SemiBold' }
                 ]}>
-                  ${Number(charge.amount).toFixed(2)}
+                  ${Number(charge.useNewFeeStructure ? charge.baseAmount : charge.amount).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.selectIndicator}>

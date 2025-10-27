@@ -718,16 +718,22 @@ export const invalidateCache = (type, id) => {
   switch (type) {
     case 'dashboard':
       cache.clearByPattern('/api/dashboard/user/');
-      cache.clearByPattern('/api/app/userinfo/');
-      break;
-    case 'houseService':
-      cache.clearByPattern('/api/houseServices/house/');
       break;
     case 'house':
       cache.clearByPattern('/api/houses/');
       break;
     case 'user':
       clearUserCache(id);
+      break;
+    case 'charges':
+      // Clear all charge-related cache endpoints
+      cache.clearByPattern(`/api/users/${id}/charges`);
+      cache.clearByPattern('/api/payments/');
+      break;
+    case 'payments':
+      // Clear all payment-related cache
+      cache.clearByPattern('/api/payments/');
+      cache.clearByPattern(`/api/users/${id}/charges`);
       break;
     default:
       console.warn(`Unknown cache invalidation type: ${type}`);
@@ -747,6 +753,25 @@ export const API_ENDPOINTS = {
   resetPassword: '/api/auth/reset-password-with-code',
   verifyResetCode: '/api/auth/verify-reset-code',
   // Add more endpoints as needed
+};
+
+// ==========================================
+// Payment Fee Preview API
+// ==========================================
+/**
+ * Get fee preview for payment methods
+ * Returns fee percentages for card and ACH payments
+ * @returns {Promise} Fee preview data with displayText for each payment method
+ */
+export const getFeePreview = async () => {
+  try {
+    const response = await apiClient.get('/api/payments/fee-preview');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching fee preview:', error);
+    // Return null on error - components should handle gracefully
+    return null;
+  }
 };
 
 // Export the pre-configured axios instance as default

@@ -17,8 +17,10 @@ import { useAuth } from '../../context/AuthContext';
 import apiClient, { invalidateCache, clearUserCache, clearHouseCache } from '../../config/api';
 
 import TakeoverSuccess from './TakeoverSuccess';
+import ReviewStep from './ReviewStep';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const BUTTON_HEIGHT = 90;
 
 /** 
  * Stable FormField component so it doesn’t get re‑declared on every render.
@@ -81,7 +83,7 @@ function ServiceTypeToggle({ isFixed, onToggle }) {
   );
 }
 
-export default function BillTakeoverForm({ onBack }) {
+export default function BillTakeoverForm({ onBack, onSuccess }) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -154,7 +156,7 @@ export default function BillTakeoverForm({ onBack }) {
   }
 
   if (showSuccess && submittedData) {
-    return <TakeoverSuccess data={submittedData} onDone={onBack} />;
+    return <TakeoverSuccess data={submittedData} onDone={onSuccess || onBack} />;
   }
 
   const renderStep1 = () => (
@@ -226,88 +228,7 @@ export default function BillTakeoverForm({ onBack }) {
   );
 
   const renderSummaryStep = () => {
-    const count = houseData?.users?.length || 2;
-    const amount = formData.isFixedService ? parseFloat(formData.monthlyAmount || 0) : 0;
-    const base = formData.isFixedService
-      ? (amount / count).toFixed(2)
-      : 'Varies';
-    const total = formData.isFixedService
-      ? ((amount / count) + 2).toFixed(2)
-      : 'Varies + $2.00';
-
-    return (
-      <View style={styles.stepContainer}>
-        <Text style={styles.stepTitle}>Review Your Request</Text>
-        <Text style={styles.stepDescription}>Please review the details before submitting</Text>
-        
-        {/* Service Details */}
-        <View style={styles.reviewCard}>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Provider</Text>
-            <Text style={styles.reviewValue}>{formData.serviceName || 'N/A'}</Text>
-          </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Account Number</Text>
-            <Text style={styles.reviewValue}>{formData.accountNumber || 'N/A'}</Text>
-          </View>
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Service Type</Text>
-            <Text style={styles.reviewValue}>{formData.isFixedService ? 'Fixed' : 'Variable'}</Text>
-          </View>
-          {formData.isFixedService && (
-            <View style={styles.reviewRow}>
-              <Text style={styles.reviewLabel}>Monthly Amount</Text>
-              <Text style={styles.reviewValue}>${formData.monthlyAmount || '0.00'}</Text>
-            </View>
-          )}
-          <View style={styles.reviewRow}>
-            <Text style={styles.reviewLabel}>Due Date</Text>
-            <Text style={styles.reviewValue}>Day {formData.dueDate} of each month</Text>
-          </View>
-          {parseFloat(formData.requiredUpfrontPayment) > 0 && (
-            <View style={styles.reviewRow}>
-              <Text style={styles.reviewLabel}>Upfront Payment</Text>
-              <Text style={styles.reviewValue}>${formData.requiredUpfrontPayment}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Split Details */}
-        {formData.isFixedService && (
-          <View style={styles.splitCard}>
-            <Text style={styles.splitTitle}>Split Between {count} Roommates</Text>
-            <View style={styles.splitRow}>
-              <Text style={styles.splitLabel}>Your Share</Text>
-              <Text style={styles.splitAmount}>${base}</Text>
-            </View>
-            <View style={styles.splitRow}>
-              <Text style={styles.splitLabel}>HouseTabz Fee</Text>
-              <Text style={styles.splitAmount}>$2.00</Text>
-            </View>
-            <View style={[styles.splitRow, styles.splitTotal]}>
-              <Text style={styles.splitTotalLabel}>Total Per Person</Text>
-              <Text style={styles.splitTotalAmount}>${total}</Text>
-            </View>
-          </View>
-        )}
-        
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>Submit Request</Text>
-              <MaterialIcons name="check" size={20} color="#FFFFFF" />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    );
+    return <ReviewStep formData={formData} houseData={houseData} />;
   };
 
   const renderCurrentStep = () => {
@@ -320,29 +241,50 @@ export default function BillTakeoverForm({ onBack }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerBar}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <View style={styles.progressSteps}>
-          {[0, 1, 2].map(step => (
-            <View
-              key={step}
-              style={[styles.progressStep, currentStep >= step && styles.progressStepActive]}
-            />
-          ))}
+    <View style={styles.rootContainer}>
+      <View style={styles.mainContainer}>
+        <View style={styles.headerBar}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
+            <MaterialIcons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <View style={styles.progressSteps}>
+            {[0, 1, 2].map(step => (
+              <View
+                key={step}
+                style={[styles.progressStep, currentStep >= step && styles.progressStepActive]}
+              />
+            ))}
+          </View>
         </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
+        >
+          {renderCurrentStep()}
+        </ScrollView>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="always"
-      >
-        {renderCurrentStep()}
-      </ScrollView>
+      {/* Button as regular element at bottom */}
+      <View style={styles.buttonFooter}>
+        <TouchableOpacity
+          style={[styles.submitButtonFixed, loading && styles.disabledButton]}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <>
+              <Text style={styles.submitButtonText}>Submit Request</Text>
+              <MaterialIcons name="send" size={20} color="#FFFFFF" />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -350,7 +292,6 @@ export default function BillTakeoverForm({ onBack }) {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#dff6f0' },
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#dff6f0', borderBottomColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 42 },
   backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center' },
   progressSteps: { flexDirection: 'row', alignItems: 'center' },
@@ -358,6 +299,7 @@ const styles = StyleSheet.create({
   progressStepActive: { backgroundColor: '#34d399', width: 24 },
   scrollView: { flex: 1, backgroundColor: '#dff6f0' },
   contentContainer: { padding: 20, paddingBottom: 40 },
+  contentContainerWithButton: { paddingBottom: 100 },
   stepContainer: { width: '100%', marginBottom: 20 },
   stepTitle: { fontSize: 24, fontWeight: '700', color: '#1e293b', marginBottom: 12, fontFamily: Platform.OS === 'android' ? 'sans-serif-black' : 'Montserrat-Black' },
   stepDescription: { fontSize: 16, color: '#475569', marginBottom: 24, fontFamily: Platform.OS === 'android' ? 'sans-serif' : 'System' },
@@ -393,19 +335,215 @@ const styles = StyleSheet.create({
   upfrontNote: { fontSize: 14, color: '#475569', textAlign: 'center', marginBottom: 8 },
   upfrontAmount: { fontSize: 24, fontWeight: '700', color: '#34d399', textAlign: 'center', fontFamily: Platform.OS === 'android' ? 'sans-serif-medium' : 'System' },
   
-  // Review screen styles
-  reviewCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
-  reviewRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  reviewLabel: { fontSize: 15, color: '#64748b', fontWeight: '500' },
-  reviewValue: { fontSize: 15, color: '#1e293b', fontWeight: '600', textAlign: 'right', maxWidth: '60%' },
+  // Modern Aesthetic Review Styles
+  reviewHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  reviewIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
   
-  // Split details styles
-  splitCard: { backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#34d399' },
-  splitTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginBottom: 12, textAlign: 'center' },
-  splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-  splitLabel: { fontSize: 15, color: '#64748b' },
-  splitAmount: { fontSize: 15, color: '#1e293b', fontWeight: '600' },
-  splitTotal: { borderTopWidth: 2, borderTopColor: '#34d399', marginTop: 8, paddingTop: 12 },
-  splitTotalLabel: { fontSize: 17, fontWeight: '700', color: '#1e293b' },
-  splitTotalAmount: { fontSize: 20, fontWeight: '700', color: '#34d399' },
+  // Service Details List
+  detailsSection: {
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  detailIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(52, 211, 153, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '700',
+  },
+
+  // Beautiful Split Calculation Card
+  splitSection: {
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  splitHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  splitHeaderText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginLeft: 8,
+  },
+  splitMainAmount: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  splitMainLabel: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  splitMainValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  splitDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 20,
+  },
+  splitDividerLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  splitDividerCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#34d399',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  splitDividerText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  splitResult: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  splitResultLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  splitResultValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#34d399',
+    marginBottom: 4,
+  },
+  splitResultSubtext: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+
+  // Upfront Payment Alert
+  upfrontSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  upfrontContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  upfrontLabel: {
+    fontSize: 13,
+    color: '#92400e',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  upfrontAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#f59e0b',
+  },
+
+  // Sticky Footer Styles
+  submitButtonFixed: {
+    backgroundColor: '#34d399',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#dff6f0',
+  },
+  buttonFooter: {
+    backgroundColor: '#dff6f0',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(52, 211, 153, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  rootContainer: {
+    flex: 1,
+    backgroundColor: '#dff6f0',
+    position: 'relative',
+  },
 });

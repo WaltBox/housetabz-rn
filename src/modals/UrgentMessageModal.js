@@ -434,16 +434,26 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
       return parseFloat(metadata.totalAmount);
     }
     
-    // ✅ Check message.bill.amount
-    if (message?.bill?.amount) {
-      console.log('✅ Using message.bill.amount:', message.bill.amount);
-      return parseFloat(message.bill.amount);
+    // ✅ Check message.bill.amount (handle new fee structure)
+    if (message?.bill) {
+      const billAmount = message.bill.useNewFeeStructure 
+        ? (message.bill.baseAmount || message.bill.amount) 
+        : message.bill.amount;
+      if (billAmount) {
+        console.log('✅ Using message.bill amount:', billAmount);
+        return parseFloat(billAmount);
+      }
     }
     
-    // ✅ Check message.charge.amount
-    if (message?.charge?.amount) {
-      console.log('✅ Using message.charge.amount:', message.charge.amount);
-      return parseFloat(message.charge.amount);
+    // ✅ Check message.charge.amount (handle new fee structure)
+    if (message?.charge) {
+      const chargeAmount = message.charge.useNewFeeStructure 
+        ? (message.charge.baseAmount || message.charge.amount) 
+        : message.charge.amount;
+      if (chargeAmount) {
+        console.log('✅ Using message.charge amount:', chargeAmount);
+        return parseFloat(chargeAmount);
+      }
     }
     
     // Fallback to old metadata fields
@@ -483,7 +493,7 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
                 </View>
               </View>
               <Text style={[styles.paymentAmount, fontsLoaded && { fontFamily: 'Poppins-ExtraBold' }]}>
-                ${parseFloat(bill.amount || 0).toFixed(2)}
+                ${parseFloat(bill.useNewFeeStructure ? (bill.baseAmount || bill.amount || 0) : (bill.amount || 0)).toFixed(2)}
               </Text>
             </View>
           ))}
@@ -547,19 +557,19 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
             <Text style={[styles.avatarLetter, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
               {user.name?.charAt(0).toUpperCase()}
             </Text>
-          </View>
+            </View>
           <View style={styles.threadInfo}>
             <Text style={[styles.threadName, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
-              {user.name}
-            </Text>
+                {user.name}
+              </Text>
             <Text style={[styles.threadSubtext, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
               {user.billCount 
                 ? `${user.billCount} ${user.billCount === 1 ? 'service' : 'services'} • `
                 : ""
               }
               ${parseFloat(user.amount).toFixed(2)} owed
-            </Text>
-          </View>
+              </Text>
+            </View>
           {inCooldown && (
             <View style={styles.sentBadge}>
               <MaterialIcons name="check" size={14} color="#10b981" />
@@ -568,45 +578,45 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
               </Text>
             </View>
           )}
-        </View>
+          </View>
 
         {/* Message input area */}
         <View style={styles.messageComposer}>
           <View style={styles.inputWrapper}>
-            <TextInput
+                    <TextInput
               style={[styles.messageInput, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}
-              multiline
-              maxLength={MAX_MESSAGE_LENGTH}
+                    multiline
+                    maxLength={MAX_MESSAGE_LENGTH}
               value={reminderMessages[user.id] || ''}
               onChangeText={(text) => updateReminderMessage(user.id, text)}
               placeholder={`Message ${user.name}...`}
               placeholderTextColor="#94a3b8"
               editable={!inCooldown}
-            />
+                    />
             <Text style={[styles.charCounter, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
               {(reminderMessages[user.id] || '').length}
-            </Text>
+                    </Text>
           </View>
-          <TouchableOpacity 
-            style={[
+                    <TouchableOpacity 
+                      style={[
               styles.sendIconButton,
               (!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown) && styles.sendIconButtonDisabled
-            ]}
-            onPress={() => handleSendReminder(user.id)}
-            disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown}
+                      ]}
+                  onPress={() => handleSendReminder(user.id)}
+                  disabled={!reminderMessages[user.id]?.trim() || sendingReminders[user.id] || inCooldown}
             activeOpacity={0.7}
-          >
-            {sendingReminders[user.id] ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+                    >
+                  {sendingReminders[user.id] ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
             ) : (
               <MaterialIcons 
                 name="send" 
                 size={22} 
                 color="#ffffff" 
               />
-            )}
-          </TouchableOpacity>
-        </View>
+                  )}
+                    </TouchableOpacity>
+                  </View>
       </View>
     );
   };
@@ -702,7 +712,7 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
                 <Text style={[styles.sectionTitle, fontsLoaded && { fontFamily: 'Poppins-SemiBold' }]}>
                   Send Reminder
                 </Text>
-                <View style={styles.usersSection}>
+          <View style={styles.usersSection}>
                   {users.length > 0 ? (
                     users.map(user => renderUserCard(user))
                   ) : (
@@ -710,7 +720,7 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
                       <Text style={[styles.emptyStateText, fontsLoaded && { fontFamily: 'Poppins-Regular' }]}>
                         {message?.body || 'No roommate information available'}
                       </Text>
-                    </View>
+          </View>
                   )}
                 </View>
                 {metadata?.billName && (
@@ -853,16 +863,16 @@ const UrgentMessageModal = ({ visible, message, onClose, onAction }) => {
       </ScrollView>
       
       {/* Fixed Pay button for current user */}
-      {(message.type === 'user_multi_funding' || message.type === 'charge_funding') && (
+          {(message.type === 'user_multi_funding' || message.type === 'charge_funding') && (
         <View style={styles.stickyButtonContainer}>
-          <TouchableOpacity style={styles.payButton} onPress={handleGoToPayments} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.payButton} onPress={handleGoToPayments} activeOpacity={0.8}>
             <MaterialIcons name="payment" size={20} color="#ffffff" />
             <Text style={[styles.payButtonText, fontsLoaded && { fontFamily: 'Poppins-Bold' }]}>
-              Pay Your Bills
-            </Text>
-          </TouchableOpacity>
+                Pay Your Bills
+              </Text>
+            </TouchableOpacity>
         </View>
-      )}
+          )}
       </KeyboardAvoidingView>
     </ModalComponent>
   );

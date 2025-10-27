@@ -28,6 +28,9 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
   const [localUnpaidBills, setLocalUnpaidBills] = useState(unpaidBills);
   const [fetchingBills, setFetchingBills] = useState(false);
 
+  // NEW: Get dawgMode from both house prop and user context (user.house has complete data)
+  const hasDawgMode = house?.dawgMode || user?.house?.dawgMode || false;
+
   // Handlers
   const handleUserFinancePress = () => setUserModalVisible(true);
   const handleHouseFinancePress = async () => {
@@ -115,7 +118,9 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
       hasUserFinance: !!userFinance,
       userFinanceBalance: userFinance?.balance,
       hasHouseFinance: !!houseFinance,
-      houseFinanceBalance: houseFinance?.balance
+      houseFinanceBalance: houseFinance?.balance,
+      hasDawgModeFromHouse: !!house?.dawgMode,
+      hasDawgModeFromUser: !!user?.house?.dawgMode,
       });
       
     // ENHANCED: Log when finance data changes for real-time update tracking
@@ -142,7 +147,9 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
     ...house,
     // Ensure we have these specific properties 
     statusIndex: house?.statusIndex || null,
-    hsi: typeof house?.hsi === 'number' ? house.hsi : (house?.statusIndex?.score || 45)
+    hsi: typeof house?.hsi === 'number' ? house.hsi : (house?.statusIndex?.score || 45),
+    // NEW: Include dawgMode from user context as fallback
+    dawgMode: hasDawgMode
   };
 
   return (
@@ -174,9 +181,22 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
               statusText=""
             />
           </View>
-          <View style={styles.cardWrapper}>
-            <DawgModeCard onPress={handleDawgModePress} />
-          </View>
+          {/* DEBUG: Log why card would/wouldn't show */}
+          {console.log('🐕 DAWG MODE CARD DECISION:', {
+            hasDawgMode,
+            hsiScore: house?.statusIndex?.score || house?.hsi || 0,
+            willShowCard: hasDawgMode || (house?.statusIndex?.score || house?.hsi || 0) >= 42,
+            userHasHouse: !!user?.house,
+            userHouseDawgMode: user?.house?.dawgMode
+          })}
+          {(hasDawgMode || (house?.statusIndex?.score || house?.hsi || 0) >= 42) && (
+            <View style={styles.cardWrapper}>
+              <DawgModeCard 
+                onPress={handleDawgModePress}
+                isActive={hasDawgMode}
+              />
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -185,13 +205,13 @@ const DashboardTopSection = ({ userFinance, houseFinance, userCharges, house, un
         visible={showDawgMode}
         onClose={() => setShowDawgMode(false)}
         fullScreen={true}
-        backgroundColor="#6d28d9"
-        hideCloseButton={false}
-        useBackArrow={true}
-        title="Dawg Mode"
-        headerStyle={{ backgroundColor: 'transparent', borderBottomWidth: 0 }}
+        backgroundColor="#ff7a3d"
+        hideCloseButton={true}
+        useBackArrow={false}
+        title=""
+        headerStyle={{ backgroundColor: 'transparent', borderBottomWidth: 0, height: 0 }}
       >
-        <DawgModeModal house={houseData} />
+        <DawgModeModal house={houseData} onClose={() => setShowDawgMode(false)} />
       </ModalComponent>
 
       {/* User Tab Modal */}

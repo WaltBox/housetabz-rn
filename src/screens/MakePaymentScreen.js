@@ -94,6 +94,7 @@ const BillingScreen = () => {
       console.log('Fetching unpaid charges...');
       const response = await apiClient.get(`/api/users/${authUser.id}/charges/unpaid`);
       console.log(`Found ${response.data.length} unpaid charges`);
+      console.log('📋 Charges from API:', response.data.map(c => ({ id: c.id, name: c.name, status: c.status, amount: c.amount })));
       setCharges(response.data);
       return response.data;
     } catch (error) {
@@ -110,6 +111,7 @@ const BillingScreen = () => {
         );
         
         console.log(`Found ${unpaidCharges.length} unpaid charges via fallback`);
+        console.log('📋 Fallback charges:', unpaidCharges.map(c => ({ id: c.id, name: c.name, status: c.status, amount: c.amount })));
         setCharges(unpaidCharges);
         return unpaidCharges;
       } catch (fallbackError) {
@@ -129,7 +131,12 @@ const BillingScreen = () => {
   const handleChargesUpdated = useCallback((paidChargeIds) => {
     console.log('Charges updated in BillingScreen:', paidChargeIds);
     
-    if (!paidChargeIds || paidChargeIds.length === 0) return;
+    if (!paidChargeIds || paidChargeIds.length === 0) {
+      console.log('⚠️ No paid charge IDs received, triggering full refetch');
+      // Full refetch triggered
+      setRefreshTrigger(prev => prev + 1);
+      return;
+    }
     
     // Remove the paid charges from the state
     setCharges(currentCharges => {
@@ -137,7 +144,10 @@ const BillingScreen = () => {
         charge => !paidChargeIds.includes(charge.id)
       );
       
-      console.log(`Removed ${paidChargeIds.length} paid charges, ${updatedCharges.length} remaining`);
+      console.log(`✅ Removed ${paidChargeIds.length} paid charges`);
+      console.log(`📊 Current unpaid charges: ${updatedCharges.length}`);
+      console.log('📋 Remaining charges:', updatedCharges.map(c => ({ id: c.id, name: c.name, amount: c.amount })));
+      
       return updatedCharges;
     });
   }, []);
@@ -163,7 +173,17 @@ const BillingScreen = () => {
   const handleChargeUpdate = useCallback((data) => {
     console.log('💳 Pay screen received charge update:', data);
     
-    // Clear cache and refresh charges when charges are updated
+    // If this is a charge being marked as paid, remove it immediately from local state
+    if (data?.changeType === 'paid' && data?.chargeId) {
+      console.log(`🎯 Charge ${data.chargeId} was paid, removing from UI immediately...`);
+      setCharges(currentCharges => {
+        const updated = currentCharges.filter(charge => charge.id !== data.chargeId);
+        console.log(`✅ Removed charge ${data.chargeId}. Remaining charges: ${updated.length}`);
+        return updated;
+      });
+    }
+    
+    // Also clear cache and refresh for other updates
     clearUserCache(authUser.id);
     invalidateCache('dashboard');
     invalidateCache('house');
@@ -181,6 +201,8 @@ const BillingScreen = () => {
       socket.setFinancialUpdateHandler(handleFinancialUpdate);
       socket.setChargeUpdateHandler(handleChargeUpdate);
       socket.connect();
+      
+      console.log('✅ Pay screen: WebSocket handlers registered for financial_update and charge_update events');
       
       setFinancialSocket(socket);
       

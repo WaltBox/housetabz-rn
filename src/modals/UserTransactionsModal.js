@@ -201,7 +201,25 @@ const UserTransactionsModal = ({ user, onClose }) => {
               item.charges.map((charge) => (
                 <View key={charge.id} style={styles.chargeItem}>
                   <Text style={styles.chargeName}>{charge.name}</Text>
-                  <Text style={styles.chargeAmount}>${Number(charge.amount).toFixed(2)}</Text>
+                  <View style={styles.chargeAmountContainer}>
+                    {charge.useNewFeeStructure && charge.paymentFee ? (
+                      <>
+                        <Text style={styles.chargeAmount}>
+                          ${Number(charge.baseAmount || charge.amount).toFixed(2)}
+                        </Text>
+                        <Text style={styles.chargeFee}>
+                          + ${Number(charge.paymentFee).toFixed(2)} fee
+                        </Text>
+                        <Text style={styles.chargeTotalAmount}>
+                          = ${Number(charge.totalAmount || charge.amount).toFixed(2)}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.chargeAmount}>
+                        ${Number(charge.amount).toFixed(2)}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               ))
             ) : (
@@ -371,10 +389,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1e293b",
   },
+  chargeAmountContainer: {
+    alignItems: 'flex-end',
+  },
   chargeAmount: {
     fontSize: 14,
     color: "#1e293b",
     fontWeight: "500",
+  },
+  chargeFee: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  chargeTotalAmount: {
+    fontSize: 14,
+    color: "#34d399",
+    fontWeight: "600",
+    marginTop: 2,
   },
   noChargesItem: {
     paddingVertical: 10,
