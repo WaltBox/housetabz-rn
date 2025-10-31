@@ -24,6 +24,8 @@ const PaymentConfirmationModal = ({
   onConfirmPayment,
   isProcessing,
   house, // NEW: Add house prop to check for Dawg Mode
+  paymentSuccess, // NEW: Add paymentSuccess prop
+  onSuccessDone, // NEW: Called when user taps Done on success screen
 }) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { user, refreshPaymentMethods } = useAuth();
@@ -210,12 +212,32 @@ const PaymentConfirmationModal = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Confirm Payment</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <MaterialIcons name="close" size={24} color="#64748b" />
-            </TouchableOpacity>
+            {!paymentSuccess && (
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <MaterialIcons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {loading ? (
+          {paymentSuccess ? (
+            // SUCCESS STATE
+            <View style={styles.successContainer}>
+              <View style={styles.successIconContainer}>
+                <MaterialIcons name="check-circle" size={80} color="#34d399" />
+              </View>
+              <Text style={styles.successTitle}>Payment Successful! ✅</Text>
+              <Text style={styles.successMessage}>
+                Successfully paid {selectedCharges.length} charge{selectedCharges.length !== 1 ? 's' : ''} totaling ${totalAmount.toFixed(2)}
+              </Text>
+            
+              <TouchableOpacity 
+                style={styles.doneButton}
+                onPress={onSuccessDone}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          ) : loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#34d399" />
             </View>
@@ -726,6 +748,56 @@ const styles = StyleSheet.create({
   },
   scrollBottomPadding: {
     height: 80, // Reduced from 100 by 20%
+  },
+  successContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dff6f0',
+    borderRadius: 12,
+    marginTop: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  successIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  successMessage: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  successSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  doneButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    backgroundColor: '#34d399',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

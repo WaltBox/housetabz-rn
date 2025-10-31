@@ -13,7 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import PayTab from '../components/PayTab';
 import HistoryTab from '../components/HistoryTab';
-import apiClient, { clearUserCache, invalidateCache } from '../config/api';
+import apiClient, { clearUserCache, invalidateCache, clearAllCache, getAppUserInfo } from '../config/api';
 import { useFonts } from 'expo-font';
 import FinancialWebSocket from '../services/FinancialWebSocket';
 
@@ -33,6 +33,7 @@ const BillingScreen = () => {
   const [charges, setCharges] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
+  const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   
   // WebSocket state for real-time charge updates
   const [financialSocket, setFinancialSocket] = useState(null);
@@ -55,6 +56,12 @@ const BillingScreen = () => {
 
   const fetchData = async () => {
     try {
+      // ✅ CRITICAL FIX: Don't fetch data while payment confirmation is open
+      if (activeTab === TABS.PAY && isConfirmationOpen) {
+        console.log('⏸️ CRITICAL: Payment confirmation open - skipping data fetch');
+        return;
+      }
+      
       setError(null);
       setLoading(true);
       
@@ -91,10 +98,10 @@ const BillingScreen = () => {
     try {
       if (!authUser?.id) return;
       
-      console.log('Fetching unpaid charges...');
-      const response = await apiClient.get(`/api/users/${authUser.id}/charges/unpaid`);
-      console.log(`Found ${response.data.length} unpaid charges`);
-      console.log('📋 Charges from API:', response.data.map(c => ({ id: c.id, name: c.name, status: c.status, amount: c.amount })));
+      console.log('📡 Fetching unpaid charges...');
+      // ✅ CRITICAL: Add nocache parameter to bypass stale cache
+      const response = await apiClient.get(`/api/users/${authUser.id}/charges/unpaid?nocache=${Date.now()}`);
+      console.log(`✅ Found ${response.data.length} unpaid charges`);
       setCharges(response.data);
       return response.data;
     } catch (error) {
@@ -103,7 +110,7 @@ const BillingScreen = () => {
       // Fallback to all charges endpoint
       try {
         console.log('Trying fallback to all charges...');
-        const fallbackResponse = await apiClient.get(`/api/users/${authUser.id}/charges`);
+        const fallbackResponse = await apiClient.get(`/api/users/${authUser.id}/charges?nocache=${Date.now()}`);
         
         // Filter out paid and processing charges client-side
         const unpaidCharges = fallbackResponse.data.filter(
@@ -111,7 +118,6 @@ const BillingScreen = () => {
         );
         
         console.log(`Found ${unpaidCharges.length} unpaid charges via fallback`);
-        console.log('📋 Fallback charges:', unpaidCharges.map(c => ({ id: c.id, name: c.name, status: c.status, amount: c.amount })));
         setCharges(unpaidCharges);
         return unpaidCharges;
       } catch (fallbackError) {
@@ -127,39 +133,43 @@ const BillingScreen = () => {
     }
   };
 
-  // Process when charges are updated by the PayTab component
-  const handleChargesUpdated = useCallback((paidChargeIds) => {
-    console.log('Charges updated in BillingScreen:', paidChargeIds);
-    
-    if (!paidChargeIds || paidChargeIds.length === 0) {
-      console.log('⚠️ No paid charge IDs received, triggering full refetch');
-      // Full refetch triggered
-      setRefreshTrigger(prev => prev + 1);
-      return;
-    }
-    
-    // Remove the paid charges from the state
-    setCharges(currentCharges => {
-      const updatedCharges = currentCharges.filter(
-        charge => !paidChargeIds.includes(charge.id)
-      );
-      
-      console.log(`✅ Removed ${paidChargeIds.length} paid charges`);
-      console.log(`📊 Current unpaid charges: ${updatedCharges.length}`);
-      console.log('📋 Remaining charges:', updatedCharges.map(c => ({ id: c.id, name: c.name, amount: c.amount })));
-      
-      return updatedCharges;
-    });
+  // SIMPLIFIED: Payment complete callback - just refresh in background
+  const handlePaymentComplete = useCallback(() => {
+    console.log('✅ Payment completed - refreshing data in background');
+    // Clear cache and refetch silently
+    clearAllCache();
+    invalidateCache('dashboard');
+    invalidateCache('house');
+    invalidateCache('user');
+    // Trigger refetch
+    setRefreshTrigger(prev => prev + 1);
   }, []);
 
   // Manual refresh function
   const refreshData = () => {
+    // ✅ CRITICAL FIX: Don't trigger refresh during payment
+    if (isConfirmationOpen) {
+      console.log('⏸️ CRITICAL: Payment in progress - blocking manual refresh');
+      return;
+    }
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  // ✅ FIX 2: No-op handler for payment flow changes (DashboardScreen will track it)
+  const handlePaymentFlowChange = (isActive) => {
+    console.log(`📱 MakePaymentScreen: Payment flow ${isActive ? 'active' : 'inactive'}`);
+    // No-op: DashboardScreen tracks this via its own flag
   };
 
   // WebSocket event handlers for real-time charge updates
   const handleFinancialUpdate = useCallback((data) => {
     console.log('💰 Pay screen received financial update:', data);
+    
+    // ✅ CRITICAL FIX: Don't fetch during payment flow
+    if (activeTab === TABS.PAY && isConfirmationOpen) {
+      console.log('⏸️ CRITICAL: Payment in progress - deferring financial update fetch');
+      return;
+    }
     
     // Clear cache and refresh charges when financial transactions occur
     clearUserCache(authUser.id);
@@ -168,10 +178,16 @@ const BillingScreen = () => {
     invalidateCache('user');
     
     setRefreshTrigger(prev => prev + 1);
-  }, [authUser?.id]);
+  }, [authUser?.id, activeTab, isConfirmationOpen]); // ✅ Add payment state dependency
 
   const handleChargeUpdate = useCallback((data) => {
     console.log('💳 Pay screen received charge update:', data);
+    
+    // ✅ CRITICAL FIX: Don't fetch during payment flow
+    if (activeTab === TABS.PAY && isConfirmationOpen) {
+      console.log('⏸️ CRITICAL: Payment in progress - deferring charge update fetch');
+      return;
+    }
     
     // If this is a charge being marked as paid, remove it immediately from local state
     if (data?.changeType === 'paid' && data?.chargeId) {
@@ -190,7 +206,7 @@ const BillingScreen = () => {
     invalidateCache('user');
     
     setRefreshTrigger(prev => prev + 1);
-  }, [authUser?.id]);
+  }, [authUser?.id, activeTab, isConfirmationOpen]); // ✅ Add payment state dependency
 
   // WebSocket initialization
   useEffect(() => {
@@ -259,6 +275,24 @@ const BillingScreen = () => {
                 {activeTab === tab && <View style={styles.activeIndicator} />}
               </TouchableOpacity>
             ))}
+            
+            {/* Confirm Payment Tab - Only visible when confirmation screen is open */}
+            {isConfirmationOpen && (
+              <TouchableOpacity 
+                key="confirm-payment"
+                style={[styles.tab, styles.confirmPaymentTab]}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.tabText,
+                  styles.confirmPaymentTabText,
+                  fontsLoaded && { fontFamily: 'Poppins-Medium' }
+                ]}>
+                  Confirm Payment
+                </Text>
+                <View style={styles.confirmPaymentIndicator} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -266,8 +300,14 @@ const BillingScreen = () => {
         {activeTab === TABS.PAY && (
           <PayTab 
             charges={charges} 
-            onChargesUpdated={handleChargesUpdated} 
+            onChargesUpdated={handlePaymentComplete}
+            onConfirmationStateChange={setIsConfirmationOpen}
+            onPaymentFlowChange={handlePaymentFlowChange}
           />
+        )}
+        {/* Close confirmation when switching tabs */}
+        {activeTab !== TABS.PAY && isConfirmationOpen && (
+          <View onLayout={() => setIsConfirmationOpen(false)} />
         )}
         {activeTab === TABS.HISTORY && <HistoryTab />}
       </View>
@@ -350,6 +390,28 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  confirmPaymentTab: {
+    backgroundColor: '#34d399',
+    width: '30%',
+    paddingVertical: 10,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  confirmPaymentTabText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  confirmPaymentIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: 'white',
+    zIndex: 1,
   },
 });
 

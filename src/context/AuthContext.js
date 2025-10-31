@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { Platform, View, Text } from 'react-native';
 import { keychainHelpers, KEYCHAIN_SERVICES } from '../utils/keychainHelpers';
-import apiClient, { API_URL, API_ENDPOINTS } from '../config/api';
+import apiClient, { API_URL, API_ENDPOINTS, clearAllCache } from '../config/api';
 import jwtDecode from 'jwt-decode';
 
 const AuthContext = createContext({});
@@ -434,7 +434,11 @@ export const AuthProvider = ({ children }) => {
       // Clear all auth data from Keychain
       await keychainHelpers.clearAllAuthData();
       
-      // Clear cache
+      // Clear API cache (CRITICAL for switching users!)
+      console.log('🧹 Clearing ALL API cache before logout...');
+      clearAllCache();
+      
+      // Clear token cache
       clearTokenCache();
       
       delete apiClient.defaults.headers.common['Authorization'];

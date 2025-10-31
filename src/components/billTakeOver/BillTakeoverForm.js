@@ -269,21 +269,23 @@ export default function BillTakeoverForm({ onBack, onSuccess }) {
 
       {/* Button as regular element at bottom */}
       <View style={styles.buttonFooter}>
-        <TouchableOpacity
-          style={[styles.submitButtonFixed, loading && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <>
-              <Text style={styles.submitButtonText}>Submit Request</Text>
-              <MaterialIcons name="send" size={20} color="#FFFFFF" />
-            </>
-          )}
-        </TouchableOpacity>
+        {currentStep === 2 && (
+          <TouchableOpacity
+            style={[styles.submitButtonFixed, loading && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Text style={styles.submitButtonText}>Submit Request</Text>
+                <MaterialIcons name="send" size={20} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

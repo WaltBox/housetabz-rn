@@ -105,6 +105,18 @@ const PayTab = ({ charges: allCharges, onChargesUpdated, onConfirmationStateChan
     fetchPaymentMethods();
   }, []);
   
+  // SYNC LOCAL CHARGES with props when they change
+useEffect(() => {
+  // ✅ Don't update local charges while showing success screen
+  // This prevents WebSocket updates from interfering with the success UI
+  if (paymentState === 'success' || paymentState === 'processing') {
+    console.log('🛡️ Blocking charge update - payment in progress or success showing');
+    return;
+  }
+  
+  setLocalCharges(allCharges);
+}, [allCharges, paymentState]); // ✅ Add paymentState as dependency
+
 // Ensure selected charges are still valid when unpaid charges change
 useEffect(() => {
   // ✅ Don't validate during success screen - we know they were just paid
@@ -177,113 +189,107 @@ useEffect(() => {
   };
 
   // Centralized API call
- // Centralized API call
-const handleConfirmPayment = async () => {
-  console.log('🔵 handleConfirmPayment: STARTED');
-  
-  if (paymentMethods.length === 0) {
-    console.log('⚠️ handleConfirmPayment: No payment methods available');
-    Alert.alert(
-      "No Payment Methods", 
-      "Please add a payment method to continue.",
-      [{ text: "OK", style: "cancel" }]
-    );
-    return;
-  }
-  
-  try {
-    // Set to processing so button shows loading during API call
-    setPaymentStateWithLogging('processing');
-    console.log('🔵 handleConfirmPayment: Set to processing, making API call...');
+  const handleConfirmPayment = async () => {
+    console.log('🔵 handleConfirmPayment: STARTED');
     
-    console.log('🔵 handleConfirmPayment: Preparing API call, paymentState=${paymentState}');
-    const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
-    
-    const paymentRequest = {
-      chargeIds: selectedCharges.map(charge => charge.id),
-    };
-    
-    console.log('🔵 handleConfirmPayment: SENDING API CALL...', paymentRequest);
-    
-    const response = await apiClient.post(
-      '/api/payments/batch',
-      paymentRequest,
-      { headers: { 'idempotency-key': idempotencyKey } }
-    );
-    
-    console.log('🟢 handleConfirmPayment: API SUCCESS, response received');
-    console.log('Payment response:', response.data);
-    
-    const paidChargeIds = selectedCharges.map(charge => charge.id);
-    console.log('💡 OPTIMISTIC UPDATE: Removing paid charges from UI immediately...');
-    
-    setPaidChargeIds(paidChargeIds);
-    
-    setLocalCharges(prev => {
-      const updated = prev.filter(charge => !paidChargeIds.includes(charge.id));
-      console.log(`💡 Local charges filtered: ${prev.length} → ${updated.length}`);
-      return updated;
-    });
-    
-    // ✅ FIX: Store payment response data BEFORE clearing selectedCharges
-    setPaymentResponse({
-      chargesCount: response.data.summary?.chargesPaid || selectedCharges.length,
-      totalAmount: response.data.summary?.totalAmountPaid || selectedCharges.reduce((sum, c) => sum + Number(c.amount), 0),
-      chargeIds: response.data.paidChargeIds || paidChargeIds
-    });
-    
-    setSelectedCharges([]);
-    
-    console.log('🟢 handleConfirmPayment: Payment successful, waiting 2 seconds before showing success screen...');
-    
-    // ✅ NEW: Wait 2 seconds to give backend cache time to clear
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    console.log('🟢 handleConfirmPayment: Setting paymentState to success');
-    setPaymentStateWithLogging('success');
-    console.log('✅ Payment success - showing success screen');
-    
-  } 
-  catch (error) {
-    console.error('🔴 handleConfirmPayment: API ERROR');
-    console.error('Error object:', error);
-    console.error('Error message:', error.message);
-    
-    let errorMessage = 'An error occurred while processing your payment.';
-    
-    // Enhanced error handling for new backend error messages
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-      
-      if (error.response.data.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response.data.details) {
-        errorMessage = error.response.data.details;
-      } else if (error.response.data.message) {
-        errorMessage = error.response.data.message;
-      }
-      
-      // Handle specific new backend error messages
-      if (errorMessage.includes('No payment method provided and no default payment method found')) {
-        Alert.alert(
-          "No Default Payment Method",
-          "Please set a default payment method to continue. You can manage payment methods from the confirmation modal.",
-          [{ text: "OK", onPress: () => setPaymentStateWithLogging('idle') }]
-        );
-        return;
-      }
+    if (paymentMethods.length === 0) {
+      console.log('⚠️ handleConfirmPayment: No payment methods available');
+      Alert.alert(
+        "No Payment Methods", 
+        "Please add a payment method to continue.",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
     }
     
-    Alert.alert(
-      "Payment Failed",
-      errorMessage,
-      [{ text: "OK", onPress: () => setPaymentStateWithLogging('idle') }]
-    );
-    
-    console.log('🔴 ERROR: Payment failed');
-  }
-
+    try {
+      // Set to processing so button shows loading during API call
+      setPaymentStateWithLogging('processing');
+      console.log('🔵 handleConfirmPayment: Set to processing, making API call...');
+      
+      console.log('🔵 handleConfirmPayment: Preparing API call, paymentState=${paymentState}');
+      const idempotencyKey = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+      
+      const paymentRequest = {
+        chargeIds: selectedCharges.map(charge => charge.id),
+      };
+      
+      console.log('🔵 handleConfirmPayment: SENDING API CALL...', paymentRequest);
+      
+      const response = await apiClient.post(
+        '/api/payments/batch',
+        paymentRequest,
+        { headers: { 'idempotency-key': idempotencyKey } }
+      );
+      
+      console.log('🟢 handleConfirmPayment: API SUCCESS, response received');
+      console.log('Payment response:', response.data);
+      
+      const paidChargeIds = selectedCharges.map(charge => charge.id);
+      console.log('💡 OPTIMISTIC UPDATE: Removing paid charges from UI immediately...');
+      
+      setPaidChargeIds(paidChargeIds); // Optimistically update the state
+      
+      setLocalCharges(prev => {
+        const updated = prev.filter(charge => !paidChargeIds.includes(charge.id));
+        console.log(`💡 Local charges filtered: ${prev.length} → ${updated.length}`);
+        return updated;
+      });
+      
+      // ✅ FIX: Store payment response data BEFORE clearing selectedCharges
+      setPaymentResponse({
+        chargesCount: response.data.summary?.chargesPaid || selectedCharges.length,
+        totalAmount: response.data.summary?.totalAmountPaid || selectedCharges.reduce((sum, c) => sum + Number(c.amount), 0),
+        chargeIds: response.data.paidChargeIds || paidChargeIds
+      });
+      
+      setSelectedCharges([]);
+      
+      console.log('🟢 handleConfirmPayment: Setting paymentState to success');
+      setPaymentStateWithLogging('success');
+      console.log('✅ Payment success - showing success screen');
+      
+      
+    } 
+    catch (error) {
+      console.error('🔴 handleConfirmPayment: API ERROR');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      
+      let errorMessage = 'An error occurred while processing your payment.';
+      
+      // Enhanced error handling for new backend error messages
+      if (error.response) {
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+        
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.details) {
+          errorMessage = error.response.data.details;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        // Handle specific new backend error messages
+        if (errorMessage.includes('No payment method provided and no default payment method found')) {
+          Alert.alert(
+            "No Default Payment Method",
+            "Please set a default payment method to continue. You can manage payment methods from the confirmation modal.",
+            [{ text: "OK", onPress: () => setPaymentStateWithLogging('idle') }]
+          );
+          return;
+        }
+      }
+      
+      Alert.alert(
+        "Payment Failed",
+        errorMessage,
+        [{ text: "OK", onPress: () => setPaymentStateWithLogging('idle') }]
+      );
+      
+      console.log('🔴 ERROR: Payment failed');
+    }
     // Finally block removed - no cleanup needed, let success/error handlers manage state
   };
 

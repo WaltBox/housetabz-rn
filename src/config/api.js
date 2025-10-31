@@ -608,6 +608,8 @@ export const clearUserCache = (userId) => {
   cache.clearByPattern(`/api/app/userinfo/${userId}`);
   // Also clear OLD dashboard endpoint cache (for backward compatibility)
   cache.clearByPattern(`/api/dashboard/user/${userId}`);
+  // Clear charges cache for this user
+  cache.clearByPattern(`/api/users/${userId}/charges`);
 };
 
 // Clear cache for specific house
@@ -727,13 +729,30 @@ export const invalidateCache = (type, id) => {
       break;
     case 'charges':
       // Clear all charge-related cache endpoints
-      cache.clearByPattern(`/api/users/${id}/charges`);
+      if (id) {
+        cache.clearByPattern(`/api/users/${id}/charges`);
+      } else {
+        cache.clearByPattern('/api/users/');
+      }
       cache.clearByPattern('/api/payments/');
       break;
     case 'payments':
       // Clear all payment-related cache
       cache.clearByPattern('/api/payments/');
-      cache.clearByPattern(`/api/users/${id}/charges`);
+      if (id) {
+        cache.clearByPattern(`/api/users/${id}/charges`);
+      } else {
+        cache.clearByPattern('/api/users/');
+      }
+      break;
+    case 'houseService':
+      // Clear house service cache
+      cache.clearByPattern('/api/houseServices/');
+      cache.clearByPattern('/api/take-over-requests/');
+      break;
+    case 'app':
+      // Full app cache clear
+      cache.clear();
       break;
     default:
       console.warn(`Unknown cache invalidation type: ${type}`);

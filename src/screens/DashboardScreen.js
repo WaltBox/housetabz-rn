@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   SafeAreaView, 
   ScrollView, 
@@ -228,6 +228,10 @@ const DashboardScreen = () => {
   const [financialSocket, setFinancialSocket] = useState(null);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   
+  // ✅ NEW: Global Payment Flow Flag to Prevent WebSocket Refreshes During Payment
+  const [isPaymentFlowActive, setIsPaymentFlowActive] = useState(false);
+  const refreshTimer = useRef(null);
+  
   // ✅ DEPRECATED: Progressive Loading States (no longer needed with unified endpoint)
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   const [prefetchDataLoaded, setPrefetchDataLoaded] = useState(false);
@@ -251,80 +255,16 @@ const DashboardScreen = () => {
   // Consent confirmation modal states
   const [isConsentModalVisible, setIsConsentModalVisible] = useState(false);
 
-  // ✅ NEW: Real-time WebSocket Event Handlers
-  const handleFinancialUpdate = (data) => {
-    console.log('💰 Processing financial update:', data);
-    
-    // Show immediate feedback
-    console.log(`💰 Balance updated: ${data.transactionType}`);
-    
-    // Clear cache and refresh dashboard data to get latest balances
-    setTimeout(() => {
-      // Clear all relevant caches before refreshing
-      clearUserCache(user.id);
-      invalidateCache('dashboard');
-      invalidateCache('house');
-      invalidateCache('user');
-      
-      loadDashboardData();
-    }, 500);
-  };
-
-  const handleHouseFinancialUpdate = (data) => {
-    console.log('🏠 Processing house financial update:', data);
-    
-    // Show immediate feedback
-    console.log('🏠 House balance updated');
-    
-    // Clear cache and refresh dashboard data to get latest house balance
-    setTimeout(() => {
-      // Clear all relevant caches before refreshing
-      clearUserCache(user.id);
-      invalidateCache('dashboard');
-      invalidateCache('house');
-      invalidateCache('user');
-      
-      loadDashboardData();
-    }, 500);
-  };
-
-  const handleBillUpdate = (data) => {
-    console.log('📄 Processing bill update:', data);
-    
-    // Clear cache and refresh dashboard data to get updated bills
-    setTimeout(() => {
-      // Clear all relevant caches before refreshing
-      clearUserCache(user.id);
-      invalidateCache('dashboard');
-      invalidateCache('house');
-      invalidateCache('user');
-      
-      loadDashboardData();
-    }, 500);
-  };
-
-  const handleChargeUpdate = (data) => {
-    console.log('💳 Processing charge update:', data);
-    
-    // Clear cache and refresh dashboard data to get updated charges
-    setTimeout(() => {
-      // Clear all relevant caches before refreshing
-      clearUserCache(user.id);
-      invalidateCache('dashboard');
-      invalidateCache('house');
-      invalidateCache('user');
-      
-      loadDashboardData();
-    }, 500);
-  };
-
-  const handleSocketConnectionChange = (connected) => {
-    console.log(`🔌 WebSocket connection: ${connected ? 'connected' : 'disconnected'}`);
-    setIsSocketConnected(connected);
-  };
+  const [consentData, setConsentData] = useState(null);
+  // Removed processingTasks - now using loading screen instead
+  const [isTaskProcessing, setIsTaskProcessing] = useState(false); // Show loading screen during task processing
+  const [processingType, setProcessingType] = useState('task'); // Track what type of processing is happening
+  const [recentlyCompletedTasks, setRecentlyCompletedTasks] = useState(new Set()); // Track recently completed tasks
+  const [recentlyCompletedBillSubmissions, setRecentlyCompletedBillSubmissions] = useState(new Set()); // Track recently completed bill submissions
+  const [recentlyCompletedRentProposals, setRecentlyCompletedRentProposals] = useState(new Set()); // Track recently completed rent proposals
 
   // ✅ NEW: Unified Dashboard Data Loading Function
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -412,20 +352,120 @@ const DashboardScreen = () => {
         'Connection Error',
         'Unable to load dashboard. Please check your connection and try again.',
         [
-          { text: 'Retry', onPress: loadDashboardData },
+          { text: 'Retry', onPress: () => loadDashboardData() },
           { text: 'Cancel' }
         ]
       );
     }
-  };
+  }, [user.id]);
 
-  const [consentData, setConsentData] = useState(null);
-  // Removed processingTasks - now using loading screen instead
-  const [isTaskProcessing, setIsTaskProcessing] = useState(false); // Show loading screen during task processing
-  const [processingType, setProcessingType] = useState('task'); // Track what type of processing is happening
-  const [recentlyCompletedTasks, setRecentlyCompletedTasks] = useState(new Set()); // Track recently completed tasks
-  const [recentlyCompletedBillSubmissions, setRecentlyCompletedBillSubmissions] = useState(new Set()); // Track recently completed bill submissions
-  const [recentlyCompletedRentProposals, setRecentlyCompletedRentProposals] = useState(new Set()); // Track recently completed rent proposals
+  // ✅ CRITICAL FIX: WebSocket Event Handlers - DO NOT include loadDashboardData in dependencies
+  const handleFinancialUpdate = useCallback((data) => {
+    // ✅ FIX 1: Check payment flow flag before processing
+    if (isPaymentFlowActive) {
+      console.log('⏸️ Payment flow active - deferring refresh for financial update');
+      return;
+    }
+    
+    console.log('💰 Processing financial update:', data);
+    console.log('💰 User balance updated');
+    
+    // ✅ FIX 3: Clear existing timer and debounce refresh
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+    }
+    
+    refreshTimer.current = setTimeout(() => {
+      clearUserCache(user?.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      invalidateCache('app');
+      loadDashboardData();
+      refreshTimer.current = null;
+    }, 1000);
+  }, [user?.id, isPaymentFlowActive]); // ✅ Add isPaymentFlowActive dependency
+
+  const handleHouseFinancialUpdate = useCallback((data) => {
+    // ✅ FIX 1: Check payment flow flag before processing
+    if (isPaymentFlowActive) {
+      console.log('⏸️ Payment flow active - deferring refresh for house financial update');
+      return;
+    }
+    
+    console.log('🏠 Processing house financial update:', data);
+    console.log('🏠 House balance updated');
+    
+    // ✅ FIX 3: Clear existing timer and debounce refresh
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+    }
+    
+    refreshTimer.current = setTimeout(() => {
+      clearUserCache(user?.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      invalidateCache('app');
+      loadDashboardData();
+      refreshTimer.current = null;
+    }, 1000);
+  }, [user?.id, isPaymentFlowActive]); // ✅ Add isPaymentFlowActive dependency
+
+  const handleBillUpdate = useCallback((data) => {
+    // ✅ FIX 1: Check payment flow flag before processing
+    if (isPaymentFlowActive) {
+      console.log('⏸️ Payment flow active - deferring refresh for bill update');
+      return;
+    }
+    
+    console.log('📄 Processing bill update:', data);
+    
+    // ✅ FIX 3: Clear existing timer and debounce refresh
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+    }
+    
+    refreshTimer.current = setTimeout(() => {
+      clearUserCache(user?.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      invalidateCache('app');
+      loadDashboardData();
+      refreshTimer.current = null;
+    }, 1000);
+  }, [user?.id, isPaymentFlowActive]); // ✅ Add isPaymentFlowActive dependency
+
+  const handleChargeUpdate = useCallback((data) => {
+    // ✅ FIX 1: Check payment flow flag before processing
+    if (isPaymentFlowActive) {
+      console.log('⏸️ Payment flow active - deferring refresh for charge update');
+      return;
+    }
+    
+    console.log('💳 Processing charge update:', data);
+    
+    // ✅ FIX 3: Clear existing timer and debounce refresh
+    if (refreshTimer.current) {
+      clearTimeout(refreshTimer.current);
+    }
+    
+    refreshTimer.current = setTimeout(() => {
+      clearUserCache(user?.id);
+      invalidateCache('dashboard');
+      invalidateCache('house');
+      invalidateCache('user');
+      invalidateCache('app');
+      loadDashboardData();
+      refreshTimer.current = null;
+    }, 1000);
+  }, [user?.id, isPaymentFlowActive]); // ✅ Add isPaymentFlowActive dependency
+
+  const handleSocketConnectionChange = useCallback((connected) => {
+    console.log(`🔌 WebSocket connection: ${connected ? 'connected' : 'disconnected'}`);
+    setIsSocketConnected(connected);
+  }, []);
 
   // Add focus effect to refresh data when screen comes into view
   const lastFocusTime = useRef(0);
@@ -434,15 +474,12 @@ const DashboardScreen = () => {
       const now = Date.now();
       const timeSinceLastFocus = now - lastFocusTime.current;
       
-      // Only refresh if it's been more than 2 seconds since last focus
-      // This prevents the infinite loop while still allowing legitimate refreshes
       if (!isLoading && user?.id && timeSinceLastFocus > 2000) {
         console.log('🔄 Dashboard screen focused - refreshing data');
         lastFocusTime.current = now;
-        fetchDashboardData();
+        loadDashboardData();
       }
       
-      // Restore scroll position when returning to dashboard
       const restoreScrollPosition = () => {
         const currentScrollPosition = scrollEmitter.getDashboardScrollPosition();
         const scrollThreshold = height * 0.15;
@@ -455,7 +492,6 @@ const DashboardScreen = () => {
         });
         
         if (scrollViewRef.current && scrollY > 0) {
-          // Small delay to ensure the ScrollView is ready
           setTimeout(() => {
             scrollViewRef.current?.scrollTo({ y: scrollY, animated: false });
           }, 100);
@@ -463,11 +499,8 @@ const DashboardScreen = () => {
       };
       
       restoreScrollPosition();
-    }, [user?.id, isLoading])
+    }, [user?.id, isLoading, loadDashboardData])
   );
-
-
-
 
   // ✅ NEW: Progressive Loading - Phase 1: Instant Initial Load (300ms)
   const fetchInitialDashboardData = async () => {
@@ -483,13 +516,9 @@ const DashboardScreen = () => {
         userEmail: user?.email
       });
 
-      // ✅ NEW: Phase 1 - Fast initial load
       const data = await getDashboardInitialData(user.id);
-      
-      // Handle nested data structure first
       const responseData = data.data || data;
 
-      
       console.log('📊 Phase 1 Initial Data Received:', {
         loadingStrategy: responseData.meta?.loadingStrategy,
         backgroundPrefetch: responseData.meta?.backgroundPrefetch,
@@ -499,24 +528,17 @@ const DashboardScreen = () => {
         hasHouse: !!responseData.house,
         hasUser: !!responseData.user,
       });
-      
 
-      
-      // ✅ PHASE 1: Set essential data immediately (user, house, charges, partners)
-      
-      // Set user finance data
       if (responseData.user?.finance) {
         console.log('💰 Phase 1: Setting userFinance:', responseData.user.finance);
         setUserFinance(responseData.user.finance);
       }
       
-      // Set house finance data  
       if (responseData.house?.finance) {
         console.log('🏠 Phase 1: Setting houseFinance:', responseData.house.finance);
         setHouseFinance(responseData.house.finance);
       }
 
-      // Set house data
       if (responseData.house) {
         console.log('🏡 Phase 1: Setting house data');
         setHouse(responseData.house);
@@ -531,13 +553,11 @@ const DashboardScreen = () => {
         }, 0);
       }
 
-      // Set pending charges (immediate priority)
       if (Array.isArray(responseData.pendingCharges)) {
         console.log('💳 Phase 1: Setting pending charges:', responseData.pendingCharges.length);
         setUserCharges(responseData.pendingCharges);
       }
 
-      // Set partners data (immediate for merchants screen)
       console.log('🏪 Phase 1: Partners data check:', {
         hasPartners: !!responseData.partners,
         isArray: Array.isArray(responseData.partners),
@@ -552,9 +572,8 @@ const DashboardScreen = () => {
       } else {
         console.log('⚠️ Phase 1: Partners data is missing or empty - backend issue');
         console.log('🔧 Frontend: Setting empty array, Services section will show empty state');
-        setPartners([]); // Set empty array as fallback
+        setPartners([]);
         
-        // Log this as a backend issue for monitoring
         if (typeof window !== 'undefined' && window.analytics) {
           window.analytics.track('Backend Issue', {
             issue: 'Missing Partners Data',
@@ -566,7 +585,6 @@ const DashboardScreen = () => {
         }
       }
 
-      // ✅ RESTORED: Set arrays with fallbacks for immediate display
       const pendingTasks = Array.isArray(responseData.pendingTasks) ? 
         responseData.pendingTasks.filter(task => {
           const isPending = task.response === 'pending';
@@ -588,16 +606,12 @@ const DashboardScreen = () => {
           return isPending && !isRecentlyCompleted;
         }) : [];
 
-      // Set state with filtered data (Phase 1 may include this data)
       setTasks(pendingTasks);
       setBillSubmissions(pendingBillSubmissions);
       setRentProposals(pendingRentProposals);
       setUrgentMessages(Array.isArray(responseData.urgentMessages) ? responseData.urgentMessages : []);
       setUnpaidBills(Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills : []);
 
-
-
-      // 🔍 DEBUG: Check the structure of unpaidCharges from dashboard endpoint
       console.log('🔍 Dashboard unpaidCharges structure:', {
         chargesCount: Array.isArray(responseData.unpaidCharges) ? responseData.unpaidCharges.length : 0,
         firstChargeStructure: responseData.unpaidCharges?.[0] ? {
@@ -633,7 +647,6 @@ const DashboardScreen = () => {
         shouldShowHowToUseCard: (responseData.house?.houseServicesCount || 0) === 0,
       });
 
-      // ✅ Backend now provides complete data with unpaidBills - no fallback needed
       console.log('✅ Received dashboard data:', {
         hasUnpaidBills: Array.isArray(responseData.unpaidBills) && responseData.unpaidBills.length > 0,
         unpaidBillsCount: Array.isArray(responseData.unpaidBills) ? responseData.unpaidBills.length : 0,
@@ -643,25 +656,20 @@ const DashboardScreen = () => {
         houseFinanceBalance: responseData.house?.finance?.balance
       });
 
-      // 🆕 START BACKGROUND PREFETCH after successful dashboard load
-      if (!refreshing) { // Only on initial load, not on refresh
+      if (!refreshing) {
         console.log('🚀 Starting background prefetch...');
         try {
-          // Start prefetching other screens in background
           startBackgroundPrefetch(user);
           
-          // Log prefetch status after a short delay
           setTimeout(() => {
             const prefetchStatus = getPrefetchStatus();
             console.log('📊 Prefetch status:', prefetchStatus);
           }, 2000);
         } catch (prefetchError) {
           console.log('⚠️ Background prefetch failed to start:', prefetchError.message);
-          // Don't show error to user - prefetch is background operation
         }
       }
 
-      // ✅ PHASE 1: Mark initial data as loaded (Phase 2 will trigger via useEffect)
       setInitialDataLoaded(true);
       console.log('✅ Phase 1 Complete: Initial dashboard data loaded');
       console.log('⏳ Phase 2 will start after Phase 1 state updates are applied to UI');
@@ -669,7 +677,6 @@ const DashboardScreen = () => {
     } catch (error) {
       console.log('❌ Phase 1 Dashboard data fetch failed:', error.message);
       
-      // Better error handling for timeouts
       if (error.message.includes('timeout')) {
         setError('Dashboard is loading slowly. Please check your connection and try again.');
         console.log('⏱️ Timeout detected - backend may be slow');
@@ -677,7 +684,6 @@ const DashboardScreen = () => {
         setError(`Failed to load dashboard: ${error.message}`);
       }
       
-      // Clear cache on error and retry
       try {
         clearUserCache(user?.id);
         console.log('🧹 Cleared user cache due to error');
@@ -710,11 +716,6 @@ const DashboardScreen = () => {
         notificationsCount: Array.isArray(responseData.unreadNotifications) ? responseData.unreadNotifications.length : 0,
       });
 
-      // ✅ FIX: Phase 2 should NOT overwrite Phase 1 data!
-      // Phase 1 already loaded all the essential data (tasks, messages, bills, etc.)
-      // Phase 2 was meant for background prefetch of ADDITIONAL data (transactions, notifications)
-      // But it was duplicating Phase 1 and causing race conditions
-      
       console.log('✅ Phase 2: Received prefetch response, but NOT updating Phase 1 data');
       console.log('📊 Phase 2 Data Summary:', {
         hasTransactions: Array.isArray(responseData.recentTransactions),
@@ -722,18 +723,12 @@ const DashboardScreen = () => {
         note: 'Phase 1 already loaded tasks, messages, bills - Phase 2 skipped to prevent race condition'
       });
       
-      // Only store additional data that Phase 1 doesn't provide
-      // (Currently Phase 2 doesn't provide any unique data, so this is a no-op)
-      // In the future, if Phase 2 provides recentTransactions or notifications, add them here
-      
       console.log('✅ Phase 2 Complete: Prefetch acknowledged (no state updates)');
       setPrefetchDataLoaded(true);
       setPrefetchRetryCount(0);
 
     } catch (error) {
       console.error('❌ Phase 2 Prefetch failed:', error.message);
-      // Don't show error to user - prefetch failure shouldn't break the app
-      // Initial data is already loaded and functional
     } finally {
       setPrefetchLoading(false);
     }
@@ -747,7 +742,6 @@ const DashboardScreen = () => {
     console.log('🔄 REFRESH: User initiated pull-to-refresh');
     setRefreshing(true);
     
-    // Clear unified endpoint cache to force fresh data
     invalidateCache('app');
     if (user?.id) {
       clearUserCache(user.id);
@@ -764,25 +758,24 @@ const DashboardScreen = () => {
     }
   };
 
-  // ✅ NEW: Unified Dashboard Data Loading on Mount
+  // ✅ CRITICAL FIX: Include loadDashboardData in dependency array
   useEffect(() => { 
     if (user?.id) {
       loadDashboardData(); 
     }
-  }, [user?.id]);
+  }, [user?.id, loadDashboardData]); // ✅ FIXED: Added loadDashboardData
 
   // ✅ FIX: Trigger Phase 2 AFTER Phase 1 state has been applied to UI
   useEffect(() => {
     if (initialDataLoaded && !prefetchDataLoaded && !refreshing) {
       console.log('🔄 PHASE 2: Starting now that Phase 1 state is applied to UI');
-      setPrefetchRetryCount(0); // Reset retry count for new prefetch
+      setPrefetchRetryCount(0);
       fetchPrefetchData();
     }
-  }, [initialDataLoaded]);
+  }, [initialDataLoaded, prefetchDataLoaded, refreshing]);
 
   // ✅ NEW: WebSocket Initialization for Real-time Updates
   useEffect(() => {
-    // WebSocket enabled - testing connection to api.housetabz.com
     const WEBSOCKET_ENABLED = true;
     
     if (!WEBSOCKET_ENABLED) {
@@ -798,23 +791,18 @@ const DashboardScreen = () => {
         return;
       }
 
-      // Create and configure WebSocket
       const socket = new FinancialWebSocket(token);
       
-      // Set event handlers
       socket.setFinancialUpdateHandler(handleFinancialUpdate);
       socket.setHouseFinancialUpdateHandler(handleHouseFinancialUpdate);
       socket.setBillUpdateHandler(handleBillUpdate);
       socket.setChargeUpdateHandler(handleChargeUpdate);
       socket.setConnectionChangeHandler(handleSocketConnectionChange);
       
-      // Connect
       socket.connect();
       
-      // Store socket reference
       setFinancialSocket(socket);
       
-      // Cleanup on unmount
       return () => {
         console.log('🔌 Cleaning up financial WebSocket...');
         socket.disconnect();
@@ -822,7 +810,17 @@ const DashboardScreen = () => {
         setIsSocketConnected(false);
       };
     }
-  }, [user?.id, token]);
+  }, [user?.id, token, handleFinancialUpdate, handleHouseFinancialUpdate, handleBillUpdate, handleChargeUpdate, handleSocketConnectionChange]);
+
+  // ✅ NEW: Cleanup timer on unmount or payment flow change
+  useEffect(() => {
+    return () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = null;
+      }
+    };
+  }, []);
 
   // Handle message press
   const handleMessagePress = async (message) => {
@@ -840,24 +838,20 @@ const DashboardScreen = () => {
         fullMessage: JSON.stringify(message, null, 2)
       });
       
-      // Show message details immediately (don't wait for API call)
       setSelectedMessage(message);
       setIsMessageModalVisible(true);
       
-      // Mark the message as read in the background
       if (message?.id) {
-      await apiClient.patch(`/api/urgent-messages/${message.id}/read`);
-      
-      // Update the local state to mark the message as read
-      setUrgentMessages(currentMessages =>
-        currentMessages.map(msg => 
-          msg.id === message.id ? { ...msg, isRead: true } : msg
-        )
-      );
+        await apiClient.patch(`/api/urgent-messages/${message.id}/read`);
+        
+        setUrgentMessages(currentMessages =>
+          currentMessages.map(msg => 
+            msg.id === message.id ? { ...msg, isRead: true } : msg
+          )
+        );
       }
     } catch (error) {
       console.error('Error in handleMessagePress:', error);
-      // Still show the modal even if marking as read fails
       setSelectedMessage(message);
       setIsMessageModalVisible(true);
     }
@@ -867,10 +861,8 @@ const DashboardScreen = () => {
   const handleMessageAction = async (action, id, customMessage) => {
     try {
       if (action === 'pay') {
-        // Find the charge related to this bill
         const charge = userCharges.find(c => c.billId === id);
         if (charge) {
-          // Set up payment modal with this charge
           setSelectedPaymentTask({
             id: charge.id,
             amount: charge.amount || charge.baseAmount,
@@ -883,9 +875,6 @@ const DashboardScreen = () => {
           console.error('No charge found for bill', id);
         }
       } else if (action === 'remind') {
-        // The UrgentMessageModal now handles all the reminder logic,
-        // including checking cooldown status and sending the notification
-        // So we just need to close the modal here
         setIsMessageModalVisible(false);
       }
     } catch (error) {
@@ -897,12 +886,11 @@ const DashboardScreen = () => {
   const handleTaskAction = (task, action) => {
     if (action === 'view') {
       setSelectedPaymentTask(task);
-        setIsPaymentModalVisible(true);
+      setIsPaymentModalVisible(true);
     } else if (action === 'complete') {
-      // Invalidate cache when task is completed
       invalidateCache('dashboard');
       fetchDashboardData();
-      }
+    }
   };
 
   // Handle successful payment and invalidate cache
@@ -910,27 +898,22 @@ const DashboardScreen = () => {
     console.log('💰 Task payment successful:', taskData);
     
     try {
-      // STEP 1: Show loading screen immediately
       setProcessingType('task');
       setIsTaskProcessing(true);
       console.log('🔄 LOADING: Task processing started - showing loading screen for instant feedback');
       
-      // Close payment modal
       setIsPaymentModalVisible(false);
       setSelectedPaymentTask(null);
       
-      // STEP 2: Update task response to "accepted" using correct endpoint
       console.log('🔄 Updating task response to accepted:', taskData);
       
       if (taskData.taskId) {
-        // CORRECT: Use the documented endpoint PATCH /api/tasks/{taskId}
         const taskUpdateResponse = await apiClient.patch(`/api/tasks/${taskData.taskId}`, {
           response: taskData.response || 'accepted'
         });
         
         console.log('✅ Task response updated successfully:', taskUpdateResponse.data);
         
-        // Check if payment consent was given or payment is required
         const taskResult = taskUpdateResponse.data;
         
         if (taskResult.paymentAuthorized) {
@@ -940,7 +923,6 @@ const DashboardScreen = () => {
             message: taskResult.message
           });
           
-          // Show consent confirmation modal
           setConsentData({
             taskData: taskData,
             paymentIntentId: taskResult.paymentIntentId,
@@ -953,7 +935,6 @@ const DashboardScreen = () => {
             paymentAmount: taskResult.paymentAmount
           });
           
-          // Handle immediate payment requirement (non-staged requests)
           Alert.alert(
             'Payment Required',
             `This task requires a payment of $${taskResult.paymentAmount}.`,
@@ -964,10 +945,7 @@ const DashboardScreen = () => {
         }
       }
       
-      // STEP 3: Add immediate UI feedback, then refresh data quickly
-      // Remove the task from local state immediately for instant feedback
       if (taskData.taskId) {
-        // Track this task as recently completed
         setRecentlyCompletedTasks(prev => new Set([...prev, taskData.taskId]));
         
         setTasks(prev => {
@@ -981,27 +959,22 @@ const DashboardScreen = () => {
         });
       }
       
-      // Wait briefly for backend to process, then refresh data
       setTimeout(async () => {
         try {
           console.log('🔄 LOADING: Refreshing dashboard data...');
           
-          // AGGRESSIVE CACHE CLEARING - make sure we get fresh data
           invalidateCache('dashboard');
           invalidateCache('house');
           invalidateCache('user');
           
-          // Clear ALL user-specific cache
           if (user?.id) {
             clearUserCache(user.id);
           }
           
-          // Force a direct API call bypassing all caches
           console.log('🔄 LOADING: Making direct API call to bypass cache...');
           const response = await apiClient.get(`/api/dashboard/user/${user.id}?nocache=${Date.now()}`);
           const responseData = response.data.data || response.data;
           
-          // Update all state immediately with fresh data
           if (responseData.user?.finance) {
             console.log('💰 LOADING: Updating userFinance from fresh API:', responseData.user.finance);
             setUserFinance(responseData.user.finance);
@@ -1018,7 +991,6 @@ const DashboardScreen = () => {
             setHouseServicesCount(responseData.house.houseServicesCount || 0);
           }
 
-          // Update tasks - the completed task should no longer be in pending tasks
           if (responseData.pendingTasks) {
             const pendingTasks = Array.isArray(responseData.pendingTasks) ? 
               responseData.pendingTasks.filter(task => task.response === 'pending') : [];
@@ -1030,7 +1002,6 @@ const DashboardScreen = () => {
             setTasks(pendingTasks);
           }
 
-          // Update bill submissions - backend handles user filtering
           if (responseData.billSubmissions) {
             const billSubmissions = Array.isArray(responseData.billSubmissions) ? 
               responseData.billSubmissions : [];
@@ -1055,7 +1026,6 @@ const DashboardScreen = () => {
             setUnpaidBills(responseData.unpaidBills);
           }
           
-          // Update partners data from fresh API
           if (responseData.partners) {
             console.log('🏪 LOADING: Updating partners from fresh API:', responseData.partners.length);
             setPartners(responseData.partners);
@@ -1065,18 +1035,15 @@ const DashboardScreen = () => {
           
         } catch (error) {
           console.error('❌ LOADING: Failed to refresh dashboard data:', error);
-          // Fallback to regular refresh if direct API call fails
           try {
             await fetchDashboardData();
           } catch (fallbackError) {
             console.error('❌ LOADING: Fallback refresh also failed:', fallbackError);
           }
         } finally {
-          // STEP 4: Hide loading screen
           setIsTaskProcessing(false);
           console.log('✅ LOADING: Task processing completed - hiding loading screen');
           
-          // Clear recently completed tasks after 2 minutes to prevent permanent filtering
           setTimeout(() => {
             if (taskData.taskId) {
               setRecentlyCompletedTasks(prev => {
@@ -1086,17 +1053,15 @@ const DashboardScreen = () => {
                 return updated;
               });
             }
-          }, 120000); // 2 minutes
+          }, 120000);
         }
-      }, 1000); // 1 second delay to ensure backend processing is complete + immediate UI feedback
+      }, 1000);
       
     } catch (error) {
       console.error('❌ Task acceptance failed:', error);
       
-      // Hide loading screen on error
       setIsTaskProcessing(false);
       
-      // Show detailed error information
       let errorMessage = 'Failed to accept task. Please try again.';
       
       if (error.response) {
@@ -1106,7 +1071,6 @@ const DashboardScreen = () => {
           headers: error.response.headers
         });
         
-        // Handle specific error cases
         if (error.response.status === 400) {
           errorMessage = 'Invalid task response. Please try again.';
         } else if (error.response.status === 403) {
@@ -1122,21 +1086,16 @@ const DashboardScreen = () => {
     }
   };
   
-  // Handle bill submission success
-  // Handle bill submission success - same pattern as task completion
   const handleBillSubmissionSuccess = async (result) => {
     console.log('💰 Bill submission successful:', result);
     
     try {
-      // STEP 1: Show loading screen immediately
       setProcessingType('bill');
       setIsTaskProcessing(true);
       console.log('🔄 LOADING: Bill submission processing started - showing loading screen for instant feedback');
       
-      // Close bill submission modal
       setIsBillSubmissionModalVisible(false);
       
-      // STEP 2: Update finances immediately if available in the response
       if (result?.billSubmission?.Bill) {
         const newBill = result.billSubmission.Bill;
         const billTotal = newBill.totalAmount || newBill.amount || 0;
@@ -1146,13 +1105,11 @@ const DashboardScreen = () => {
           billId: newBill.id
         });
         
-        // Update house finance immediately (subtract the bill amount)
         setHouseFinance(prev => ({
           ...prev,
           balance: prev.balance - billTotal
         }));
         
-        // If there are charges for the current user, update user finance
         if (result.charges) {
           const userCharge = result.charges.find(charge => charge.userId === user.id);
           if (userCharge) {
@@ -1165,10 +1122,7 @@ const DashboardScreen = () => {
         }
       }
       
-      // STEP 3: Add immediate UI feedback, then refresh data quickly
-      // Remove the bill submission from local state immediately for instant feedback
       if (selectedBillSubmission?.id) {
-        // Track this bill submission as recently completed
         setRecentlyCompletedBillSubmissions(prev => new Set([...prev, selectedBillSubmission.id]));
         
         setBillSubmissions(prev => {
@@ -1182,30 +1136,24 @@ const DashboardScreen = () => {
         });
       }
       
-      // Clear selected bill submission
       setSelectedBillSubmission(null);
       
-      // Wait briefly for backend to process, then refresh data
       setTimeout(async () => {
         try {
           console.log('🔄 LOADING: Refreshing dashboard data after bill submission...');
           
-          // AGGRESSIVE CACHE CLEARING - make sure we get fresh data
           invalidateCache('dashboard');
           invalidateCache('house');
           invalidateCache('user');
           
-          // Clear ALL user-specific cache
           if (user?.id) {
             clearUserCache(user.id);
           }
           
-          // Force a direct API call bypassing all caches
           console.log('🔄 LOADING: Making direct API call to bypass cache...');
           const response = await apiClient.get(`/api/dashboard/user/${user.id}?nocache=${Date.now()}`);
           const responseData = response.data.data || response.data;
           
-          // Update all state immediately with fresh data
           if (responseData.user?.finance) {
             console.log('💰 LOADING: Updating userFinance from fresh API:', responseData.user.finance);
             setUserFinance(responseData.user.finance);
@@ -1222,7 +1170,6 @@ const DashboardScreen = () => {
             setHouseServicesCount(responseData.house.houseServicesCount || 0);
           }
 
-          // Update tasks - filter by pending status and recently completed
           if (responseData.pendingTasks) {
             const pendingTasks = Array.isArray(responseData.pendingTasks) ? 
               responseData.pendingTasks.filter(task => {
@@ -1238,7 +1185,6 @@ const DashboardScreen = () => {
             setTasks(pendingTasks);
           }
 
-          // Update bill submissions - the completed submission should no longer be pending
           if (responseData.billSubmissions) {
             const pendingBillSubmissions = Array.isArray(responseData.billSubmissions) ? 
               responseData.billSubmissions.filter(submission => {
@@ -1264,12 +1210,11 @@ const DashboardScreen = () => {
             setUrgentMessages(responseData.urgentMessages);
           }
 
-                    if (responseData.unpaidBills) {
+          if (responseData.unpaidBills) {
             console.log('🧾 LOADING: Updating unpaidBills from fresh API:', responseData.unpaidBills.length);
             setUnpaidBills(responseData.unpaidBills);
           }
           
-          // Update partners data from fresh API
           if (responseData.partners) {
             console.log('🏪 LOADING: Updating partners from fresh API:', responseData.partners.length);
             setPartners(responseData.partners);
@@ -1279,18 +1224,15 @@ const DashboardScreen = () => {
           
         } catch (error) {
           console.error('❌ LOADING: Failed to refresh dashboard data after bill submission:', error);
-          // Fallback to regular refresh if direct API call fails
           try {
             await fetchDashboardData();
           } catch (fallbackError) {
             console.error('❌ LOADING: Fallback refresh also failed:', fallbackError);
           }
         } finally {
-          // STEP 4: Hide loading screen
           setIsTaskProcessing(false);
           console.log('✅ LOADING: Bill submission processing completed - hiding loading screen');
           
-          // Clear recently completed bill submissions after 2 minutes to prevent permanent filtering
           setTimeout(() => {
             if (selectedBillSubmission?.id) {
               setRecentlyCompletedBillSubmissions(prev => {
@@ -1300,47 +1242,36 @@ const DashboardScreen = () => {
                 return updated;
               });
             }
-          }, 120000); // 2 minutes
+          }, 120000);
         }
-      }, 1000); // 1 second delay to ensure backend processing is complete + immediate UI feedback
+      }, 1000);
       
     } catch (error) {
       console.error('❌ Bill submission processing failed:', error);
-      
-      // Hide loading screen on error
       setIsTaskProcessing(false);
-      
-      // Show error message
       Alert.alert('Bill Submission Failed', 'Failed to process bill submission. Please try again.', [{ text: 'OK' }]);
     }
   };
 
-  // ENHANCED: Handle task press based on type
   const handleTaskPress = (task) => {
     console.log('handleTaskPress called with task:', task);
     
-    // NEW: Use positive identification based on reliable fields from enhanced backend API
-    // Bill submissions will have: status + houseServiceId + service_name
-    // Service requests will have: serviceRequestBundleId + response + type
     const isBillSubmission = task.status !== undefined && task.houseServiceId !== undefined;
     const isServiceRequest = task.serviceRequestBundleId !== undefined && task.response !== undefined;
     
     console.log('✅ Enhanced Task Classification:', {
       taskId: task.id,
       classification: isBillSubmission ? 'BILL_SUBMISSION' : isServiceRequest ? 'SERVICE_REQUEST' : 'UNKNOWN',
-      // Bill submission indicators
       hasStatus: !!task.status,
       hasHouseServiceId: !!task.houseServiceId,
       serviceName: task.service_name,
       serviceType: task.service_type,
       dueDate: task.dueDate,
-      // Service request indicators  
       hasServiceRequestBundleId: !!task.serviceRequestBundleId,
       hasResponse: !!task.response,
       taskType: task.type,
       paymentRequired: task.paymentRequired,
       paymentAmount: task.paymentAmount,
-      // Bundle details from enhanced API
       bundleId: task.bundle_id,
       takeoverServiceName: task.takeover_service_name,
       stagedServiceName: task.staged_service_name,
@@ -1366,7 +1297,6 @@ const DashboardScreen = () => {
       });
       handleTaskAction(task, 'view');
     } else {
-      // This should not happen with the enhanced backend API
       console.error('❌ Unknown task type - missing classification fields:', {
         taskId: task.id,
         availableFields: Object.keys(task),
@@ -1383,12 +1313,10 @@ const DashboardScreen = () => {
     }
   };
 
-  // Handle rent proposal press
   const handleRentProposalPress = (proposal) => {
     console.log('handleRentProposalPress called with proposal:', proposal);
     
     if (proposal.status === 'draft') {
-      // Navigate to edit proposal
       navigation.navigate('CreateRentProposal', {
         houseId: proposal.houseId,
         rentConfigurationId: proposal.rentConfigurationId,
@@ -1396,27 +1324,22 @@ const DashboardScreen = () => {
         existingProposalId: proposal.id
       });
     } else {
-      // Navigate to view proposal details
       navigation.navigate('ViewRentProposal', {
         rentProposalId: proposal.id
       });
     }
   };
 
-  // Handle rent allocation request claim
   const handleRentAllocationClaim = () => {
     console.log('Rent allocation request claimed - refreshing dashboard data');
-    // Refresh dashboard data to remove the claimed request
     fetchDashboardData();
   };
 
-  // Handle navigation to rent proposal creation
   const handleNavigateToProposal = (params) => {
     console.log('Navigating to rent proposal creation with params:', params);
     navigation.navigate('CreateRentProposal', params);
   };
 
-  // Handle rent allocation request creation
   const handleCreateRentProposal = () => {
     if (!rentAllocationRequest?.canCreateProposal || !house?.id) {
       Alert.alert(
@@ -1426,7 +1349,6 @@ const DashboardScreen = () => {
       return;
     }
 
-    // Navigate directly to proposal creation
     navigation.navigate('CreateRentProposal', {
       houseId: house.id,
       rentConfigurationId: rentAllocationRequest.rentConfiguration.id,
@@ -1435,32 +1357,26 @@ const DashboardScreen = () => {
   };
   
   const handleViewAllTasks = () => {
-    // Handle view all tasks (implement as needed)
     console.log('View all tasks pressed');
   };
   
   const handleViewAllMessages = () => {
-    // Handle view all messages (implement as needed)
     console.log('View all messages pressed');
   };
 
-  // Show skeleton while loading (not refreshing)
   if (isLoading && !refreshing) {
     return <DashboardSkeleton />;
   }
 
-  // ✅ NEW: Simple loading screen for unified endpoint
   if (isLoading && !dashboardData.house.id) {
     return <DashboardSkeleton />;
   }
 
-  // Show error screen if there's an error
   if (error && !dashboardData.house.id) {
     return <ErrorScreen error={error} onRetry={loadDashboardData} />;
   }
 
-  // Calculate scroll-based gradient colors
-  const scrollThreshold = height * 0.15; // 15% of screen height
+  const scrollThreshold = height * 0.15;
   
   const gradientOpacity = scrollY.interpolate({
     inputRange: [0, scrollThreshold],
@@ -1470,7 +1386,6 @@ const DashboardScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Dynamic gradient overlay that fades based on scroll */}
       <Animated.View style={[styles.gradientOverlay, { opacity: gradientOpacity }]}>
         <LinearGradient
           colors={['#34d399', 'rgba(52, 211, 153, 0.7)', 'rgba(52, 211, 153, 0.3)', '#dff6f0']}
@@ -1514,8 +1429,6 @@ const DashboardScreen = () => {
         </View>
 
         <View style={styles.sectionContainer}>
-
-          
           <DashboardPopupSection
             urgentMessages={urgentMessages}
             tasks={tasks}
@@ -1539,7 +1452,6 @@ const DashboardScreen = () => {
           />
         </View>
 
-        {/* Show HowToUseCard for new users (no services) after popup section */}
         {houseServicesCount === 0 && (
           <View style={styles.sectionContainer}>
             <HowToUseCard />
@@ -1564,7 +1476,6 @@ const DashboardScreen = () => {
           />
         </View>
 
-        {/* Show HowToUseCard for experienced users (have services) under services section */}
         {houseServicesCount > 0 && (
           <View style={styles.sectionContainer}>
             <HowToUseCard />
@@ -1572,7 +1483,6 @@ const DashboardScreen = () => {
         )}
       </Animated.ScrollView>
 
-      {/* Payment Modal */}
       <AcceptServicePayment
         visible={isPaymentModalVisible}
         onClose={() => setIsPaymentModalVisible(false)}
@@ -1580,7 +1490,6 @@ const DashboardScreen = () => {
         taskData={selectedPaymentTask}
       />
 
-      {/* Message Detail Modal */}
       <UrgentMessageModal
         visible={isMessageModalVisible}
         message={selectedMessage}
@@ -1591,7 +1500,6 @@ const DashboardScreen = () => {
         onAction={handleMessageAction}
       />
       
-      {/* Bill Submission Modal - Added */}
       <BillSubmissionModal
         visible={isBillSubmissionModalVisible}
         onClose={() => setIsBillSubmissionModalVisible(false)}
@@ -1599,7 +1507,6 @@ const DashboardScreen = () => {
         onSuccess={handleBillSubmissionSuccess}
       />
 
-      {/* Consent Confirmation Modal */}
       <ConsentConfirmationModal
         visible={isConsentModalVisible}
         onClose={() => {
@@ -1611,7 +1518,6 @@ const DashboardScreen = () => {
         message={consentData?.message}
       />
 
-      {/* Task Processing Loading Screen */}
       <AnimatedLoadingScreen visible={isTaskProcessing} type={processingType} />
     </SafeAreaView>
   );
@@ -1631,13 +1537,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: { paddingTop: 0, paddingBottom: 12 },
-  topSectionContainer: { /* No margin to allow seamless gradient flow */ },
+  topSectionContainer: {},
   sectionContainer: { marginBottom: 8 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
   errorText: { marginTop: 16, marginBottom: 24, fontSize: 16, color: '#ef4444', textAlign: 'center' },
   retryButton: { backgroundColor: '#34d399', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   retryButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-  // Loading screen styles
   loadingOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
