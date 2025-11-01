@@ -20,7 +20,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.housetabz.app",
-      "buildNumber": "36",
+      "buildNumber": "37",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to add photos to your profile",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you share them with your friends",

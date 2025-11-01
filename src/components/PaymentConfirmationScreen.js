@@ -181,8 +181,8 @@ const PaymentConfirmationScreen = ({
   const getDisplayText = (method) => {
     if (!method) return '';
     return method.type === 'us_bank_account'
-      ? `Bank Account •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`
-      : `${method.brand} •••• ${method.last4}${method.isDefault ? ' (Default)' : ''}`;
+      ? `Bank Account •••• ${method.last4}`
+      : `${method.brand} •••• ${method.last4}`;
   };
 
   const getFeeText = (method) => {
@@ -207,7 +207,7 @@ const PaymentConfirmationScreen = ({
   };
 
   const handleConfirm = () => {
-    onConfirmPayment();
+    onConfirmPayment(selectedMethod);
   };
 
   const effectivePaymentMethod = getEffectivePaymentMethod();
@@ -337,6 +337,9 @@ const PaymentConfirmationScreen = ({
                       </View>
                       <View style={styles.methodDetails}>
                         <Text style={styles.methodName}>{getDisplayText(effectivePaymentMethod)}</Text>
+                        {effectivePaymentMethod.isDefault && (
+                          <Text style={styles.methodDefaultIndicator}> (Default)</Text>
+                        )}
                         {getFeeText(effectivePaymentMethod) && (
                           <Text style={styles.methodFee}>{getFeeText(effectivePaymentMethod)}</Text>
                         )}
@@ -380,6 +383,9 @@ const PaymentConfirmationScreen = ({
                                 />
                                 <View style={styles.dropdownItemInfo}>
                                   <Text style={styles.dropdownItemName}>{getDisplayText(method)}</Text>
+                                  {method.isDefault && (
+                                    <Text style={styles.dropdownItemDefaultIndicator}> (Default)</Text>
+                                  )}
                                   {getFeeText(method) && (
                                     <Text style={styles.dropdownItemFee}>{getFeeText(method)}</Text>
                                   )}
@@ -624,6 +630,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '500',
   },
+  methodDefaultIndicator: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
   dropdownContainer: {
     marginTop: 12,
     paddingTop: 12,
@@ -667,6 +678,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#34d399',
     marginTop: 4,
+    fontWeight: '500',
+  },
+  dropdownItemDefaultIndicator: {
+    fontSize: 12,
+    color: '#64748b',
     fontWeight: '500',
   },
   addMethodDivider: {

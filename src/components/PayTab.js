@@ -188,7 +188,7 @@ useEffect(() => {
 
   // Centralized API call
  // Centralized API call
-const handleConfirmPayment = async () => {
+const handleConfirmPayment = async (paymentMethodId) => {
   console.log('🔵 handleConfirmPayment: STARTED');
   
   if (paymentMethods.length === 0) {
@@ -211,6 +211,7 @@ const handleConfirmPayment = async () => {
     
     const paymentRequest = {
       chargeIds: selectedCharges.map(charge => charge.id),
+      paymentMethodId: paymentMethodId || paymentMethods[0]?.id, // Use the first payment method as default
     };
     
     console.log('🔵 handleConfirmPayment: SENDING API CALL...', paymentRequest);
