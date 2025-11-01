@@ -107,9 +107,9 @@ const PayTab = ({ charges: allCharges, onChargesUpdated, onConfirmationStateChan
   
 // Ensure selected charges are still valid when unpaid charges change
 useEffect(() => {
-  // ✅ Don't validate during success screen - we know they were just paid
-  if (paymentState === 'success' || paymentState === 'processing') {
-    console.log('🛡️ Blocking selected charges validation - payment in progress');
+  // ✅ Only block during processing (API call), not during success screen
+  if (paymentState === 'processing') {
+    console.log('🛡️ Blocking selected charges validation - payment API call in progress');
     return;
   }
   
@@ -117,11 +117,10 @@ useEffect(() => {
     unpaidCharges.some(charge => charge.id === selected.id)
   );
   if (validSelectedCharges.length !== selectedCharges.length) {
+    console.log('🔄 Updating selected charges based on unpaid charges');
     setSelectedCharges(validSelectedCharges);
   }
-}, [unpaidCharges, selectedCharges, paymentState]); 
-
-
+}, [unpaidCharges, selectedCharges, paymentState]);
   
   // Calculate total amounts
   const totalBalance = useMemo(() =>
@@ -387,7 +386,14 @@ const handleConfirmPayment = async () => {
             setPaymentStateWithLogging('idle');
             setSelectedCharges([]);
             setPaymentResponse(null);
-            setPaidChargeIds([]); // Clear optimistic updates on success screen close
+            // ❌ DON'T reset paidChargeIds here - it will break the optimistic update
+            // setPaidChargeIds([]); // Removed - will be cleared after parent refresh completes
+            
+            // ✅ Clear paidChargeIds after a delay to ensure parent has refreshed
+            setTimeout(() => {
+              console.log('🧹 CLEANUP: Clearing paidChargeIds after parent refresh');
+              setPaidChargeIds([]);
+            }, 5000); // Wait 5 seconds for parent to definitely refresh
           }}
         />
       ) : (

@@ -239,10 +239,13 @@ const PaymentConfirmationScreen = ({
   onPress={async () => {
     console.log('🎉 User clicked Done on success screen');
     
-    // ✅ STEP 1: User clicks "Done", we keep the modal open but start cleanup
-    // The modal will close naturally when we reset the parent state
+    // ✅ STEP 1: Release payment flow flag IMMEDIATELY
+    if (onPaymentFlowChange) {
+      onPaymentFlowChange(false);
+      console.log('✅ Payment flow flag released');
+    }
     
-    // ✅ STEP 2: Clear all caches FIRST
+    // ✅ STEP 2: Clear caches
     try {
       console.log('🧹 Clearing all caches...');
       invalidateCache('dashboard');
@@ -260,25 +263,16 @@ const PaymentConfirmationScreen = ({
       console.error('⚠️ Error clearing caches:', error);
     }
     
-    // ✅ STEP 3: Close the modal by resetting parent state
+    // ✅ STEP 3: Close the modal FIRST
     onSuccessDone();
     
-    // ✅ STEP 4: Keep payment flow flag active for 3 more seconds
-    // This prevents WebSocket from refreshing too early
+    // ✅ STEP 4: THEN trigger refresh after modal is closed
     setTimeout(() => {
-      console.log('✅ Payment flow complete - now safe to refresh');
-      
-      // Release the payment flow flag
-      if (onPaymentFlowChange) {
-        onPaymentFlowChange(false);
-      }
-      
-      // Trigger charges refresh
       if (onChargesUpdated) {
-        console.log('🔄 Triggering charges refresh');
+        console.log('🔄 Triggering charges refresh (after modal closed)');
         onChargesUpdated();
       }
-    }, 3000);
+    }, 100); // Short delay to ensure modal is fully closed
   }}
 >
   <Text style={styles.doneButtonText}>Done</Text>
