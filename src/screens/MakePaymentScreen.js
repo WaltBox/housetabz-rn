@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ const BillingScreen = () => {
   
   // WebSocket state for real-time charge updates
   const [financialSocket, setFinancialSocket] = useState(null);
+  const payTabRef = useRef(null);
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -230,6 +231,14 @@ const BillingScreen = () => {
     }
   }, [authUser?.id, token, handleFinancialUpdate, handleChargeUpdate]);
 
+  // Close confirmation when switching tabs
+  useEffect(() => {
+    if (activeTab !== TABS.PAY && isConfirmationOpen) {
+      setIsConfirmationOpen(false);
+      payTabRef.current?.closeConfirmation();
+    }
+  }, [activeTab, isConfirmationOpen]);
+
   // Show skeleton while loading
   if (loading || !authUser?.id) {
     return <BillingSkeleton />;
@@ -262,7 +271,15 @@ const BillingScreen = () => {
               <TouchableOpacity 
                 key={tab}
                 style={styles.tab}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => {
+                  // If confirmation is open, close it first
+                  if (isConfirmationOpen) {
+                    console.log('🔄 Tab switch: Closing confirmation modal');
+                    payTabRef.current?.closeConfirmation();
+                    setIsConfirmationOpen(false);
+                  }
+                  setActiveTab(tab);
+                }}
                 activeOpacity={0.7}
               >
                 <Text style={[
@@ -272,7 +289,7 @@ const BillingScreen = () => {
                 ]}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </Text>
-                {activeTab === tab && <View style={styles.activeIndicator} />}
+                {activeTab === tab && !isConfirmationOpen && <View style={styles.activeIndicator} />}
               </TouchableOpacity>
             ))}
             
@@ -288,9 +305,9 @@ const BillingScreen = () => {
                   styles.confirmPaymentTabText,
                   fontsLoaded && { fontFamily: 'Poppins-Medium' }
                 ]}>
-                  Confirm Payment
+                  Review
                 </Text>
-                <View style={styles.confirmPaymentIndicator} />
+                {isConfirmationOpen && <View style={styles.confirmPaymentIndicator} />}
               </TouchableOpacity>
             )}
           </View>
@@ -303,6 +320,7 @@ const BillingScreen = () => {
             onChargesUpdated={handlePaymentComplete}
             onConfirmationStateChange={setIsConfirmationOpen}
             onPaymentFlowChange={handlePaymentFlowChange}
+            ref={payTabRef}
           />
         )}
         {/* Close confirmation when switching tabs */}
@@ -326,21 +344,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#dff6f0",
     paddingTop: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   tabsWrapper: {
     flexDirection: 'row',
     backgroundColor: 'transparent',
   },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#D1D5DB',
-  },
   tab: {
-    width: '30%',
+    flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     position: 'relative',
@@ -348,7 +360,7 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -1, // Adjusted to align with tabContainer border
     left: 0,
     right: 0,
     height: 2,
@@ -392,25 +404,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   confirmPaymentTab: {
-    backgroundColor: '#34d399',
-    width: '30%',
+    backgroundColor: 'transparent',
+    flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     position: 'relative',
   },
   confirmPaymentTabText: {
-    color: 'white',
+    color: '#34d399',
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
   },
   confirmPaymentIndicator: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -1, // Adjusted to align with tabContainer border
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: 'white',
+    backgroundColor: '#34d399',
     zIndex: 1,
   },
 });

@@ -216,7 +216,7 @@ const PaymentConfirmationScreen = ({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Confirm Payment</Text>
+        <Text style={styles.headerTitle}>Review</Text>
         {!paymentSuccess && (
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <MaterialIcons name="close" size={24} color="#64748b" />
@@ -477,14 +477,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomWidth: 2,
+    borderBottomColor: '#34d399',
     backgroundColor: '#dff6f0',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#000000',
   },
   closeButton: {
     padding: 5,

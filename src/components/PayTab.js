@@ -6,10 +6,12 @@ import PaymentConfirmationScreen from './PaymentConfirmationScreen';
 import apiClient, { invalidateCache, clearUserCache, getDashboardData, clearAllCache } from '../config/api';
 import { useFonts } from 'expo-font';
 import { useAuth } from '../context/AuthContext';
+import { useImperativeHandle, forwardRef } from 'react';
 
-const PayTab = ({ charges: allCharges, onChargesUpdated, onConfirmationStateChange, onPaymentFlowChange }) => {
+const PayTab = forwardRef(({ charges: allCharges, onChargesUpdated, onConfirmationStateChange, onPaymentFlowChange }, ref) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  
   // Load fonts
   const [fontsLoaded] = useFonts({
     'Poppins-Bold': require('../../assets/fonts/Poppins/Poppins-Bold.ttf'),
@@ -37,6 +39,14 @@ const PayTab = ({ charges: allCharges, onChargesUpdated, onConfirmationStateChan
     });
     setPaymentState(newState);
   };
+  
+  // ✅ Expose closeConfirmation method to parent via ref
+  useImperativeHandle(ref, () => ({
+    closeConfirmation: () => {
+      console.log('🔄 PayTab: closeConfirmation called from parent');
+      setPaymentStateWithLogging('idle');
+    }
+  }), [setPaymentStateWithLogging]);
   
   const [selectedCharges, setSelectedCharges] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -83,6 +93,7 @@ const PayTab = ({ charges: allCharges, onChargesUpdated, onConfirmationStateChan
       onConfirmationStateChange(paymentState !== 'idle');
     }
   }, [paymentState, onConfirmationStateChange]);
+
   
   // Filter out charges already paid or processing
   const unpaidCharges = useMemo(() => 
@@ -486,7 +497,7 @@ const handleConfirmPayment = async () => {
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: { 
@@ -647,5 +658,6 @@ const styles = StyleSheet.create({
     textAlign: 'center' 
   }
 });
+
 
 export default PayTab;

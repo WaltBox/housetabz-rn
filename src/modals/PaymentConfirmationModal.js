@@ -211,7 +211,7 @@ const PaymentConfirmationModal = ({
         <SafeAreaView style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Confirm Payment</Text>
+            <Text style={styles.headerTitle}>Review</Text>
             {!paymentSuccess && (
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <MaterialIcons name="close" size={24} color="#64748b" />
